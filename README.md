@@ -1,2 +1,1 @@
-# PHANE
-Phylogenetic Haskell Analytic Network Engine 
+doc/ReadMe/PHANE.md

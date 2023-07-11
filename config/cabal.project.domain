@@ -1,0 +1,105 @@
+---------------------------------------------------------------------------------
+-- Domain of PHANE packages
+---------------------------------------------------------------------------------
+
+packages:
+    pkg/PHANE-PhyloLib
+    pkg/*/*.cabal
+
+
+---------------------------------------------------------------------------------
+-- Output paths
+--
+-- Place build output(s) in more accessible locations. Binaries should go in `bin`
+-- and log files of the build/benchmarks/tests should go in `log`.
+---------------------------------------------------------------------------------
+
+-- datadir:          ./data
+-- docdir:           ./doc
+-- htmldir:          ./doc/html
+builddir:         ./doc
+symlink-bindir:   ./bin
+installdir:       ./bin
+logs-dir:         ./log
+install-method:   copy
+overwrite-policy: always
+
+
+---------------------------------------------------------------------------------
+-- Build metadata flags
+--
+-- Sensible alterations from the defaults to improve the build experience during
+-- iterative development. Simultaneously, does not hinder release builds.
+---------------------------------------------------------------------------------
+
+haddock-html:             True
+haddock-tests:            True
+haddock-benchmarks:       True
+haddock-internal:         True
+haddock-hyperlink-source: True
+jobs:                     $ncpus
+keep-going:               True
+minimize-conflict-set:    True
+
+
+---------------------------------------------------------------------------------
+-- Dependency specifications
+--
+-- Always allow a newer version of libraries which are tightly coupled to the GHC
+-- compiler version. This allows the project to build with newer versions of the
+-- compiler without having to tediously tinker with dependencies, both direct and
+-- transitive.
+--
+-- Always allow a newer version of libraries which have had a major release due
+-- to a security or performance patch. Add a `preference` indicating the desire
+-- to use a version greater than or equal to the patch.
+---------------------------------------------------------------------------------
+
+allow-newer:
+    -- Core library
+    base,
+    ghc,
+    ghc-compact,
+    ghc-prim,
+    integer-gmp,
+    template-haskell,
+    -- Internal compiler library
+    ghc-boot,
+    ghc-boot-th,
+    ghc-heap,
+    libiserv,
+    -- Dependency of `ghc` library
+    array,
+    binary,
+    bytestring,
+    containers,
+    deepseq,
+    directory,
+    exceptions,
+    filepath,
+    pretty,
+    process,
+    time,
+    transformers,
+    unix,
+    Win32,
+    -- Core tool library
+    ghci,
+    hpc,
+    Cabal,
+    -- Dependency of `Cabal` library
+    mtl,
+    parsec,
+    text,
+    -- Security update
+    aeson,
+    -- Lagging project dependency
+    memory,
+
+preferences:
+    aeson >= 2.0.0,
+    bytestring >= 0.11.3,
+    filepath >= 1.4.100.0,
+    mtl >= 2.3,
+    text >= 2.0,
+    unordered-containers >= 0.2.18.0,
