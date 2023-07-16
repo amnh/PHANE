@@ -26,10 +26,6 @@
         , lhs: mconcat
         , rhs: fold
         }
-- warn: { name: Prefer fold1 to sconcat
-        , lhs: sconcat
-        , rhs: fold1
-        }
 
 # Custom suggestion hints
 - suggestion: { name: Strict sum
