@@ -12,8 +12,8 @@ The PHANE project provides a number of Haskell packages, each exposing one or mo
 All packages are located within the `pkg` directory.
 Below are the packages provided:
 
-  - [`PHANE-PhyloLib`][[GitHub-PHANE-Lib-00]
-  - [`PHANE-integration-tests`][[GitHub-PHANE-Lib-01]
+  - [`PHANE-PhyloLib`][GitHub-PHANE-Lib-00]
+  - [`PHANE-integration-tests`][GitHub-PHANE-Lib-01]
 
 
 ## Publications
