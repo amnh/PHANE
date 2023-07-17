@@ -1,14 +1,6 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Measure.Unit.SymbolChangeCost
--- Copyright   :  (c) 2015-2021 Ward Wheeler
--- License     :  BSD-style
---
--- Maintainer  :  wheeler@amnh.org
--- Stability   :  provisional
--- Portability :  portable
---
------------------------------------------------------------------------------
+{- |
+The distance between two symbols indicating the "cost" of transitioning from one symbol to the other.
+-}
 
 {-# Language DeriveDataTypeable #-}
 {-# Language DeriveGeneric #-}
@@ -29,11 +21,11 @@ import GHC.Generics
 import Text.Read
 
 
--- |
--- The distance between two measurable elements.
+{- |
+The distance between two measurable elements.
+-}
 newtype SymbolChangeCost = SymbolChangeCost Word
     deriving stock (Eq, Data, Generic, Ord)
-
 
 
 instance Bounded SymbolChangeCost where

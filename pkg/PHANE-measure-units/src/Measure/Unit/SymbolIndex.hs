@@ -1,14 +1,6 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Measure.Unit.SymbolIndex
--- Copyright   :  (c) 2015-2021 Ward Wheeler
--- License     :  BSD-style
---
--- Maintainer  :  wheeler@amnh.org
--- Stability   :  provisional
--- Portability :  portable
---
------------------------------------------------------------------------------
+{- |
+Indices for a structure isomorphic to a collection of symbols. 
+-}
 
 {-# Language DeriveDataTypeable #-}
 {-# Language DeriveGeneric #-}
@@ -33,8 +25,9 @@ import GHC.Generics
 import Text.Read
 
 
--- |
--- The index of a symbol in an alphabet.
+{- |
+The index of a symbol in an alphabet.
+-}
 newtype SymbolIndex = SymbolIndex Word
     deriving stock (Eq, Data, Generic, Ix, Ord)
 

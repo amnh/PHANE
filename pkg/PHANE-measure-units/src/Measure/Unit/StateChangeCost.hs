@@ -1,14 +1,6 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Measure.Unit.StateChangeCost
--- Copyright   :  (c) 2015-2021 Ward Wheeler
--- License     :  BSD-style
---
--- Maintainer  :  wheeler@amnh.org
--- Stability   :  provisional
--- Portability :  portable
---
------------------------------------------------------------------------------
+{- |
+The distance between two states indicating the "cost" of transitioning from one state to another.
+-}
 
 {-# Language DeriveDataTypeable #-}
 {-# Language DeriveGeneric #-}
@@ -29,10 +21,11 @@ import GHC.Generics
 import Text.Read
 
 
--- |
--- The distance between two measurable elements.
+{- |
+The distance between two measurable elements.
+-}
 newtype StateChangeCost = StateChangeCost Word
-    deriving stock   (Eq, Data, Generic, Ord)
+    deriving stock (Eq, Data, Generic, Ord)
 
 
 instance Bounded StateChangeCost where

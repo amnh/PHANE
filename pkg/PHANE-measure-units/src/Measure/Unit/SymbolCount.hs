@@ -1,14 +1,6 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Measure.Unit.SymbolCount
--- Copyright   :  (c) 2015-2021 Ward Wheeler
--- License     :  BSD-style
---
--- Maintainer  :  wheeler@amnh.org
--- Stability   :  provisional
--- Portability :  portable
---
------------------------------------------------------------------------------
+{- |
+The number of symbols within a collection of symbol, such as an alphabet.
+-}
 
 {-# Language DeriveDataTypeable #-}
 {-# Language DeriveGeneric #-}
@@ -38,14 +30,16 @@ import Measure.Unit.SymbolIndex
 import Text.Read
 
 
--- |
--- The index of a symbol in an alphabet.
+{- |
+The cardinality of an alphabet.
+-}
 newtype SymbolCount = SymbolCount Word
     deriving stock (Eq, Data, Generic, Ord)
 
 
--- |
--- A structure which can derive the number of alphabet symbols associated with it.
+{- |
+A structure which can derive the number of alphabet symbols associated with it.
+-}
 class HasSymbolCount a where
 
     symbolCount :: a -> SymbolCount
@@ -211,24 +205,25 @@ instance HasSymbolCount Word64 where
     symbolCount = SymbolCount . fromIntegral
 
 
--- |
--- The largest 'SymbolCount' value for which the predicate 'iota' holds.
---
--- Useful for partitioning a collection of symbols based on whether it is too
--- large for the C FFI.
+{- |
+The largest 'SymbolCount' value for which the predicate 'iota' holds.
+
+Useful for partitioning a collection of symbols based on whether it is too large for the C FFI.
+-}
 infimumSymbolLimit :: SymbolCount
 infimumSymbolLimit =  SymbolCount 8
 
 
--- |
--- Predicate to deciding if a 'SymbolCount' is small enough to be compatible with
--- the C FFI.
+{- |
+Predicate to deciding if a 'SymbolCount' is small enough to be compatible with the C FFI.
+-}
 iota :: HasSymbolCount a => a -> Bool
 iota = (<= infimumSymbolLimit) . symbolCount
 
 
--- |
--- Extract the inclusive bounds of a structure indexable by a contiguous symbol ordering.
+{- |
+Extract the inclusive bounds of a structure indexable by a contiguous symbol ordering.
+-}
 symbolBounds :: HasSymbolCount a => a -> (SymbolIndex, SymbolIndex)
 symbolBounds x =
     let (SymbolCount n) = symbolCount x

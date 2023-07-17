@@ -1,14 +1,6 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Measure.Unit.AlignmentCost
--- Copyright   :  (c) 2015-2021 Ward Wheeler
--- License     :  BSD-style
---
--- Maintainer  :  wheeler@amnh.org
--- Stability   :  provisional
--- Portability :  portable
---
------------------------------------------------------------------------------
+{- |
+The cost of aligning dynamic characters.
+-}
 
 {-# Language DeriveDataTypeable #-}
 {-# Language DeriveGeneric #-}
@@ -29,8 +21,9 @@ import GHC.Generics
 import Text.Read
 
 
--- |
--- The distance between two measurable elements.
+{- |
+The distance between two measurable elements.
+-}
 newtype AlignmentCost = AlignmentCost Word
     deriving stock (Eq, Data, Generic, Ord)
 
