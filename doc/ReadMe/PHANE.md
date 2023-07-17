@@ -12,8 +12,11 @@ The PHANE project provides a number of Haskell packages, each exposing one or mo
 All packages are located within the `pkg` directory.
 Below are the packages provided:
 
-  - [`PHANE-PhyloLib`][GitHub-PHANE-Lib-00]
-  - [`PHANE-integration-tests`][GitHub-PHANE-Lib-01]
+  - [`PHANE-alphabet`][GitHub-PHANE-Lib-00]
+  - [`PHANE-dynamic-character-element`][GitHub-PHANE-Lib-01]
+  - [`PHANE-measure-units`][GitHub-PHANE-Lib-02]
+  - [`PHANE-PhyloLib`][GitHub-PHANE-Lib-03]
+  - [`PHANE-integration-tests`][GitHub-PHANE-Lib-99]
 
 
 ## Publications
@@ -28,6 +31,9 @@ A list of publications resulting from the PHANE project is located at:
 [AMNH-Website]: https://www.amnh.org
 [AMNH-Wheeler]: https://www.amnh.org/research/staff-directory/ward-wheeler
 
-[GitHub-PHANE-Lib-00]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
-[GitHub-PHANE-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
+[GitHub-PHANE-Lib-00]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-alphabet#readme
+[GitHub-PHANE-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-element#readme
+[GitHub-PHANE-Lib-02]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
+[GitHub-PHANE-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
+[GitHub-PHANE-Lib-99]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-integration-tests#readme
 [GitHub-PHANE-Papers]: https://github.com/AMNH/PHANE/blob/master/doc/Publications.md

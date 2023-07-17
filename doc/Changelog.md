@@ -3,13 +3,33 @@ Phylogenetic Haskell Analytic Network Engine (PHANE)
 
 # Changelog
 
-PHANE uses [Semantic Versioning (v2.0.0)][1].
-The changelog is available [on GitHub][2].
+PHANE uses [Semantic Versioning (v2.0.0)][SemVer-URI].
+The changelog is available [on GitHub][GitHub-Changelog].
 
 
 ## Unreleased (`v0.2.0`)
 
-### PhyloLib
+### [`PHANE-alphabet`][GitHub-Lib-00]
+
+  * Moved from PhyG repository
+
+
+### [`PHANE-dynamic-character-element`][GitHub-Lib-01]
+
+  * Added initial library version
+
+
+### [`PHANE-measure-units`][GitHub-Lib-02]
+
+  * Added initial library version
+
+
+### [`PHANE-PhyloLib`][GitHub-Lib-03]
+
+  * Moved from PhyG repository
+
+
+### [`PHANE-integration-tests`][GitHub-Lib-99]
 
   * Moved from PhyG repository
 
@@ -19,5 +39,10 @@ The changelog is available [on GitHub][2].
   * Initial "alpha" state of PHANE domain
 
 
-[1]: https://semver.org/spec/v2.0.0.html
-[2]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
+[GitHub-Lib-00]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-alphabet#readme
+[GitHub-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-element#readme
+[GitHub-Lib-02]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
+[GitHub-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
+[GitHub-Lib-99]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-integration-tests#readme
+[GitHub-Changelog]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
+[SemVer-URI]: https://semver.org/spec/v2.0.0.html
