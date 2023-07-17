@@ -4,6 +4,7 @@
 
 packages:
     pkg/PHANE-integration-tests
+    pkg/PHANE-measure-units
     pkg/PHANE-PhyloLib
 --    pkg/*/*.cabal
 
