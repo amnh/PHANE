@@ -5,7 +5,6 @@
 packages:
     pkg/PHANE-alphabet
     pkg/PHANE-dynamic-character-element
-    pkg/PHANE-integration-tests
     pkg/PHANE-measure-units
     pkg/PHANE-PhyloLib
 --    pkg/*/*.cabal
