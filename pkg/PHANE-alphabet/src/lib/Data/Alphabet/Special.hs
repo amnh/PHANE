@@ -21,7 +21,7 @@ import Data.Bimap (Bimap)
 import Data.Bimap qualified as BM
 import Data.Char (isUpper)
 import Data.Foldable
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Data.String
@@ -56,7 +56,10 @@ The discrete alphabet includes the following 63 values:
 @ [\'0\'..\'9\'] <> [\'A\'..\'Z\'] <> [\'a\'..\'z\'] <> "-" @
 -}
 discreteAlphabet :: (IsString s, Ord s) => Alphabet s
-discreteAlphabet = fromSymbols $ fromString . pure <$> fold [['0' .. '9'], ['A' .. 'Z'], ['a' .. 'z'], "-"]
+discreteAlphabet =
+    let symbolChars :: NonEmpty Char
+        symbolChars = NE.fromList $ fold [ ['0' .. '9'], ['A' .. 'Z'], ['a' .. 'z'], "-" ]
+    in  fromSymbols $ fromString . pure <$> symbolChars
 
 
 {- |
@@ -111,7 +114,7 @@ isAlphabetSubsetOf specialAlphabet queryAlphabet = querySet `Set.isSubsetOf` spe
 
 
 fromBimap :: (IsString s, Ord s) => Bimap (NonEmpty String) a -> Alphabet s
-fromBimap = fromSymbols . fmap fromString . filter isUpperCaseStr . fmap NE.head . BM.keys
+fromBimap = fromSymbols . fmap fromString . NE.fromList . filter isUpperCaseStr . fmap NE.head . BM.keys
     where
         isUpperCaseStr (x : _) = isUpper x
         isUpperCaseStr _       = False

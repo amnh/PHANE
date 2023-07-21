@@ -106,7 +106,3 @@ preferences:
     mtl >= 2.3.1,
     text >= 2.0.1,
     unordered-containers >= 0.2.18.0,
-
-source-repository-package
-    type:     git
-    location: git@github.com:amnh/PhyG

@@ -40,14 +40,18 @@ import Data.Alphabet.Gap (gapIndex)
 import Data.Bifunctor (bimap)
 import Data.Bits
 import Data.Data
-import Data.Foldable
+import Data.Foldable hiding (foldl1, foldr1)
+import Data.Foldable qualified as F
+import Data.Foldable1
 import Data.Functor.Classes(Eq1(..), Ord1(..), Show1(..))
 import Data.Hashable (Hashable(..))
 import Data.Hashable.Lifted (Hashable1(..))
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as Int
-import Data.List (intercalate, sort)
-import Data.List.NonEmpty (NonEmpty(..))
+import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (isJust)
 import Data.Ord
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -67,6 +71,7 @@ A collection of symbols and optional corresponding state names.
 data Alphabet a
     = Alphabet
     { isSorted     :: !Bool
+    , semanticGap  :: !Bool
     , symbolVector :: {-# UNPACK #-} !(Vector a)
     , stateNames   :: [a]
     }
@@ -123,7 +128,7 @@ instance Eq a => Eq (Alphabet a) where
 
 instance Eq1 Alphabet where
 
-    liftEq f lhs rhs = 
+    liftEq f lhs rhs =
         length lhs == length rhs && liftEq f (symbolVector lhs) (symbolVector rhs)
 
 
@@ -142,10 +147,10 @@ instance Foldable Alphabet where
     foldl f e = foldl f e . symbolVector
 
     {-# INLINE foldr1 #-}
-    foldr1 f = foldr1 f . symbolVector
+    foldr1 f = F.foldr1 f . symbolVector
 
     {-# INLINE foldl1 #-}
-    foldl1 f = foldl1 f . symbolVector
+    foldl1 f = F.foldl1 f . symbolVector
 
     {-# INLINE length #-}
     length = length . symbolVector
@@ -193,7 +198,7 @@ instance Ord1 Alphabet where
 
     liftCompare f =
         let lengthComparison :: Alphabet a -> Alphabet b -> Ordering
-            lengthComparison x = compare (length x) . length            
+            lengthComparison x = compare (length x) . length
             liftedComparison x = liftCompare f (symbolVector x) . symbolVector
         in  lengthComparison `thenBy` liftedComparison
 
@@ -207,7 +212,7 @@ instance Show1 Alphabet where
 
     liftShowsPrec shwP _shwL p input =
         let showList0 :: (a -> ShowS) -> [a] -> ShowS
-            showList0 f list suffix = 
+            showList0 f list suffix =
                 case list of
                   [] -> "{}" <> suffix
                   x:xs ->
@@ -250,8 +255,10 @@ alphabetSymbols = fromList . toList
 Retrieves the "gap character" from the alphabet.
 -}
 {-# INLINE gapSymbol #-}
-gapSymbol :: Alphabet a -> a
-gapSymbol = (! fromEnum gapIndex) . symbolVector
+gapSymbol :: Alphabet a -> Maybe a
+gapSymbol input
+    | semanticGap input = Just . (! fromEnum gapIndex) $ symbolVector input
+    | otherwise = Nothing
 
 
 {- |
@@ -292,8 +299,8 @@ getSubsetIndices a s
         idx         = fromEnum gapIndex
         low         = idx + 1
 
-        inputHadGap = Set.member gap s
-        consumeSet  = Set.toAscList . Set.delete gap
+        inputHadGap = isJust $ gap >>= (`Set.lookupIndex` s)
+        consumeSet  = Set.toAscList . maybe id Set.delete gap
         produceSet  = addGapVal . Int.fromDistinctAscList
 
         addGapVal
@@ -339,8 +346,8 @@ getSubsetIndex a s zero
         idx         = fromEnum gapIndex
         low         = idx + 1
 
-        consumeSet  = Set.toAscList . Set.delete gap
-        inputHadGap = Set.member gap s
+        consumeSet  = Set.toAscList . maybe id Set.delete gap
+        inputHadGap = isJust $ gap >>= (`Set.lookupIndex` s)
 
         addGapVal
             | inputHadGap = (`setBit` idx)
@@ -366,27 +373,23 @@ getSubsetIndex a s zero
 Constructs an 'Alphabet' from a 'Foldable' structure of symbols which are 'IsString' values.
 -}
 {-# INLINE [1] fromSymbols #-}
-{-# SPECIALISE fromSymbols :: Foldable t => t String    -> Alphabet String    #-}
-{-# SPECIALISE fromSymbols ::               [String]    -> Alphabet String    #-}
-{-# RULES "fromSymbols/Set" forall (s :: (IsString x, Ord x) => Set x). fromSymbols s = let g = fromString "-"; x = g : toList (Set.delete g s); v = V.fromList x; in  Alphabet True v [] #-}
-fromSymbols :: (Ord a, IsString a, Foldable t) => t a -> Alphabet a
-fromSymbols inputSymbols = Alphabet sorted symbols []
-    where
-        symbols =
-            let processPre :: Foldable t => t a -> [AlphabetInputSingle a]
-                processPre  = fmap fromSingle . toList
+{-# SPECIALISE fromSymbols :: Foldable1 t => t String -> Alphabet String #-}
+{-# SPECIALISE fromSymbols ::         NonEmpty String -> Alphabet String #-}
+-- {-# RULES "fromSymbols/Set" forall (s :: (IsString x, Ord x) => Set x). fromSymbols s = let g = fromString "-"; x = g : toList (Set.delete g s); v = V.fromList x; in  Alphabet True v mempty #-}
+fromSymbols :: (Ord a, IsString a, Foldable1 t) => t a -> Alphabet a
+fromSymbols inputSymbols =
+    let (sorted, hasGap, uniqueSymbols) = processPre inputSymbols
 
-                processPost :: Foldable t => t (AlphabetInputSingle a) -> Vector a
-                processPost = V.fromList . fmap toSingle . toList
+        processPre :: (Ord a, IsString a, Foldable1 t) => t a -> (Bool, Bool, NonEmpty (AlphabetInputSingle a))
+        processPre  = alphabetPreprocessing . fmap fromSingle . toNonEmpty
 
-            in  processPost . alphabetPreprocessing $ processPre inputSymbols
-        sorted =
-            -- Coerce to a plain Vector, drop the last (gap) element
-            let v = init $ toList symbols
-            -- Zip each element with the next element,
-            -- and assert that all pairs are less-then-equal
-            in  all (uncurry (<=)) . zip v $ tail v
+        processPost :: Foldable1 t => t (AlphabetInputSingle a) -> Vector a
+        processPost = V.fromList . fmap toSingle . toList
 
+        symbols = processPost uniqueSymbols
+    in  Alphabet sorted hasGap symbols []
+
+            
 
 {- |
 \( \mathcal{O} \left(\, n * \log_{2} n \,\right) \)
@@ -396,10 +399,21 @@ corresponding state names, both of which are 'IsString' values.
 
 The input ordering is preserved.
 -}
-{-# SPECIALISE fromSymbolsWithStateNames :: Foldable t => t (String, String)  -> Alphabet String #-}
-{-# SPECIALISE fromSymbolsWithStateNames ::                [(String, String)] -> Alphabet String #-}
-fromSymbolsWithStateNames :: (Ord a, IsString a, Foldable t) => t (a, a) -> Alphabet a
-fromSymbolsWithStateNames inputSymbols = Alphabet False symbols names
+{-# SPECIALISE fromSymbolsWithStateNames :: Foldable1 t => t (String, String) -> Alphabet String #-}
+{-# SPECIALISE fromSymbolsWithStateNames ::         NonEmpty (String, String) -> Alphabet String #-}
+fromSymbolsWithStateNames :: (Ord a, IsString a, Foldable1 t) => t (a, a) -> Alphabet a
+fromSymbolsWithStateNames inputSymbols =
+    let (sorted, hasGap, uniqueSymbols) = processPre inputSymbols
+
+        processPre :: (Ord a, IsString a, Foldable1 t) => t (a, a) -> (Bool, Bool, NonEmpty (AlphabetInputTuple a))
+        processPre  = alphabetPreprocessing . fmap fromTuple . toNonEmpty
+
+        processPost :: Foldable1 t => t (AlphabetInputTuple a) -> (Vector a, [a])
+        processPost = bimap V.fromList toList . unzip . fmap toTuple . toList
+
+        (symbols, names) = processPost uniqueSymbols
+    in  Alphabet sorted hasGap symbols names
+{-    
     where
         (symbols, names) =
             bimap V.fromList toList
@@ -408,28 +422,45 @@ fromSymbolsWithStateNames inputSymbols = Alphabet False symbols names
                 . toList
                 . alphabetPreprocessing
                 . fmap fromTuple
-                $ toList inputSymbols
-
+                $ inputSymbols
+-}
 
 {- |
 \( \mathcal{O} \left(\, \lvert\Sigma\rvert * \log_{2} \lvert\Sigma\rvert \,\right) \)
 -}
-alphabetPreprocessing :: (Ord a, InternalClass a, Foldable t) => t a -> NonEmpty a
-alphabetPreprocessing = prependGapSymbol . sort . removeSpecialSymbolsAndDuplicates . toList
-    where
-        prependGapSymbol = \case
-            []     -> gapSymbol' :| []
-            y : ys -> gapSymbol' :| (y : ys)
+alphabetPreprocessing :: (Ord a, InternalClass a, Foldable1 t) => t a -> (Bool, Bool, NonEmpty a)
+alphabetPreprocessing inputSymbols =
+    let s :| ss = toNonEmpty inputSymbols
 
-        removeSpecialSymbolsAndDuplicates = (`evalState` mempty) . filterM f
-            where
-                f :: (InternalClass a, MonadState (Set a) f, Ord a) => a -> f Bool
-                f x | isGapSymboled x = pure False
+        filteredSymbols = removeSpecialSymbolsAndDuplicates ss
+        uniqueSymbols   = s :| filteredSymbols
+
+        prependGapSymbol = (gapSymbol' <|)
+
+        removeSpecialSymbolsAndDuplicates =
+            let f :: (InternalClass a, MonadState (Set a) f, Ord a) => a -> f Bool
+                f x | isGapSymboled     x = pure False
                     | isMissingSymboled x = pure False
                     | otherwise = do
                         seenSet <- get
-                        _       <- put $ x `Set.insert` seenSet
+                        put  $ x `Set.insert` seenSet
                         pure $ x `notElem` seenSet
+
+            in  (`evalState` (Set.singleton s)) . filterM f
+
+        -- Zip each element with the next element,
+        -- and assert that all pairs are less-then-equal
+        sorted = all (uncurry (<=)) . zip (toList uniqueSymbols) $ NE.tail uniqueSymbols
+
+        -- Check if Gap exists in input
+        hasGap = any isGapSymboled inputSymbols
+
+        -- Ensure Gap exists in output IFF 'hasGap'
+        prefixing
+            | hasGap  = prependGapSymbol
+            | otherwise = id
+
+    in  (sorted, hasGap, prefixing uniqueSymbols)
 
 
 fromSingle :: a -> AlphabetInputSingle a
