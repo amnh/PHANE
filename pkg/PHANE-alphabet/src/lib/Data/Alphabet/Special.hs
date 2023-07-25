@@ -19,7 +19,7 @@ import Data.Alphabet.IUPAC
 import Data.Alphabet.Internal
 import Data.Bimap (Bimap)
 import Data.Bimap qualified as BM
-import Data.Char (isUpper)
+import Data.Char (isLower)
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NE
@@ -114,8 +114,25 @@ isAlphabetSubsetOf specialAlphabet queryAlphabet = querySet `Set.isSubsetOf` spe
 
 
 fromBimap :: (IsString s, Ord s) => Bimap (NonEmpty String) a -> Alphabet s
-fromBimap = fromSymbols . fmap fromString . NE.fromList . filter isUpperCaseStr . fmap NE.head . BM.keys
-    where
-        isUpperCaseStr (x : _) = isUpper x
-        isUpperCaseStr _       = False
+fromBimap =
+    let -- WLOG get element of sungleton ambiguity group.
+        extraction :: Functor f => f (NonEmpty b) -> f b
+        extraction = fmap NE.head
+
+        -- Predicate to remove the lower-case alphabet symbols.
+        -- Desire to retain the upper case alphabet symbols and
+        -- any punctuation symbols, such as gap '-'.
+        filtration =
+            let isLowerCaseStr = \case
+                  [] -> False
+                  x:_ -> isLower x
+
+            in  filter $ not . isLowerCaseStr
+
+        -- Convert the remaining symbol set to data-types for
+        -- polymorphic alphabet construction.
+        projection = fmap fromString . NE.fromList
+
+    in  fromSymbols . projection . filtration . extraction . BM.keys
+
 

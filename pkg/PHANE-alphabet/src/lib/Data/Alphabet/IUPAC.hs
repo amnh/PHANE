@@ -57,8 +57,7 @@ Substitutions for converting to a DNA sequence based on IUPAC codes.
 -}
 iupacToDna :: (IsString s, Ord s) => Bimap (NonEmpty s) (NonEmpty s)
 iupacToDna = toBimap
-    [ ('-', "-")
-    , ('A', "A")
+    [ ('A', "A")
     , ('C', "C")
     , ('G', "G")
     , ('T', "T")

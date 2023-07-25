@@ -64,7 +64,6 @@ import GHC.Generics (Generic)
 import Measure.Unit.SymbolCount
 import Numeric.Natural
 
-
 {- |
 A collection of symbols and optional corresponding state names.
 -}
@@ -432,9 +431,9 @@ alphabetPreprocessing :: (Ord a, InternalClass a, Foldable1 t) => t a -> (Bool, 
 alphabetPreprocessing inputSymbols =
     let s :| ss = toNonEmpty inputSymbols
 
-        filteredSymbols = removeSpecialSymbolsAndDuplicates ss
-        uniqueSymbols   = s :| filteredSymbols
-
+        initialSeenSet   = Set.singleton s
+        filteredSymbols  = removeSpecialSymbolsAndDuplicates ss
+        uniqueSymbols    = s :| filteredSymbols
         prependGapSymbol = (gapSymbol' <|)
 
         removeSpecialSymbolsAndDuplicates =
@@ -446,7 +445,7 @@ alphabetPreprocessing inputSymbols =
                         put  $ x `Set.insert` seenSet
                         pure $ x `notElem` seenSet
 
-            in  (`evalState` (Set.singleton s)) . filterM f
+            in  (`evalState` initialSeenSet) . filterM f
 
         -- Zip each element with the next element,
         -- and assert that all pairs are less-then-equal
@@ -456,8 +455,12 @@ alphabetPreprocessing inputSymbols =
         hasGap = any isGapSymboled inputSymbols
 
         -- Ensure Gap exists in output IFF 'hasGap'
+        --
+        -- In the case that the gap character was the first input element,
+        -- it will not have been filtered out of the unique symbol set.
+        -- Therefore, don't prepend the gap if the first element was gap.
         prefixing
-            | hasGap  = prependGapSymbol
+            | hasGap && not (isGapSymboled s) = prependGapSymbol
             | otherwise = id
 
     in  (sorted, hasGap, prefixing uniqueSymbols)
