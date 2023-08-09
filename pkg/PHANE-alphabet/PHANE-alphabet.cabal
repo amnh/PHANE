@@ -156,6 +156,13 @@ Library core
   Visibility:
     private
 
+  If impl(ghc < 9.5)
+    Build-Depends:
+      foldable1-classes-compat >= 0 && < 1.0,
+
+    Other-Extensions:
+      CPP
+
 
 test-suite test-suite-alphabet
 

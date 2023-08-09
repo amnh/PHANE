@@ -3,6 +3,7 @@ Internal definitions of the 'Alphabet' data-type.
 -}
 
 {-# Language BangPatterns #-}
+{-# Language CPP #-}
 {-# Language DeriveAnyClass #-}
 {-# Language DeriveDataTypeable #-}
 {-# Language DeriveFunctor #-}
@@ -63,6 +64,7 @@ import GHC.Exts (IsList(fromList), Item)
 import GHC.Generics (Generic)
 import Measure.Unit.SymbolCount
 import Numeric.Natural
+
 
 {- |
 A collection of symbols and optional corresponding state names.
