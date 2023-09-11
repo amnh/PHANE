@@ -1,3 +1,6 @@
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 {- |
 Module      :  ParallelUtilities.hs
 Description :  Utilities for parallel traversals, and other related functions
@@ -31,29 +34,23 @@ either expressed or implied, of the FreeBSD Project.
 Maintainer  :  Ward Wheeler <wheeler@amnh.org>
 Stability   :  unstable
 Portability :  portable (I hope)
-
 -}
-
-{-# Language ImportQualifiedPost #-}
-
-{-# Options_GHC -fno-warn-orphans #-}
-
-module ParallelUtilities
-    ( parmap
-    , seqParMap
-    , getNumThreads
-    , rnf
-    , myStrategy
-    , myStrategyR0
-    , myStrategyRS
-    , myStrategyRDS
-    , myStrategyRPAR
-    , myParListChunk
-    , myParListChunkRDS
-    , myChunkParMapRDS
-    , myStrategyHighLevel
-    , myStrategyLowLevel
-    ) where
+module ParallelUtilities (
+    parmap,
+    seqParMap,
+    getNumThreads,
+    rnf,
+    myStrategy,
+    myStrategyR0,
+    myStrategyRS,
+    myStrategyRDS,
+    myStrategyRPAR,
+    myParListChunk,
+    myParListChunkRDS,
+    myChunkParMapRDS,
+    myStrategyHighLevel,
+    myStrategyLowLevel,
+) where
 
 import Control.Concurrent
 import Control.DeepSeq
@@ -66,60 +63,73 @@ import System.IO.Unsafe
 -- Preferred over parMap which is limited to lists
 -- Add chunking (with arguement) (via chunkList) "fmap blah blah `using` parListChunk chunkSize rseq/rpar"
 -- but would have to do one for lists (with Chunk) and one for vectors  (splitAt recusively)
-parmap :: Traversable t => Strategy b -> (a -> b) -> t a -> t b
-parmap strat f = withStrategy (parTraversable strat).fmap f
+parmap ∷ (Traversable t) ⇒ Strategy b → (a → b) → t a → t b
+parmap strat f = withStrategy (parTraversable strat) . fmap f
+
 
 -- | seqParMap takes strategy,  if numThread == 1 retuns fmap otherwise parmap and
-seqParMap :: Traversable t => Strategy b -> (a -> b) -> t a -> t b
+seqParMap ∷ (Traversable t) ⇒ Strategy b → (a → b) → t a → t b
 seqParMap strat f =
-  if getNumThreads > 1 then parmap strat f
-  else fmap f
+    if getNumThreads > 1
+        then parmap strat f
+        else fmap f
 
-myParListChunk :: Strategy a -> Strategy [a]
+
+myParListChunk ∷ Strategy a → Strategy [a]
 myParListChunk = parListChunk getNumThreads
 
-myParListChunkRDS :: NFData a => Strategy [a]
+
+myParListChunkRDS ∷ (NFData a) ⇒ Strategy [a]
 myParListChunkRDS = parListChunk getNumThreads myStrategyRDS
 
--- | myStrategy can be r0, rpar, rseq, rdeepseq
--- r0 seems fastest in tests of PhyG
-myStrategy :: Strategy b
--- myStrategy :: NFData b => Strategy b
-myStrategy = r0 --rseq -- rpar -- rseq -- r0
 
-myStrategyLowLevel :: Strategy b
---myStrategyLowLevel :: (NFData b) => Strategy b
+{- | myStrategy can be r0, rpar, rseq, rdeepseq
+r0 seems fastest in tests of PhyG
+-}
+myStrategy ∷ Strategy b
+-- myStrategy :: NFData b => Strategy b
+myStrategy = r0 -- rseq -- rpar -- rseq -- r0
+
+
+myStrategyLowLevel ∷ Strategy b
+-- myStrategyLowLevel :: (NFData b) => Strategy b
 myStrategyLowLevel = r0
 
-myStrategyHighLevel :: (NFData b) => Strategy b
+
+myStrategyHighLevel ∷ (NFData b) ⇒ Strategy b
 myStrategyHighLevel = rdeepseq
 
-myStrategyR0 :: Strategy b
+
+myStrategyR0 ∷ Strategy b
 myStrategyR0 = r0
 
-myStrategyRDS :: (NFData b) => Strategy b
+
+myStrategyRDS ∷ (NFData b) ⇒ Strategy b
 myStrategyRDS = rdeepseq
 
-myStrategyRS :: Strategy b
+
+myStrategyRS ∷ Strategy b
 myStrategyRS = rseq
 
-myStrategyRPAR :: Strategy b
+
+myStrategyRPAR ∷ Strategy b
 myStrategyRPAR = rpar
+
 
 -- | getNumThreads gets number of COncurrent  threads
 {-# NOINLINE getNumThreads #-}
-getNumThreads :: Int
+getNumThreads ∷ Int
 getNumThreads = unsafePerformIO getNumCapabilities
 
 
 -- NFData instance for parmap/rdeepseq Bit Vectory types
 instance NFData BV.BV where
-
     rnf bv = BV.size bv `seq` BV.nat bv `seq` ()
 
 
 -- | myChunkParMapRDS chuncked parmap that defaults to fmap if not paralell
-myChunkParMapRDS :: NFData c => (b -> c) -> [b] -> [c]
+myChunkParMapRDS ∷ (NFData c) ⇒ (b → c) → [b] → [c]
 myChunkParMapRDS f inList =
-  if getNumThreads == 1 then fmap f inList
-  else fmap f inList `using` myParListChunkRDS
+    if getNumThreads == 1
+        then fmap f inList
+        else fmap f inList `using` myParListChunkRDS

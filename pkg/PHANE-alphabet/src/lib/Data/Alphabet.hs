@@ -24,23 +24,26 @@ An 'Alphabet' will never contain the "missing" symbol denoted by the expression:
 > fromString "?"
 This symbol will be removed from the 'Alphabet' if it is present in the supplied input.
 -}
+module Data.Alphabet (
+    Alphabet (),
 
-module Data.Alphabet
-    ( Alphabet ()
-      -- * Constructors
-    , fromSymbols
-    , fromSymbolsWithStateNames
-      --  , fromSymbolsWithStateNamesAndTCM
-      --  , fromSymbolsWithTCM
-      -- * Queries
-    , alphabetStateNames
-    , alphabetSymbols
-      -- * Gap Symbol Queries
-    , gapIndex
-    , gapSymbol
-      --  -- * Truncation
-      --  , truncateAtSymbol
-      --  , truncateAtMaxSymbol
-    ) where
+    -- * Constructors
+    fromSymbols,
+    fromSymbolsWithStateNames,
+    --  , fromSymbolsWithStateNamesAndTCM
+    --  , fromSymbolsWithTCM
+
+    -- * Queries
+    alphabetStateNames,
+    alphabetSymbols,
+
+    -- * Gap Symbol Queries
+    gapIndex,
+    gapSymbol,
+    --  -- * Truncation
+    --  , truncateAtSymbol
+    --  , truncateAtMaxSymbol
+) where
 
 import Data.Alphabet.Internal
+

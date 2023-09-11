@@ -11,6 +11,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
 ### [`PHANE-alphabet`][GitHub-Lib-00]
 
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
   * Moved from PhyG repository
 
 
@@ -18,18 +20,19 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added initial library version
 
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
 
 ### [`PHANE-measure-units`][GitHub-Lib-02]
 
   * Added initial library version
 
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
 
 ### [`PHANE-PhyloLib`][GitHub-Lib-03]
 
-  * Moved from PhyG repository
-
-
-### [`PHANE-integration-tests`][GitHub-Lib-99]
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
   * Moved from PhyG repository
 
@@ -43,6 +46,7 @@ The changelog is available [on GitHub][GitHub-Changelog].
 [GitHub-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-element#readme
 [GitHub-Lib-02]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
 [GitHub-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
-[GitHub-Lib-99]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-integration-tests#readme
 [GitHub-Changelog]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
+[Hackage-fourmolu]: https://hackage.haskell.org/package/fourmolu#fourmolu
 [SemVer-URI]: https://semver.org/spec/v2.0.0.html
+

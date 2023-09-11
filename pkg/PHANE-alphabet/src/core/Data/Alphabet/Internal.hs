@@ -1,38 +1,40 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+
 {- |
 Internal definitions of the 'Alphabet' data-type.
 -}
+module Data.Alphabet.Internal (
+    -- * Data-type
+    Alphabet (..),
 
-{-# Language BangPatterns #-}
-{-# Language CPP #-}
-{-# Language DeriveAnyClass #-}
-{-# Language DeriveDataTypeable #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language DerivingStrategies #-}
-{-# Language FlexibleContexts #-}
-{-# Language FlexibleInstances #-}
-{-# Language ImportQualifiedPost #-}
-{-# Language LambdaCase #-}
-{-# Language OverloadedStrings #-}
-{-# Language TypeFamilies #-}
-{-# Language TypeOperators #-}
+    -- ** Constructors
+    fromSymbols,
+    fromSymbolsWithStateNames,
 
-module Data.Alphabet.Internal
-    (  -- * Data-type
-      Alphabet (..)
-      -- ** Constructors
-    , fromSymbols
-    , fromSymbolsWithStateNames
-      -- ** Accessors
-    , alphabetStateNames
-    , alphabetSymbols
-    , gapIndex
-    , gapSymbol
-    , symbolSet
-      -- ** Subsetting
-    , getSubsetIndex
-    , getSubsetIndices
-    ) where
+    -- ** Accessors
+    alphabetStateNames,
+    alphabetSymbols,
+    gapIndex,
+    gapSymbol,
+    symbolSet,
+
+    -- ** Subsetting
+    getSubsetIndex,
+    getSubsetIndices,
+) where
 
 import Control.DeepSeq (NFData)
 import Control.Monad (filterM)
@@ -44,13 +46,13 @@ import Data.Data
 import Data.Foldable hiding (foldl1, foldr1)
 import Data.Foldable qualified as F
 import Data.Foldable1
-import Data.Functor.Classes(Eq1(..), Ord1(..), Show1(..))
-import Data.Hashable (Hashable(..))
-import Data.Hashable.Lifted (Hashable1(..))
+import Data.Functor.Classes (Eq1 (..), Ord1 (..), Show1 (..))
+import Data.Hashable (Hashable (..))
+import Data.Hashable.Lifted (Hashable1 (..))
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as Int
 import Data.List (intercalate)
-import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust)
 import Data.Ord
@@ -60,7 +62,7 @@ import Data.String
 import Data.Vector (Vector, (!))
 import Data.Vector qualified as V
 import Data.Word
-import GHC.Exts (IsList(fromList), Item)
+import GHC.Exts (IsList (fromList), Item)
 import GHC.Generics (Generic)
 import Measure.Unit.SymbolCount
 import Numeric.Natural
@@ -69,26 +71,23 @@ import Numeric.Natural
 {- |
 A collection of symbols and optional corresponding state names.
 -}
-data Alphabet a
-    = Alphabet
-    { isSorted     :: !Bool
-    , semanticGap  :: !Bool
-    , symbolVector :: {-# UNPACK #-} !(Vector a)
-    , stateNames   :: [a]
+data Alphabet a = Alphabet
+    { isSorted ∷ !Bool
+    , semanticGap ∷ !Bool
+    , symbolVector ∷ {-# UNPACK #-} !(Vector a)
+    , stateNames ∷ [a]
     }
-    deriving anyclass NFData
+    deriving anyclass (NFData)
     deriving stock (Data, Functor, Generic)
 
 
 -- Newtypes for corecing and consolidation of alphabet input processing logic
-newtype AlphabetInputSingle a
-    = ASI { toSingle :: a }
+newtype AlphabetInputSingle a = ASI {toSingle ∷ a}
     deriving anyclass (NFData)
     deriving stock (Data, Eq, Generic, Ord)
 
 
-newtype AlphabetInputTuple a
-    = ASNI { toTuple :: (a, a) }
+newtype AlphabetInputTuple a = ASNI {toTuple ∷ (a, a)}
     deriving anyclass (NFData)
     deriving stock (Data, Eq, Generic, Ord)
 
@@ -98,7 +97,6 @@ newtype AlphabetInputTuple a
 -- -   Supporting code and data structures:
 -- -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 -}
-
 
 newtype UnnamedSymbol a
     = Unnamed a
@@ -113,117 +111,115 @@ newtype NamedSymbol a
 
 
 class InternalClass a where
-
-    gapSymbol'        :: a
-
-    isGapSymboled     :: a -> Bool
-
-    isMissingSymboled :: a -> Bool
+    gapSymbol' ∷ a
 
 
-instance Eq a => Eq (Alphabet a) where
+    isGapSymboled ∷ a → Bool
 
+
+    isMissingSymboled ∷ a → Bool
+
+
+instance (Eq a) ⇒ Eq (Alphabet a) where
     lhs == rhs =
         length lhs == length rhs && symbolVector lhs == symbolVector rhs
 
 
 instance Eq1 Alphabet where
-
     liftEq f lhs rhs =
         length lhs == length rhs && liftEq f (symbolVector lhs) (symbolVector rhs)
 
 
 instance Foldable Alphabet where
-
     {-# INLINE toList #-}
     toList = toList . symbolVector
+
 
     {-# INLINE foldMap #-}
     foldMap f = foldMap f . symbolVector
 
+
     {-# INLINE foldr #-}
     foldr f e = foldr f e . symbolVector
+
 
     {-# INLINE foldl #-}
     foldl f e = foldl f e . symbolVector
 
+
     {-# INLINE foldr1 #-}
     foldr1 f = F.foldr1 f . symbolVector
 
+
     {-# INLINE foldl1 #-}
     foldl1 f = F.foldl1 f . symbolVector
+
 
     {-# INLINE length #-}
     length = length . symbolVector
 
 
-instance Hashable a => Hashable (Alphabet a) where
-
+instance (Hashable a) ⇒ Hashable (Alphabet a) where
     hashWithSalt salt = hashWithSalt salt . toList
 
 
 instance Hashable1 Alphabet where
-
     liftHashWithSalt f salt = liftHashWithSalt f salt . toList
 
 
 instance HasSymbolCount (Alphabet a) where
-
     symbolCount = SymbolCount . toEnum . length . symbolVector
 
 
-instance (Eq a, IsString a) => InternalClass (AlphabetInputSingle a) where
+instance (Eq a, IsString a) ⇒ InternalClass (AlphabetInputSingle a) where
+    gapSymbol' = ASI $ fromString "-"
 
-    gapSymbol'        = ASI $ fromString "-"
 
-    isGapSymboled     = (gapSymbol' ==)
+    isGapSymboled = (gapSymbol' ==)
+
 
     isMissingSymboled = (ASI (fromString "?") ==)
 
 
-instance (Eq a, IsString a) => InternalClass (AlphabetInputTuple a) where
-
+instance (Eq a, IsString a) ⇒ InternalClass (AlphabetInputTuple a) where
     gapSymbol' = ASNI (fromString "-", fromString "-")
 
+
     isGapSymboled (ASNI (x, _)) = x == fromString "-"
+
 
     isMissingSymboled (ASNI (x, _)) = x == fromString "?"
 
 
-instance Ord a => Ord (Alphabet a) where
-
+instance (Ord a) ⇒ Ord (Alphabet a) where
     compare = comparing length `thenBy` comparing symbolVector
 
 
 instance Ord1 Alphabet where
-
     liftCompare f =
-        let lengthComparison :: Alphabet a -> Alphabet b -> Ordering
+        let lengthComparison ∷ Alphabet a → Alphabet b → Ordering
             lengthComparison x = compare (length x) . length
             liftedComparison x = liftCompare f (symbolVector x) . symbolVector
         in  lengthComparison `thenBy` liftedComparison
 
 
-instance Show a => Show (Alphabet a) where
-
-    show x = fold [ "Alphabet: {", intercalate ", " $ show <$> toList x, "}" ]
+instance (Show a) ⇒ Show (Alphabet a) where
+    show x = fold ["Alphabet: {", intercalate ", " $ show <$> toList x, "}"]
 
 
 instance Show1 Alphabet where
-
     liftShowsPrec shwP _shwL p input =
-        let showList0 :: (a -> ShowS) -> [a] -> ShowS
+        let showList0 ∷ (a → ShowS) → [a] → ShowS
             showList0 f list suffix =
                 case list of
-                  [] -> "{}" <> suffix
-                  x:xs ->
-                      let showList1 []      = '}' : suffix
-                          showList1 (y:ys) = ',' : ' ' : f y (showList1 ys)
-                      in  '{' : f x (showList1 xs)
-
+                    [] → "{}" <> suffix
+                    x : xs →
+                        let showList1 [] = '}' : suffix
+                            showList1 (y : ys) = ',' : ' ' : f y (showList1 ys)
+                        in  '{' : f x (showList1 xs)
         in  showParen (p > 5) $
-            showString "Alphabet: " .
-            showList0 (shwP p) (toList input)
+                showString "Alphabet: "
+                    . showList0 (shwP p) (toList input)
 
 
 {- |
@@ -234,7 +230,7 @@ Retrieves the state names for the symbols of the 'Alphabet'.
 If the symbols of the 'Alphabet' were not given state names during
 construction then an empty list is returned.
 -}
-alphabetStateNames :: (IsList (f a), Item (f a) ~ a) => Alphabet a -> f a
+alphabetStateNames ∷ (IsList (f a), Item (f a) ~ a) ⇒ Alphabet a → f a
 alphabetStateNames = fromList . toList . stateNames
 
 
@@ -244,9 +240,15 @@ alphabetStateNames = fromList . toList . stateNames
 Retrieves the symbols of the 'Alphabet'. Synonym for 'toList'.
 -}
 {-# INLINE [1] alphabetSymbols #-}
-{-# RULES "alphabetSymbols/Set"    forall (x :: Ord a => Alphabet a). alphabetSymbols x = symbolSet x #-}
+
+
+{-# RULES "alphabetSymbols/Set" ∀ (x ∷ (Ord a) ⇒ Alphabet a). alphabetSymbols x = symbolSet x #-}
+
+
 {-# RULES "alphabetSymbols/Vector" alphabetSymbols = symbolVector #-}
-alphabetSymbols :: (IsList (f a), Item (f a) ~ a) => Alphabet a -> f a
+
+
+alphabetSymbols ∷ (IsList (f a), Item (f a) ~ a) ⇒ Alphabet a → f a
 alphabetSymbols = fromList . toList
 
 
@@ -256,7 +258,7 @@ alphabetSymbols = fromList . toList
 Retrieves the "gap character" from the alphabet.
 -}
 {-# INLINE gapSymbol #-}
-gapSymbol :: Alphabet a -> Maybe a
+gapSymbol ∷ Alphabet a → Maybe a
 gapSymbol input
     | semanticGap input = Just . (! fromEnum gapIndex) $ symbolVector input
     | otherwise = Nothing
@@ -269,15 +271,15 @@ gapSymbol input
 
 Retrieves the set of all symbols from the alphabet.
 -}
-symbolSet :: Ord a => Alphabet a -> Set a
+symbolSet ∷ (Ord a) ⇒ Alphabet a → Set a
 symbolSet a = case toList $ symbolVector a of
-    []     -> mempty
+    [] → mempty
     -- First element is 'gap'
-    g : xs -> Set.insert g $ f xs
+    g : xs → Set.insert g $ f xs
     where
         f
             | isSorted a = Set.fromDistinctAscList
-            | otherwise  = Set.fromList
+            | otherwise = Set.fromList
 
 
 {- |
@@ -286,40 +288,41 @@ in the range $\( \left[\; 0,\, 2^{\lvert\Sigma\rvert} - 1 \;\right]\).
 This number is the unique index of the given subset in the powerset of the alphabet.
 -}
 {-# INLINE getSubsetIndices #-}
-{-# SPECIALISE  getSubsetIndices :: Alphabet String -> Set String -> IntSet #-}
-getSubsetIndices :: Ord a => Alphabet a -> Set a -> IntSet
+{-# SPECIALIZE getSubsetIndices ∷ Alphabet String → Set String → IntSet #-}
+getSubsetIndices ∷ (Ord a) ⇒ Alphabet a → Set a → IntSet
 getSubsetIndices a s
     | isSorted a = produceSet . go low $ consumeSet s
-    | otherwise  = produceSet . mo low $ consumeSet s
-    -- NOTE:
-    -- sorted:   /O(log a + n)/, a >= n
-    -- unsorted: /O(a)/
+    | otherwise = produceSet . mo low $ consumeSet s
     where
-        vec         = symbolVector a
-        gap         = gapSymbol a
-        idx         = fromEnum gapIndex
-        low         = idx + 1
+        -- NOTE:
+        -- sorted:   /O(log a + n)/, a >= n
+        -- unsorted: /O(a)/
+
+        vec = symbolVector a
+        gap = gapSymbol a
+        idx = fromEnum gapIndex
+        low = idx + 1
 
         inputHadGap = isJust $ gap >>= (`Set.lookupIndex` s)
-        consumeSet  = Set.toAscList . maybe id Set.delete gap
-        produceSet  = addGapVal . Int.fromDistinctAscList
+        consumeSet = Set.toAscList . maybe id Set.delete gap
+        produceSet = addGapVal . Int.fromDistinctAscList
 
         addGapVal
             | inputHadGap = Int.insert idx
-            | otherwise   = id
+            | otherwise = id
 
         -- Faster binary search for a sorted alphabet
-        go _   []       = []
+        go _ [] = []
         go !lo (x : xs) = case withinVec vec x lo of
-            Right i -> i : go (i + 1) xs
-            Left  i -> go i xs
+            Right i → i : go (i + 1) xs
+            Left i → go i xs
 
         -- Slower version for an unsorted alphabet
         mo _ [] = []
         mo i (x : xs)
             | i > length vec = []
             | x == (vec ! i) = i : mo 0 xs
-            | otherwise      = mo (i + 1) (x : xs)
+            | otherwise = mo (i + 1) (x : xs)
 
 
 {- |
@@ -328,44 +331,45 @@ in the range $\( \left[\; 0,\, 2^{\lvert\Sigma\rvert} - 1 \;\right]\).
 This number is the unique index of the given subset in the powerset of the alphabet.
 -}
 {-# INLINE getSubsetIndex #-}
-{-# SPECIALISE  getSubsetIndex :: Alphabet String -> Set String -> Word    -> Word    #-}
-{-# SPECIALISE  getSubsetIndex :: Alphabet String -> Set String -> Word8   -> Word8   #-}
-{-# SPECIALISE  getSubsetIndex :: Alphabet String -> Set String -> Word16  -> Word16  #-}
-{-# SPECIALISE  getSubsetIndex :: Alphabet String -> Set String -> Word32  -> Word32  #-}
-{-# SPECIALISE  getSubsetIndex :: Alphabet String -> Set String -> Word64  -> Word64  #-}
-{-# SPECIALISE  getSubsetIndex :: Alphabet String -> Set String -> Natural -> Natural #-}
-getSubsetIndex :: (Bits b, Ord a) => Alphabet a -> Set a -> b -> b
+{-# SPECIALIZE getSubsetIndex ∷ Alphabet String → Set String → Word → Word #-}
+{-# SPECIALIZE getSubsetIndex ∷ Alphabet String → Set String → Word8 → Word8 #-}
+{-# SPECIALIZE getSubsetIndex ∷ Alphabet String → Set String → Word16 → Word16 #-}
+{-# SPECIALIZE getSubsetIndex ∷ Alphabet String → Set String → Word32 → Word32 #-}
+{-# SPECIALIZE getSubsetIndex ∷ Alphabet String → Set String → Word64 → Word64 #-}
+{-# SPECIALIZE getSubsetIndex ∷ Alphabet String → Set String → Natural → Natural #-}
+getSubsetIndex ∷ (Bits b, Ord a) ⇒ Alphabet a → Set a → b → b
 getSubsetIndex a s zero
     | isSorted a = addGapVal . go zero low $ consumeSet s
-    | otherwise  = addGapVal . mo zero low $ consumeSet s
-    -- NOTE:
-    -- sorted:   /O(log a + n)/, a >= n
-    -- unsorted: /O(a)/
+    | otherwise = addGapVal . mo zero low $ consumeSet s
     where
-        vec         = symbolVector a
-        gap         = gapSymbol a
-        idx         = fromEnum gapIndex
-        low         = idx + 1
+        -- NOTE:
+        -- sorted:   /O(log a + n)/, a >= n
+        -- unsorted: /O(a)/
 
-        consumeSet  = Set.toAscList . maybe id Set.delete gap
+        vec = symbolVector a
+        gap = gapSymbol a
+        idx = fromEnum gapIndex
+        low = idx + 1
+
+        consumeSet = Set.toAscList . maybe id Set.delete gap
         inputHadGap = isJust $ gap >>= (`Set.lookupIndex` s)
 
         addGapVal
             | inputHadGap = (`setBit` idx)
-            | otherwise   = id
+            | otherwise = id
 
         -- Faster binary search for a sorted alphabet
-        go !bits _   []       = bits
+        go !bits _ [] = bits
         go bits !lo (x : xs) = case withinVec vec x lo of
-            Right i -> go (bits .|. bit i) (i + 1) xs
-            Left  i -> go bits i xs
+            Right i → go (bits .|. bit i) (i + 1) xs
+            Left i → go bits i xs
 
         -- Slower version for an unsorted alphabet
         mo bits _ [] = bits
         mo bits i (x : xs)
             | i > length vec = bits
             | x == (vec ! i) = mo (bits .|. bit i) low xs
-            | otherwise      = mo bits (i + 1) (x : xs)
+            | otherwise = mo bits (i + 1) (x : xs)
 
 
 {- |
@@ -374,23 +378,22 @@ getSubsetIndex a s zero
 Constructs an 'Alphabet' from a 'Foldable' structure of symbols which are 'IsString' values.
 -}
 {-# INLINE [1] fromSymbols #-}
-{-# SPECIALISE fromSymbols :: Foldable1 t => t String -> Alphabet String #-}
-{-# SPECIALISE fromSymbols ::         NonEmpty String -> Alphabet String #-}
+{-# SPECIALIZE fromSymbols ∷ (Foldable1 t) ⇒ t String → Alphabet String #-}
+{-# SPECIALIZE fromSymbols ∷ NonEmpty String → Alphabet String #-}
 -- {-# RULES "fromSymbols/Set" forall (s :: (IsString x, Ord x) => Set x). fromSymbols s = let g = fromString "-"; x = g : toList (Set.delete g s); v = V.fromList x; in  Alphabet True v mempty #-}
-fromSymbols :: (Ord a, IsString a, Foldable1 t) => t a -> Alphabet a
+fromSymbols ∷ (Ord a, IsString a, Foldable1 t) ⇒ t a → Alphabet a
 fromSymbols inputSymbols =
     let (sorted, hasGap, uniqueSymbols) = processPre inputSymbols
 
-        processPre :: (Ord a, IsString a, Foldable1 t) => t a -> (Bool, Bool, NonEmpty (AlphabetInputSingle a))
-        processPre  = alphabetPreprocessing . fmap fromSingle . toNonEmpty
+        processPre ∷ (Ord a, IsString a, Foldable1 t) ⇒ t a → (Bool, Bool, NonEmpty (AlphabetInputSingle a))
+        processPre = alphabetPreprocessing . fmap fromSingle . toNonEmpty
 
-        processPost :: Foldable1 t => t (AlphabetInputSingle a) -> Vector a
+        processPost ∷ (Foldable1 t) ⇒ t (AlphabetInputSingle a) → Vector a
         processPost = V.fromList . fmap toSingle . toList
 
         symbols = processPost uniqueSymbols
     in  Alphabet sorted hasGap symbols []
 
-            
 
 {- |
 \( \mathcal{O} \left(\, n * \log_{2} n \,\right) \)
@@ -400,21 +403,23 @@ corresponding state names, both of which are 'IsString' values.
 
 The input ordering is preserved.
 -}
-{-# SPECIALISE fromSymbolsWithStateNames :: Foldable1 t => t (String, String) -> Alphabet String #-}
-{-# SPECIALISE fromSymbolsWithStateNames ::         NonEmpty (String, String) -> Alphabet String #-}
-fromSymbolsWithStateNames :: (Ord a, IsString a, Foldable1 t) => t (a, a) -> Alphabet a
+{-# SPECIALIZE fromSymbolsWithStateNames ∷ (Foldable1 t) ⇒ t (String, String) → Alphabet String #-}
+{-# SPECIALIZE fromSymbolsWithStateNames ∷ NonEmpty (String, String) → Alphabet String #-}
+fromSymbolsWithStateNames ∷ (Ord a, IsString a, Foldable1 t) ⇒ t (a, a) → Alphabet a
 fromSymbolsWithStateNames inputSymbols =
     let (sorted, hasGap, uniqueSymbols) = processPre inputSymbols
 
-        processPre :: (Ord a, IsString a, Foldable1 t) => t (a, a) -> (Bool, Bool, NonEmpty (AlphabetInputTuple a))
-        processPre  = alphabetPreprocessing . fmap fromTuple . toNonEmpty
+        processPre ∷ (Ord a, IsString a, Foldable1 t) ⇒ t (a, a) → (Bool, Bool, NonEmpty (AlphabetInputTuple a))
+        processPre = alphabetPreprocessing . fmap fromTuple . toNonEmpty
 
-        processPost :: Foldable1 t => t (AlphabetInputTuple a) -> (Vector a, [a])
+        processPost ∷ (Foldable1 t) ⇒ t (AlphabetInputTuple a) → (Vector a, [a])
         processPost = bimap V.fromList toList . unzip . fmap toTuple . toList
 
         (symbols, names) = processPost uniqueSymbols
     in  Alphabet sorted hasGap symbols names
-{-    
+
+
+{-
     where
         (symbols, names) =
             bimap V.fromList toList
@@ -429,24 +434,24 @@ fromSymbolsWithStateNames inputSymbols =
 {- |
 \( \mathcal{O} \left(\, \lvert\Sigma\rvert * \log_{2} \lvert\Sigma\rvert \,\right) \)
 -}
-alphabetPreprocessing :: (Ord a, InternalClass a, Foldable1 t) => t a -> (Bool, Bool, NonEmpty a)
+alphabetPreprocessing ∷ (Ord a, InternalClass a, Foldable1 t) ⇒ t a → (Bool, Bool, NonEmpty a)
 alphabetPreprocessing inputSymbols =
     let s :| ss = toNonEmpty inputSymbols
 
-        initialSeenSet   = Set.singleton s
-        filteredSymbols  = removeSpecialSymbolsAndDuplicates ss
-        uniqueSymbols    = s :| filteredSymbols
+        initialSeenSet = Set.singleton s
+        filteredSymbols = removeSpecialSymbolsAndDuplicates ss
+        uniqueSymbols = s :| filteredSymbols
         prependGapSymbol = (gapSymbol' <|)
 
         removeSpecialSymbolsAndDuplicates =
-            let f :: (InternalClass a, MonadState (Set a) f, Ord a) => a -> f Bool
-                f x | isGapSymboled     x = pure False
+            let f ∷ (InternalClass a, MonadState (Set a) f, Ord a) ⇒ a → f Bool
+                f x
+                    | isGapSymboled x = pure False
                     | isMissingSymboled x = pure False
                     | otherwise = do
-                        seenSet <- get
-                        put  $ x `Set.insert` seenSet
+                        seenSet ← get
+                        put $ x `Set.insert` seenSet
                         pure $ x `notElem` seenSet
-
             in  (`evalState` initialSeenSet) . filterM f
 
         -- Zip each element with the next element,
@@ -464,24 +469,23 @@ alphabetPreprocessing inputSymbols =
         prefixing
             | hasGap && not (isGapSymboled s) = prependGapSymbol
             | otherwise = id
-
     in  (sorted, hasGap, prefixing uniqueSymbols)
 
 
-fromSingle :: a -> AlphabetInputSingle a
+fromSingle ∷ a → AlphabetInputSingle a
 fromSingle = ASI
 
 
-fromTuple :: (a, a) -> AlphabetInputTuple a
+fromTuple ∷ (a, a) → AlphabetInputTuple a
 fromTuple = ASNI
 
 
 {-# INLINE withinVec #-}
-{-# SPECIALISE withinVec :: Vector String    -> String    -> Int -> Either Int Int #-}
+{-# SPECIALIZE withinVec ∷ Vector String → String → Int → Either Int Int #-}
 -- {-# SPECIALISE withinVec :: Vector ShortText -> ShortText -> Int -> Either Int Int #-}
-withinVec :: Ord a => Vector a -> a -> Int -> Either Int Int
+withinVec ∷ (Ord a) ⇒ Vector a → a → Int → Either Int Int
 withinVec v e m
-    | e == gap  = Right idx
+    | e == gap = Right idx
     | otherwise = go m $ length v - 1
     where
         idx = fromEnum gapIndex
@@ -494,15 +498,15 @@ withinVec v e m
         go !lo !hi
             | lo > hi = Left hi
             | otherwise =
-              let !md = (hi + lo) `div` 2
-                  !z  = v ! md
-              in  case z `compare` e of
-                      EQ -> Right md
-                      LT -> go (md + 1) hi
-                      GT -> go lo (md - 1)
+                let !md = (hi + lo) `div` 2
+                    !z = v ! md
+                in  case z `compare` e of
+                        EQ → Right md
+                        LT → go (md + 1) hi
+                        GT → go lo (md - 1)
 
 
-thenBy :: (a -> b -> Ordering) -> (a -> b -> Ordering) -> a -> b -> Ordering
+thenBy ∷ (a → b → Ordering) → (a → b → Ordering) → a → b → Ordering
 thenBy prev curr x y = case prev x y of
-    EQ -> curr x y
-    cv -> cv
+    EQ → curr x y
+    cv → cv
