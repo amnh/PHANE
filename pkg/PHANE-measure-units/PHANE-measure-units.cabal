@@ -99,7 +99,8 @@ Common language-specs
   Default-Extensions:
     DerivingStrategies
     NoGeneralizedNewtypeDeriving
-
+    UnicodeSyntax
+    
   Default-Language:
     GHC2021
 

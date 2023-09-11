@@ -78,15 +78,17 @@ seqParMap strat f =
 myParListChunk :: Strategy a -> Strategy [a]
 myParListChunk = parListChunk getNumThreads
 
-myParListChunkRDS :: (NFData a) => Strategy [a]
+myParListChunkRDS :: NFData a => Strategy [a]
 myParListChunkRDS = parListChunk getNumThreads myStrategyRDS
 
 -- | myStrategy can be r0, rpar, rseq, rdeepseq
 -- r0 seems fastest in tests of PhyG
-myStrategy :: (NFData b) => Strategy b
+myStrategy :: Strategy b
+-- myStrategy :: NFData b => Strategy b
 myStrategy = r0 --rseq -- rpar -- rseq -- r0
 
-myStrategyLowLevel :: (NFData b) => Strategy b
+myStrategyLowLevel :: Strategy b
+--myStrategyLowLevel :: (NFData b) => Strategy b
 myStrategyLowLevel = r0
 
 myStrategyHighLevel :: (NFData b) => Strategy b

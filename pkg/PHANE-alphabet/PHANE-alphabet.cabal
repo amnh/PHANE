@@ -100,6 +100,7 @@ Common language-specs
     DerivingStrategies
     LambdaCase
     NoGeneralizedNewtypeDeriving
+    UnicodeSyntax
 
   Default-Language:
     GHC2021

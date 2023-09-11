@@ -98,8 +98,10 @@ Common language-specs
 
   Default-Extensions:
     DerivingStrategies
+    LambdaCase
     NoGeneralizedNewtypeDeriving
-
+    UnicodeSyntax
+    
   Default-Language:
     GHC2021
 
