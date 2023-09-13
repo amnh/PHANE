@@ -17,10 +17,14 @@ module Bio.DynamicCharacter.Element.WideState (
 ) where
 
 import Control.DeepSeq (NFData)
+import Data.Alphabet (Alphabet, fromSymbols)
+import Data.Alphabet.Codec (decodeState)
 import Data.Bits (Bits, FiniteBits)
 import Data.Data ()
+import Data.Foldable (fold)
 import Data.Hashable (Hashable (..))
 import Data.Ix (Ix)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Vector.Generic qualified as GV
 import Data.Vector.Generic.Mutable qualified as MGV
 import Data.Vector.Primitive qualified as PV
@@ -85,11 +89,16 @@ deriving newtype instance Storable WideState
 
 
 instance Show WideState where
-    show = show . fromWideState
+    show =
+        let symbolsBase64 ∷ Alphabet String
+            symbolsBase64 = fromSymbols . fmap pure $ '-' :| ['0' .. '9'] <> ['A' .. 'Z'] <> ['a' .. 'z'] <> ['+']
 
+            render ∷ NonEmpty String → String
+            render input@(x :| xs) = case xs of
+                [] → x
+                _ → '[' : fold input <> "]"
+        in  render . decodeState symbolsBase64
 
---        let symbolsBase64 = makeAlphabet $  ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9'] <> ['+']
---        in  unwords . decodeState symbolsBase64
 
 instance MGV.MVector UV.MVector WideState where
     {-# INLINE basicLength #-}
