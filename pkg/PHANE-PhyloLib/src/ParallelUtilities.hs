@@ -116,13 +116,16 @@ myStrategyRPAR ∷ Strategy b
 myStrategyRPAR = rpar
 
 
--- | getNumThreads gets number of COncurrent  threads
+-- TODO: Excise this from codebase!
+-- Instead, check once at program startup and store in a Reader monad.
+
+-- | getNumThreads gets number of Concurrent  threads
 {-# NOINLINE getNumThreads #-}
 getNumThreads ∷ Int
 getNumThreads = unsafePerformIO getNumCapabilities
 
 
--- NFData instance for parmap/rdeepseq Bit Vectory types
+-- NFData instance for parmap/rdeepseq "bit-vector-like" types
 instance NFData BV.BV where
     rnf bv = BV.size bv `seq` BV.nat bv `seq` ()
 

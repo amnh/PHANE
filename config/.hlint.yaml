@@ -152,11 +152,10 @@
 - functions:
   - { name: unsafePerformIO
     , within:
-      [ Analysis.Parsimony.Dynamic.SequentialAlign.FFI
-      , Analysis.Parsimony.Dynamic.DirectOptimization.Pairwise.FFI
+      [ GeneralUtilities
+      , ParallelUtilities
       , Data.Hashable.Memoize
       , Data.TCM.Memoized.FFI
-      , PCG.Command.Build.Evaluate
       ]
     }
 

@@ -603,7 +603,7 @@ getSystemTimeNDT = do
 {-# NOINLINE getSystemTimeNDTUnsafe #-}
 
 
--- | getSystemTimeNDTUnsafe gets the syste time and returns IO NominalDiffTime
+-- | getSystemTimeNDTUnsafe gets the system time and returns IO NominalDiffTime
 getSystemTimeNDTUnsafe ∷ NominalDiffTime
 getSystemTimeNDTUnsafe = unsafePerformIO getSystemTimeNDT
 
