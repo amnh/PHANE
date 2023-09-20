@@ -4,8 +4,10 @@
 
 packages:
     pkg/PHANE-alphabet
+    pkg/PHANE-dynamic-character-alignment
     pkg/PHANE-dynamic-character-element
     pkg/PHANE-dynamic-character
+    pkg/PHANE-measure-class
     pkg/PHANE-measure-units
     pkg/PHANE-PhyloLib
 --    pkg/*/*.cabal

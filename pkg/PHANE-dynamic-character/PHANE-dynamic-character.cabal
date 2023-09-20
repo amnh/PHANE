@@ -23,8 +23,7 @@ Description:
 Source-Repository head
   Type:        git
   Location:    git://github.com/AMNH/PHANE.git
-  Subdir:      pkg/PHANE-dynamic-character-element
-
+  Subdir:      pkg/PHANE-dynamic-character
 
 Flag Optimize
   Description: Compile with full optimizations
