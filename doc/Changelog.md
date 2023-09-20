@@ -20,6 +20,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added initial library version
 
+  * Enhanced `Show` instance of `SlimState` and `WideState` for better readability
+
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 

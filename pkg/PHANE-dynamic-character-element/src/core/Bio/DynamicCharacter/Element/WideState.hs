@@ -89,15 +89,21 @@ deriving newtype instance Storable WideState
 
 
 instance Show WideState where
-    show =
+    show (WideState 0) = "∅"
+    show (WideState v) =
         let symbolsBase64 ∷ Alphabet String
-            symbolsBase64 = fromSymbols . fmap pure $ '-' :| ['0' .. '9'] <> ['A' .. 'Z'] <> ['a' .. 'z'] <> ['+']
+            symbolsBase64 = fromSymbols $ pure <$> symbolList
+
+            -- Use Unicode sans-serif font for all wide individual states to
+            -- differentiate them from other forms of rendering.
+            symbolList ∷ NonEmpty Char
+            symbolList = '-' :| ['𝟢' .. '𝟫'] <> ['𝖠' .. '𝖹'] <> ['𝖺' .. '𝗓'] <> ['Ω']
 
             render ∷ NonEmpty String → String
             render input@(x :| xs) = case xs of
                 [] → x
                 _ → '[' : fold input <> "]"
-        in  render . decodeState symbolsBase64
+        in  render $ decodeState symbolsBase64 v
 
 
 instance MGV.MVector UV.MVector WideState where
