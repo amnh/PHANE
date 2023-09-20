@@ -26,6 +26,7 @@ module Bio.DynamicCharacter (
     TempHugeDynamicCharacter,
 
     -- * Constructors
+
     -- ** Immutable Constructors
     encodeDynamicCharacter,
     generateCharacter,
@@ -62,8 +63,8 @@ module Bio.DynamicCharacter (
     characterLength,
 
     -- * Strictness
-    forceDynamicCharacter
-    
+    forceDynamicCharacter,
+
     -- * Rendering
     renderDynamicCharacter,
 ) where
@@ -324,12 +325,12 @@ characterLength = toEnum . GV.length . extractMediansGapped
 {- |
 Utility function to enforce strict evaluation of the dynmaic character.
 -}
-{-# INLINEABLE forceDynamicCharacter #-}                                                                
-{-# SPECIALISE forceDynamicCharacter :: SlimDynamicCharacter -> SlimDynamicCharacter #-}                
-{-# SPECIALISE forceDynamicCharacter :: WideDynamicCharacter -> WideDynamicCharacter #-}                
-{-# SPECIALISE forceDynamicCharacter :: HugeDynamicCharacter -> HugeDynamicCharacter #-}                
-forceDynamicCharacter :: Vector v e  => OpenDynamicCharacter v e -> OpenDynamicCharacter v e            
-forceDynamicCharacter (lv,mv,rv) = ( GV.force lv, GV.force mv, GV.force rv )
+{-# INLINEABLE forceDynamicCharacter #-}
+{-# SPECIALIZE forceDynamicCharacter ∷ SlimDynamicCharacter → SlimDynamicCharacter #-}
+{-# SPECIALIZE forceDynamicCharacter ∷ WideDynamicCharacter → WideDynamicCharacter #-}
+{-# SPECIALIZE forceDynamicCharacter ∷ HugeDynamicCharacter → HugeDynamicCharacter #-}
+forceDynamicCharacter ∷ (Vector v e) ⇒ OpenDynamicCharacter v e → OpenDynamicCharacter v e
+forceDynamicCharacter (lv, mv, rv) = (GV.force lv, GV.force mv, GV.force rv)
 
 
 {- |
