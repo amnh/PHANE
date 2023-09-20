@@ -25,14 +25,24 @@ module Bio.DynamicCharacter (
     TempWideDynamicCharacter,
     TempHugeDynamicCharacter,
 
-    -- * Queries
-    isAlign,
-    isDelete,
-    isInsert,
-    isGapped,
-    isGap,
-    isMissing,
-    characterLength,
+    -- * Constructors
+    -- ** Immutable Constructors
+    encodeDynamicCharacter,
+    generateCharacter,
+
+    -- ** Mutable Constructors
+    newTempCharacter,
+    freezeTempCharacter,
+    unsafeCharacterBuiltByST,
+    unsafeCharacterBuiltByBufferedST,
+
+    -- * Accessors
+    extractMedians,
+    extractMediansLeft,
+    extractMediansRight,
+    extractMediansGapped,
+    extractMediansLeftGapped,
+    extractMediansRightGapped,
 
     -- * Mutators
     setAlign,
@@ -42,24 +52,18 @@ module Bio.DynamicCharacter (
     setFrom,
     transposeCharacter,
 
-    -- * Extractors
-    extractMedians,
-    extractMediansLeft,
-    extractMediansRight,
-    extractMediansGapped,
-    extractMediansLeftGapped,
-    extractMediansRightGapped,
+    -- * Queries
+    isAlign,
+    isDelete,
+    isInsert,
+    isGapped,
+    isGap,
+    isMissing,
+    characterLength,
 
-    -- * Immutable Constructors
-    encodeDynamicCharacter,
-    generateCharacter,
-
-    -- * Mutable Constructors
-    newTempCharacter,
-    freezeTempCharacter,
-    unsafeCharacterBuiltByST,
-    unsafeCharacterBuiltByBufferedST,
-
+    -- * Strictness
+    forceDynamicCharacter
+    
     -- * Rendering
     renderDynamicCharacter,
 ) where
@@ -315,6 +319,17 @@ transposeCharacter (lc, mc, rc) = (rc, mc, lc)
 {-# INLINEABLE characterLength #-}
 characterLength ∷ (Vector v e) ⇒ OpenDynamicCharacter v e → Word
 characterLength = toEnum . GV.length . extractMediansGapped
+
+
+{- |
+Utility function to enforce strict evaluation of the dynmaic character.
+-}
+{-# INLINEABLE forceDynamicCharacter #-}                                                                
+{-# SPECIALISE forceDynamicCharacter :: SlimDynamicCharacter -> SlimDynamicCharacter #-}                
+{-# SPECIALISE forceDynamicCharacter :: WideDynamicCharacter -> WideDynamicCharacter #-}                
+{-# SPECIALISE forceDynamicCharacter :: HugeDynamicCharacter -> HugeDynamicCharacter #-}                
+forceDynamicCharacter :: Vector v e  => OpenDynamicCharacter v e -> OpenDynamicCharacter v e            
+forceDynamicCharacter (lv,mv,rv) = ( GV.force lv, GV.force mv, GV.force rv )
 
 
 {- |
