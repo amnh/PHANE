@@ -39,11 +39,13 @@ module Bio.DynamicCharacter (
 
     -- * Accessors
     extractMedians,
+    extractMediansSingle,
     extractMediansLeft,
     extractMediansRight,
     extractMediansGapped,
     extractMediansLeftGapped,
     extractMediansRightGapped,
+    removeGapAndNil,
 
     -- * Mutators
     setAlign,
@@ -80,7 +82,7 @@ import Data.Foldable
 import Data.Ord
 import Data.STRef
 import Data.Set (Set)
-import Data.Vector qualified as V
+import Data.Vector qualified as RV
 import Data.Vector.Generic (Mutable, Vector, unsafeFreeze, (!))
 import Data.Vector.Generic qualified as GV
 import Data.Vector.Generic.Mutable (MVector, unsafeNew, unsafeRead, unsafeWrite)
@@ -133,7 +135,7 @@ type WideDynamicCharacter = OpenDynamicCharacter UV.Vector WideState
 {- |
 Encoding for dynamic characters with an alphabet size of /65/ or greater.
 -}
-type HugeDynamicCharacter = OpenDynamicCharacter V.Vector HugeState
+type HugeDynamicCharacter = OpenDynamicCharacter RV.Vector HugeState
 
 
 {- |
@@ -157,7 +159,7 @@ type TempWideDynamicCharacter m = TempOpenDynamicCharacter m UV.Vector WideState
 {- |
 Mutable encoding of 'HugeDynamicCharacter'.
 -}
-type TempHugeDynamicCharacter m = TempOpenDynamicCharacter m V.Vector HugeState
+type TempHugeDynamicCharacter m = TempOpenDynamicCharacter m RV.Vector HugeState
 
 
 isAlign, isDelete, isInsert, isGapped ∷ (FiniteBits e, Vector v e) ⇒ OpenDynamicCharacter v e → Int → Bool
@@ -339,9 +341,24 @@ Extract the /ungapped/ medians of a dynamic character.
 {-# INLINEABLE extractMedians #-}
 {-# SPECIALIZE extractMedians ∷ SlimDynamicCharacter → SV.Vector SlimState #-}
 {-# SPECIALIZE extractMedians ∷ WideDynamicCharacter → UV.Vector WideState #-}
-{-# SPECIALIZE extractMedians ∷ HugeDynamicCharacter → V.Vector HugeState #-}
+{-# SPECIALIZE extractMedians ∷ HugeDynamicCharacter → RV.Vector HugeState #-}
 extractMedians ∷ (FiniteBits e, Vector v e) ⇒ OpenDynamicCharacter v e → v e
 extractMedians (_, me, _)
+    | GV.null me = me
+    | otherwise =
+        let gap = buildGap $ me ! 0
+        in  GV.filter (/= gap) me
+
+
+{- |
+Extract the /ungapped/ medians of a single field of a dynamic character.
+-}
+{-# INLINEABLE extractMediansSingle #-}
+{-# SPECIALIZE extractMediansSingle ∷ SV.Vector SlimState → SV.Vector SlimState #-}
+{-# SPECIALIZE extractMediansSingle ∷ UV.Vector WideState → UV.Vector WideState #-}
+{-# SPECIALIZE extractMediansSingle ∷ RV.Vector HugeState → RV.Vector HugeState #-}
+extractMediansSingle ∷ (FiniteBits e, Vector v e) ⇒ v e → v e
+extractMediansSingle me
     | GV.null me = me
     | otherwise =
         let gap = buildGap $ me ! 0
@@ -354,7 +371,7 @@ Extract the left child's /ungapped/ medians used to construct the dynamic charac
 {-# INLINEABLE extractMediansLeft #-}
 {-# SPECIALIZE extractMediansLeft ∷ SlimDynamicCharacter → SV.Vector SlimState #-}
 {-# SPECIALIZE extractMediansLeft ∷ WideDynamicCharacter → UV.Vector WideState #-}
-{-# SPECIALIZE extractMediansLeft ∷ HugeDynamicCharacter → V.Vector HugeState #-}
+{-# SPECIALIZE extractMediansLeft ∷ HugeDynamicCharacter → RV.Vector HugeState #-}
 extractMediansLeft ∷ (FiniteBits e, Vector v e) ⇒ OpenDynamicCharacter v e → v e
 extractMediansLeft (lc, _, _)
     | GV.null lc = lc
@@ -369,7 +386,7 @@ Extract the right child's /ungapped/ medians used to construct the dynamic chara
 {-# INLINEABLE extractMediansRight #-}
 {-# SPECIALIZE extractMediansRight ∷ SlimDynamicCharacter → SV.Vector SlimState #-}
 {-# SPECIALIZE extractMediansRight ∷ WideDynamicCharacter → UV.Vector WideState #-}
-{-# SPECIALIZE extractMediansRight ∷ HugeDynamicCharacter → V.Vector HugeState #-}
+{-# SPECIALIZE extractMediansRight ∷ HugeDynamicCharacter → RV.Vector HugeState #-}
 extractMediansRight ∷ (FiniteBits e, Vector v e) ⇒ OpenDynamicCharacter v e → v e
 extractMediansRight (_, _, rc)
     | GV.null rc = rc
@@ -402,6 +419,23 @@ extractMediansRightGapped ∷ OpenDynamicCharacter v e → v e
 extractMediansRightGapped (_, _, rc) = rc
 
 
+{- |
+Extract the  /ungapped/ medians used to construct the dynamic character.
+
+Output medians will /not/ contain "gap" or "nil" states
+-}
+{-# INLINEABLE removeGapAndNil #-}
+{-# SPECIALIZE removeGapAndNil ∷ SV.Vector SlimState → SV.Vector SlimState #-}
+{-# SPECIALIZE removeGapAndNil ∷ UV.Vector WideState → UV.Vector WideState #-}
+{-# SPECIALIZE removeGapAndNil ∷ RV.Vector HugeState → RV.Vector HugeState #-}
+removeGapAndNil ∷ (FiniteBits e, Vector v e) ⇒ v e → v e
+removeGapAndNil rc
+    | GV.null rc = rc
+    | otherwise =
+        let (# gap, nil #) = buildGapAndNil $ rc ! 0
+        in  GV.filter (\e → e /= gap && e /= nil) rc
+
+
 {-# INLINEABLE encodeDynamicCharacter #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
     (Foldable f, Foldable g, Ord s) ⇒ Alphabet s → (Word → SlimState) → f (g s) → SlimDynamicCharacter
@@ -431,22 +465,22 @@ extractMediansRightGapped (_, _, rc) = rc
     (Foldable f) ⇒ Alphabet String → (Word → HugeState) → f (Set String) → HugeDynamicCharacter
     #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
-    (Ord s) ⇒ Alphabet s → (Word → SlimState) → V.Vector (Set s) → SlimDynamicCharacter
+    (Ord s) ⇒ Alphabet s → (Word → SlimState) → RV.Vector (Set s) → SlimDynamicCharacter
     #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
-    (Ord s) ⇒ Alphabet s → (Word → WideState) → V.Vector (Set s) → WideDynamicCharacter
+    (Ord s) ⇒ Alphabet s → (Word → WideState) → RV.Vector (Set s) → WideDynamicCharacter
     #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
-    (Ord s) ⇒ Alphabet s → (Word → HugeState) → V.Vector (Set s) → HugeDynamicCharacter
+    (Ord s) ⇒ Alphabet s → (Word → HugeState) → RV.Vector (Set s) → HugeDynamicCharacter
     #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
-    Alphabet String → (Word → SlimState) → V.Vector (Set String) → SlimDynamicCharacter
+    Alphabet String → (Word → SlimState) → RV.Vector (Set String) → SlimDynamicCharacter
     #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
-    Alphabet String → (Word → WideState) → V.Vector (Set String) → WideDynamicCharacter
+    Alphabet String → (Word → WideState) → RV.Vector (Set String) → WideDynamicCharacter
     #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
-    Alphabet String → (Word → HugeState) → V.Vector (Set String) → HugeDynamicCharacter
+    Alphabet String → (Word → HugeState) → RV.Vector (Set String) → HugeDynamicCharacter
     #-}
 encodeDynamicCharacter
     ∷ ( Bits e
