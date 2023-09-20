@@ -1,0 +1,133 @@
+Cabal-Version: 3.8
+Name:          PHANE-dynamic-character
+Version:       0.1.0
+Build-Type:    Simple
+Tested-With:
+  GHC == 9.6.2
+  GHC == 9.4.5
+  GHC == 9.2.8
+
+Author:        Alex Washburn <github@recursion.ninja>
+Copyright:     © 2022 Ward Wheeler and The American Museum of Natural History
+License:       BSD-3-Clause
+License-File:  LICENSE
+
+Maintainer:    Ward Wheeler <wheeler@amnh.org>
+Homepage:      https://github.com/AMNH/PHANE/blob/main/doc/ReadMe/Dynamic-Character.md
+Bug-Reports:   https://github.com/AMNH/PHANE/issues
+
+Synopsis:      Optimized encodings for dynamic characters.
+Description:
+  Please see the [README on GitHub](https://github.com/AMNH/PHANE/tree/main/pkg/PHANE-dynamic-character#readme).
+
+Source-Repository head
+  Type:        git
+  Location:    git://github.com/AMNH/PHANE.git
+  Subdir:      pkg/PHANE-dynamic-character-element
+
+
+Flag Optimize
+  Description: Compile with full optimizations
+  Default:     False
+  Manual:      True
+
+
+Flag Forego-Sanity
+  Description: Compile with full optimizations
+  Default:     False
+  Manual:      True
+
+
+Common ghc-flags
+
+  Ghc-Options:
+    -fdiagnostics-color=always
+    -fhide-source-paths
+    -j
+
+  Ghc-Prof-Options:
+    -fprof-auto
+    -fprof-cafs
+    -optc
+    -rdynamic
+
+  If !flag(Optimize)
+    Ghc-Options:
+      -O0
+  Else
+    Ghc-Options:
+      -O2
+      -threaded
+      -- Optimization flags
+      -fexcess-precision
+      -fexpose-all-unfoldings
+      -flate-specialise
+      -fmax-simplifier-iterations=16
+      -foptimal-applicative-do
+      -fspec-constr-count=8
+      -fspec-constr-keen
+      -fspecialize-aggressively
+      -fstatic-argument-transformation
+
+  If !flag(Forego-Sanity)
+    Ghc-Options:
+      -- Sanity check warnings
+      --   1. Include all warnings by default
+      -Weverything
+      --   2. Exclude the undesirable warnings
+      -Wno-all-missed-specialisations
+      -Wno-implicit-prelude
+      -Wno-inferred-safe-imports
+      -Wno-missing-import-lists
+      -Wno-missing-safe-haskell-mode
+      -Wno-monomorphism-restriction
+      -Wno-redundant-bang-patterns
+      -Wno-type-defaults
+      -Wno-unsafe
+
+  If !flag(Forego-Sanity) && impl(ghc >=9.2)
+    Ghc-Options:
+      -Wno-missing-kind-signatures
+
+  If !flag(Forego-Sanity) && impl(ghc >=9.4)
+    Ghc-Options:
+      -Wno-redundant-strictness-flags
+
+
+Common language-specs
+
+  Default-Extensions:
+    DerivingStrategies
+    ImportQualifiedPost
+    LambdaCase
+    NoGeneralizedNewtypeDeriving
+    UnicodeSyntax
+    
+  Default-Language:
+    GHC2021
+
+
+Library
+
+  import:
+    ghc-flags,
+    language-specs
+
+  hs-source-dirs:
+    src
+
+  build-depends:
+    PHANE-alphabet,
+    PHANE-dynamic-character-element,
+    PHANE-measure-units,
+    base                     >= 4.11      && < 5.0,
+    bv-little,
+    containers               >= 0.6.2     && < 1.0,
+    monad-loops              >= 0.4       && < 1.0,
+    primitive                >= 0.7.1     && < 1.0,
+    vector                   >= 0.12.0.3  && < 0.13,
+
+  exposed-modules:
+    Bio.DynamicCharacter
+    Bio.DynamicCharacter.Measure
+    Bio.DynamicCharacter.HandleGaps
