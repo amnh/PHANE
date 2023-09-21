@@ -39,6 +39,13 @@ The changelog is available [on GitHub][GitHub-Changelog].
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 
+### [`PHANE-measure-transition`][GitHub-Lib-06]
+
+  * Added initial library version
+
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
+
 ### [`PHANE-measure-units`][GitHub-Lib-02]
 
   * Added initial library version
@@ -64,6 +71,7 @@ The changelog is available [on GitHub][GitHub-Changelog].
 [GitHub-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
 [GitHub-Lib-04]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character#readme
 [GitHub-Lib-05]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-class#readme
+[GitHub-Lib-06]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-transition#readme
 [GitHub-Changelog]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
 [Hackage-fourmolu]: https://hackage.haskell.org/package/fourmolu#fourmolu
 [SemVer-URI]: https://semver.org/spec/v2.0.0.html
