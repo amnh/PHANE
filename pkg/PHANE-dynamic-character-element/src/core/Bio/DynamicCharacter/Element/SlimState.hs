@@ -106,8 +106,6 @@ instance Show SlimState where
     show = pure . renderSlimStateChar
 
 
--- unwords . decodeState (makeAlphabet "ACGTXYZ")
-
 instance MGV.MVector UV.MVector SlimState where
     {-# INLINE basicLength #-}
     basicLength (MV_SlimState v) = MGV.basicLength v
@@ -185,7 +183,7 @@ instance GV.Vector UV.Vector SlimState where
 
 
     {-# INLINE elemseq #-}
-    elemseq _ = seq
+    elemseq ~_ = seq
 
 
 type CharChange = Maybe (Char, Char → Char)
