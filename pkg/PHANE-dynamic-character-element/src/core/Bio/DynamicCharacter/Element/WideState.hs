@@ -183,6 +183,4 @@ instance GV.Vector UV.Vector WideState where
 
 
     {-# INLINE elemseq #-}
-    elemseq ~_ = seq
-
--- (singleton x `asTypeOf` v) `seq` y
+    elemseq = const seq

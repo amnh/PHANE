@@ -183,7 +183,7 @@ instance GV.Vector UV.Vector SlimState where
 
 
     {-# INLINE elemseq #-}
-    elemseq ~_ = seq
+    elemseq = const seq
 
 
 type CharChange = Maybe (Char, Char → Char)
