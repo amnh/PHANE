@@ -6,7 +6,6 @@ ToDo:
 -}
 
 {- |
-Module      :  GraphFormatUtilities.hs
 Description :  module witb interconversion functions for commonly used phylogentic graph formats (newick. dot, fgl)
                 graphs parsed to fgl types.
 Copyright   :  (c) 2021 Ward C. Wheeler, Division of Invertebrate Zoology, AMNH. All rights reserved.
@@ -38,7 +37,6 @@ either expressed or implied, of the FreeBSD Project.
 
 Maintainer  :  Ward Wheeler <wheeler@amnh.org>
 Stability   :  unstable
-Portability :  portable (I hope)
 
 
 Forest Extended Newick defined here as a series of ENewick representations

@@ -1,5 +1,4 @@
 {- |
-Module      :  Cyclic.hs
 Description :  Topological sorting involves removing nodes from the graph into a list to
     determine the order they can appear (let nodes be tasks and edges be
     constraints). This algorithm can only work on Directed Acyclic Graphs. In

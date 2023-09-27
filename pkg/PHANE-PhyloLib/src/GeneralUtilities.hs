@@ -4,7 +4,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 {- |
-Module      :  GeneralUtilities.hs
 Description :  Module with useful functions
 Copyright   :  (c) 2021 Ward C. Wheeler, Division of Invertebrate Zoology, AMNH. All rights reserved.
 License     :
@@ -35,7 +34,6 @@ either expressed or implied, of the FreeBSD Project.
 
 Maintainer  :  Ward Wheeler <wheeler@amnh.org>
 Stability   :  unstable
-Portability :  portable (I hope)
 -}
 module GeneralUtilities (
     module GeneralUtilities,

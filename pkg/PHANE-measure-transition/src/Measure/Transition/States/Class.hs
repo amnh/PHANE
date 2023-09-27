@@ -1,19 +1,8 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE Strict #-}
 
-{- |
-Module      :  Measure.Transition.States
-Copyright   :  (c) 2015-2021 Ward Wheeler
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Stability   :  provisional
-Portability :  portable
--}
 module Measure.Transition.States.Class (
     HasStateTransitions (..),
 ) where

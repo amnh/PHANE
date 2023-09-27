@@ -1,7 +1,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 
 {- |
-Module      :  LocalSequence
 Description :  Functions that map Data.Sequence to list-like functtions (head, tail etc)
 Copyright   :  (c) 2014 Ward C. Wheeler, Division of Invertebrate Zoology, AMNH. All rights reserved.
 License     :
@@ -32,7 +31,6 @@ either expressed or implied, of the FreeBSD Project.
 
 Maintainer  :  Ward Wheeler <wheeler@amnh.org>
 Stability   :  unstable
-Portability :  portable (I hope)
 -}
 module LocalSequence (
     module LocalSequence,

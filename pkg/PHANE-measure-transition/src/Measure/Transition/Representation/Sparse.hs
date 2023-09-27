@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -10,15 +8,6 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE UnboxedSums #-}
 
-{- |
-Module      :  Layout.Memoize
-Copyright   :  (c) 2015-2021 Ward Wheeler
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Stability   :  provisional
-Portability :  portable
--}
 module Layout.Memoize (
     -- * Measures
     SDMλ,

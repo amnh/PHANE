@@ -1,18 +1,7 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Safe #-}
 
-{- |
-Module      :  Measure.Transition
-Copyright   :  (c) 2015-2021 Ward Wheeler
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Stability   :  provisional
-Portability :  portable
--}
 module Measure.Transition (
     -- * Core "Transition Matrix" Type-class
     HasTransitionMatrix,

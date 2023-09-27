@@ -2,7 +2,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {- |
-Module      :  ParallelUtilities.hs
 Description :  Utilities for parallel traversals, and other related functions
 Copyright   :  (c) 2021 Ward C. Wheeler, Division of Invertebrate Zoology, AMNH. All rights reserved.
 License     :
@@ -33,7 +32,6 @@ either expressed or implied, of the FreeBSD Project.
 
 Maintainer  :  Ward Wheeler <wheeler@amnh.org>
 Stability   :  unstable
-Portability :  portable (I hope)
 -}
 module ParallelUtilities (
     parmap,

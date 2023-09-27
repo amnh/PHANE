@@ -9,6 +9,8 @@ packages:
     pkg/PHANE-dynamic-character
     pkg/PHANE-measure-class
     pkg/PHANE-measure-transition
+    pkg/PHANE-transition-matrix
+    pkg/PHANE-transition-matrix-ffi
     pkg/PHANE-measure-units
     pkg/PHANE-PhyloLib
 --    pkg/*/*.cabal

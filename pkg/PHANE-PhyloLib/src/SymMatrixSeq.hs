@@ -1,7 +1,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 
 {- |
-Module      :  SymMatrixSeq.hs
 Description :  Fu\nctions to manipulate square symmetric lower diagonal matrices with diagnonal values
                 as if they were normal matrices, based on Sequence type
 Copyright   :  (c) 2020 Ward C. Wheeler, Division of Invertebrate Zoology, AMNH. All rights reserved.
@@ -33,7 +32,6 @@ either expressed or implied, of the FreeBSD Project.
 
 Maintainer  :  Ward Wheeler <wheeler@amnh.org>
 Stability   :  unstable
-Portability :  portable (I hope)
 -}
 module SymMatrixSeq (
     empty,
