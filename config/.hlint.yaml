@@ -154,8 +154,7 @@
     , within:
       [ GeneralUtilities
       , ParallelUtilities
-      , Data.Hashable.Memoize
-      , Data.TCM.Memoized.FFI
+      , Layout.Memoize.Hashable
       ]
     }
 

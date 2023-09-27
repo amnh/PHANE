@@ -1,0 +1,163 @@
+Cabal-Version: 3.8
+Name:          PHANE-transition-matrix-ffi
+Version:       0.1.0
+Build-Type:    Simple
+Tested-With:
+  GHC == 9.6.2
+  GHC == 9.4.5
+  GHC == 9.2.8
+
+Author:        Alex Washburn <github@recursion.ninja>
+Copyright:     © 2022 Ward Wheeler and The American Museum of Natural History
+License:       BSD-3-Clause
+License-File:  LICENSE
+
+Maintainer:    Ward Wheeler <wheeler@amnh.org>
+Homepage:      https://github.com/AMNH/PHANE/blob/main/doc/ReadMe/Transition-Matrix-FFI.md
+Bug-Reports:   https://github.com/AMNH/PHANE/issues
+
+Synopsis:      Library defining measures for transitions between states.
+Description:
+  Please see the [README on GitHub](https://github.com/AMNH/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme).
+
+Source-Repository head
+  Type:        git
+  Location:    git://github.com/AMNH/PHANE.git
+  Subdir:      pkg/PHANE-transition-matrix-ffi
+
+Flag Optimize
+  Description: Compile with full optimizations
+  Default:     False
+  Manual:      True
+
+Flag Forego-Sanity
+  Description: Compile with full optimizations
+  Default:     False
+  Manual:      True
+
+
+-- Group of buildinfo specifications to correctly build and link to the C & C++:
+-- FFI code.
+Common ffi-buildinfo
+
+  Cc-Options:
+    -rdynamic --std=c11
+
+  Hs-Source-Dirs:
+    ffi
+
+  C-Sources:
+--    ffi/external-direct-optimization/alignCharacters.c
+    ffi/external-direct-optimization/alignmentMatrices.c
+--    ffi/external-direct-optimization/c_alignment_interface.c
+    ffi/external-direct-optimization/c_code_alloc_setup.c
+    ffi/external-direct-optimization/costMatrix.c
+--    ffi/external-direct-optimization/dyn_character.c
+--    ffi/external-direct-optimization/ukkCheckPoint.c
+--    ffi/external-direct-optimization/ukkCommon.c
+
+  -- Here we list all directories that contain C & C++ header files that the FFI
+  -- tools will need to locate when preprocessing the C files. Without listing
+  -- the directories containing the C header files here, the FFI preprocessor
+  -- (hsc2hs, c2hs, etc.) will fail to locate the requisite files. Note also,
+  -- that the parent directory of the nessicary C & C++ header files must be
+  -- specified. The preprocessor will not recursively look in subdirectories for
+  -- header files!
+  Include-Dirs:
+    ffi/external-direct-optimization
+
+
+Common ghc-flags
+
+  Ghc-Options:
+    -fdiagnostics-color=always
+    -fhide-source-paths
+    -j
+
+  Ghc-Prof-Options:
+    -fprof-auto
+    -fprof-cafs
+    -optc
+    -rdynamic
+
+  If !flag(Optimize)
+    Ghc-Options:
+      -O0
+  Else
+    Ghc-Options:
+      -O2
+      -threaded
+      -- Optimization flags
+      -fexcess-precision
+      -fexpose-all-unfoldings
+      -flate-specialise
+      -fmax-simplifier-iterations=16
+      -foptimal-applicative-do
+      -fspec-constr-count=8
+      -fspec-constr-keen
+      -fspecialize-aggressively
+      -fstatic-argument-transformation
+
+  If !flag(Forego-Sanity)
+    Ghc-Options:
+      -- Sanity check warnings
+      --   1. Include all warnings by default
+      -Weverything
+      --   2. Exclude the undesirable warnings
+      -Wno-all-missed-specialisations
+      -Wno-implicit-prelude
+      -Wno-inferred-safe-imports
+      -Wno-missing-import-lists
+      -Wno-missing-safe-haskell-mode
+      -Wno-monomorphism-restriction
+      -Wno-redundant-bang-patterns
+      -Wno-type-defaults
+      -Wno-unsafe
+
+  If !flag(Forego-Sanity) && impl(ghc >=9.2)
+    Ghc-Options:
+      -Wno-missing-kind-signatures
+
+  If !flag(Forego-Sanity) && impl(ghc >=9.4)
+    Ghc-Options:
+      -Wno-redundant-strictness-flags
+
+
+Common language-specs
+
+  Default-Extensions:
+    DerivingStrategies
+    ImportQualifiedPost
+    LambdaCase
+    NoGeneralizedNewtypeDeriving
+    UnicodeSyntax
+    
+  Default-Language:
+    GHC2021
+
+
+Library
+
+  Import:
+    ffi-buildinfo,
+    ghc-flags,
+    language-specs,
+
+  Build-Depends:
+    PHANE-measure-transition,
+    PHANE-measure-units,
+    base >= 4.11 && < 5.0,
+    deepseq >= 1.4 && < 2.0,
+    vector >= 0.12.0.3 && < 0.13,
+
+  Exposed-Modules:
+    Layout.Compact.Class
+    Layout.Compact.States
+    Layout.Compact.States.Indexing
+
+  Other-Modules:
+    Layout.Compact.States.Allocation
+    Layout.Compact.States.Structure
+
+  Hs-Source-Dirs:
+    src
