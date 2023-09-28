@@ -4,7 +4,7 @@
 
 packages:
     pkg/PHANE-alphabet
-    pkg/PHANE-dynamic-character-alignment
+--    pkg/PHANE-dynamic-character-alignment
     pkg/PHANE-dynamic-character-element
     pkg/PHANE-dynamic-character
     pkg/PHANE-measure-class
@@ -112,3 +112,34 @@ preferences:
     mtl >= 2.3.1,
     text >= 2.0.1,
     unordered-containers >= 0.2.18.0,
+
+
+package PHANE-alphabet
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-dynamic-character-alignment
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-dynamic-character-element
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-dynamic-character
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-measure-class
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-measure-transition
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-transition-matrix
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-transition-matrix-ffi
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-measure-units
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+package PHANE-PhyloLib
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..

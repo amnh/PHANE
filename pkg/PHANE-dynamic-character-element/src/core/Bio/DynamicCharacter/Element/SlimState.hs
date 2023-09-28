@@ -43,8 +43,7 @@ import Measure.Unit.SymbolIndex (atSymbolIndex)
 
 
 {- |
-Encoding for a dynamic character element with an alphabet size in the range
-\( \left[\;1,\, 8\;\right] \).
+Encoding for a dynamic character element with an alphabet size \( \lvert\, \Sigma \,\rvert \in \left[\;1,\, 8\;\right] \).
 
 /NOTE:/ This encoding uses more bits than required! This is due to the C FFI
 implementation details. It would be possible to reduce this to a @CUChar@ if

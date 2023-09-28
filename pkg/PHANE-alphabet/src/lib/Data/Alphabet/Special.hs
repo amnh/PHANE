@@ -63,7 +63,7 @@ discreteAlphabet =
 
 
 {- |
-\$\mathcal{O}\left(\, n \,\right)$
+\( \mathcal{O}\left(\, n \,\right) \)
 
 Determines if the supplied alphabet represents amino acid symbols.
 
@@ -74,7 +74,7 @@ isAlphabetAminoAcid = isAlphabetSubsetOf aminoAcidAlphabet
 
 
 {- |
-\$\mathcal{O}\left(\, n \,\right)$
+\( \mathcal{O}\left(\, n \,\right) \)
 
 Determines if the supplied alphabet represents DNA symbols.
 
@@ -85,7 +85,7 @@ isAlphabetDna = isAlphabetSubsetOf dnaAlphabet
 
 
 {- |
-\$\mathcal{O}\left(\, n \,\right)$
+\( \mathcal{O}\left(\, n \,\right) \)
 
 Determines if the supplied alphabet represents DNA symbols.
 
@@ -96,7 +96,7 @@ isAlphabetRna = isAlphabetSubsetOf rnaAlphabet
 
 
 {- |
-\$\mathcal{O}\left(\, n \,\right)$
+\( \mathcal{O}\left(\, n \,\right) \)
 
 Determines if the supplied alphabet represents DNA symbols.
 

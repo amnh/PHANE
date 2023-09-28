@@ -7,8 +7,6 @@
 
 module Bio.DynamicCharacter (
     -- * Element Varieties of a Dynamic Character
-    SlimState,
-    WideState,
     HugeState,
 
     -- * Generic Dynamic Character Constructions

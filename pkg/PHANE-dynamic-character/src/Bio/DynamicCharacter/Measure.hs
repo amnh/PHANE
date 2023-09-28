@@ -19,9 +19,9 @@ import Data.Vector.Generic (Vector, basicLength)
 
 
 {- |
-/O(1)/ for input characters of differing lengths
+\( \mathcal{O}\left(\, 1 \,\right) \) for input characters of differing lengths.
 
-/O(k)/ for input characters of equal length, where /k/ is the shared prefix of
+\( \mathcal{O}\left(\, k \,\right) \) for input characters of equal length, where \( k \) is the shared prefix of
 both characters.
 
 Returns the dynamic character that is shorter first, longer second, and notes
@@ -73,7 +73,7 @@ measureCharacters lhs rhs
 
 
 {- |
-/O(n)/
+\( \mathcal{O}\left(\, n \,\right) \)
 
 Considers the median values of the characters, ignores the left/right tagging.
 

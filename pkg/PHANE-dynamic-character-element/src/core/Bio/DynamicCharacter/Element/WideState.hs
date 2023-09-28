@@ -34,8 +34,7 @@ import Foreign.Storable (Storable)
 
 
 {- |
-Encoding for a dynamic character element with an alphabet size in the range
-\( \left[\;9,\, 64\;\right] \).
+Encoding for a dynamic character element with an alphabet size \( \lvert\, \Sigma \,\rvert \in \left[\;9,\, 64\;\right] \).
 -}
 newtype WideState = WideState {fromWideState ∷ Word64}
 

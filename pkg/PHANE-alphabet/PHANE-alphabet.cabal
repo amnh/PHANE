@@ -106,32 +106,6 @@ Common language-specs
     GHC2021
 
 
-Library
-
-  Import:
-    ghc-flags,
-    language-specs,
-
-  Build-Depends:
-    PHANE-alphabet:core,
-    base >= 4.11 && < 5.0,
-    bimap >= 0.3 && < 1.0,
-    containers >= 0.6.2 && < 1.0,
-    vector >= 0.12.0.3 && < 1.0,
-
-  Exposed-Modules:
-    Data.Alphabet
-    Data.Alphabet.Codec
-    Data.Alphabet.IUPAC
-    Data.Alphabet.Special
-  
-  Reexported-Modules:
-    Data.Alphabet.Gap
-
-  Hs-Source-Dirs:
-    src/lib
-
-
 Library core
 
   Import:
@@ -191,3 +165,29 @@ test-suite test-suite-alphabet
 
   Other-Modules:
     Data.Alphabet.Test
+
+
+Library
+
+  Import:
+    ghc-flags,
+    language-specs,
+
+  Build-Depends:
+    PHANE-alphabet:core,
+    base >= 4.11 && < 5.0,
+    bimap >= 0.3 && < 1.0,
+    containers >= 0.6.2 && < 1.0,
+    vector >= 0.12.0.3 && < 1.0,
+
+  Exposed-Modules:
+    Data.Alphabet
+    Data.Alphabet.Codec
+    Data.Alphabet.IUPAC
+    Data.Alphabet.Special
+  
+  Reexported-Modules:
+    Data.Alphabet.Gap
+
+  Hs-Source-Dirs:
+    src/lib

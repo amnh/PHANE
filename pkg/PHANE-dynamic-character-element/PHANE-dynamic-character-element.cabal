@@ -104,23 +104,6 @@ Common language-specs
     GHC2021
 
 
-Library
-
-  Import:
-    ghc-flags,
-    language-specs,
-
-  Build-Depends:
-    PHANE-dynamic-character-element:core,
-    base >= 4.11 && < 5.0,
-
-  Exposed-Modules:
-    Bio.DynamicCharacter.Element
-
-  Hs-Source-Dirs:
-    src/lib
-
-
 -- Exposes internal modules
 Library core
 
@@ -169,3 +152,20 @@ library quickcheck
 
   Visibility:
     public
+
+
+Library
+
+  Import:
+    ghc-flags,
+    language-specs,
+
+  Build-Depends:
+    PHANE-dynamic-character-element:core,
+    base >= 4.11 && < 5.0,
+
+  Exposed-Modules:
+    Bio.DynamicCharacter.Element
+
+  Hs-Source-Dirs:
+    src/lib
