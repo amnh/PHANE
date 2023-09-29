@@ -4,7 +4,7 @@
 
 packages:
     pkg/PHANE-alphabet
---    pkg/PHANE-dynamic-character-alignment
+    pkg/PHANE-dynamic-character-alignment
     pkg/PHANE-dynamic-character-element
     pkg/PHANE-dynamic-character
     pkg/PHANE-measure-class
@@ -117,13 +117,13 @@ preferences:
 package PHANE-alphabet
   haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
 
+package PHANE-dynamic-character
+  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
 package PHANE-dynamic-character-alignment
   haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
 
 package PHANE-dynamic-character-element
-  haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
-
-package PHANE-dynamic-character
   haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
 
 package PHANE-measure-class

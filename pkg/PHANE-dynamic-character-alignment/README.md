@@ -1,0 +1,1 @@
+../../doc/ReadMe/Dynamic-Character-Alignment.md
