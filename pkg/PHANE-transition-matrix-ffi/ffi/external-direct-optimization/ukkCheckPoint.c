@@ -83,7 +83,7 @@ CPType *CP(int ab, int ac, int d, int s)
 }
 
 
-void printTraceBack();
+void printTraceBack( characters_t *inputs, characters_t *outputs );
 
 
 
