@@ -10,7 +10,6 @@ These functions will allocate an M * N matrix.
 -}
 module DirectOptimization.Pairwise.Internal (
     -- * Alignment types
-    Direction (..),
     AlignmentCost,
     StateChangeCost,
     SymbolChangeCost,

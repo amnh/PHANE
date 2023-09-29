@@ -14,8 +14,6 @@ Direct optimization pairwise alignment using the Needleman-Wunsch algorithm.
 These functions will allocate an M * N matrix.
 -}
 module DirectOptimization.Pairwise.Visualization (
-    Direction (),
-
     -- * Operational
     directOptimizationDiffDirectionMatricies,
 

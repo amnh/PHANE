@@ -34,6 +34,7 @@ import Data.Vector qualified as V
 import Data.Vector.Generic (Vector, (!))
 import Data.Vector.Generic qualified as GV
 import Data.Vector.Unboxed qualified as UV
+import DirectOptimization.Pairwise.Direction
 import DirectOptimization.Pairwise.Internal
 import DirectOptimization.Pairwise.Swapping
 
