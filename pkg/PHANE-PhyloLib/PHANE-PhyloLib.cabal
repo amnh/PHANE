@@ -74,7 +74,7 @@ Library
 
   Ghc-Options:
     -O2
-    -feager-blackholing
+--    -feager-blackholing  --  may be causing parallel loop errors
     -fexcess-precision
     -fexpose-all-unfoldings
     -flate-specialise
@@ -90,11 +90,9 @@ Library
     --   2. Include all warnings by default
     --   3. Exclude the undesirable warnings
     -- -Werror
+    -Wall
     -Weverything
     -- Exclusions:
-    -feager-blackholing
-    -O2
-    -Wall
     -Wno-all-missed-specialisations
     -Wno-implicit-prelude
     -Wno-missing-import-lists
@@ -104,6 +102,6 @@ Library
     -Wno-type-defaults
     -Wno-unsafe
 
-  If flag(test-osx)
-    Ghc-Options:
+--  If flag(test-osx)
+--    Ghc-Options:
 --      -fllvm
