@@ -305,7 +305,7 @@ setGapped
     -- ^ Index to set
     → m ()
 setGapped (lc, mc, rc) i = do
-    tmp ← unsafeRead mc i
+    tmp ← unsafeRead mc 0 -- Get cell dimension context from first cell in vector
     let (# gap, nil #) = buildGapAndNil tmp
     unsafeWrite lc i nil
     unsafeWrite mc i gap
@@ -330,7 +330,13 @@ Utility function to enforce strict evaluation of the dynmaic character.
 {-# SPECIALIZE forceDynamicCharacter ∷ WideDynamicCharacter → WideDynamicCharacter #-}
 {-# SPECIALIZE forceDynamicCharacter ∷ HugeDynamicCharacter → HugeDynamicCharacter #-}
 forceDynamicCharacter ∷ (Vector v e) ⇒ OpenDynamicCharacter v e → OpenDynamicCharacter v e
-forceDynamicCharacter (lv, mv, rv) = (GV.force lv, GV.force mv, GV.force rv)
+forceDynamicCharacter (lv, mv, rv) =
+    let -- Force the individual vectors
+        lv' = GV.force lv
+        mv' = GV.force mv
+        rv' = GV.force rv
+    in  -- Then force the tuple containing the vectors
+        lv' `seq` mv' `seq` rv' `seq` (lv', mv', rv')
 
 
 {- |
