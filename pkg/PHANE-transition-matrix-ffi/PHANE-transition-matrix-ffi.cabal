@@ -40,11 +40,11 @@ Flag Forego-Sanity
 -- FFI code.
 Common ffi-buildinfo
 
-  Cc-Options:
-    -rdynamic --std=c11
+--  Cc-Options:
+--    -rdynamic --std=c11
 
-  Hs-Source-Dirs:
-    ffi
+  Cc-Options:
+    --std=c11
 
   C-Sources:
 --    ffi/external-direct-optimization/alignCharacters.c
@@ -65,6 +65,20 @@ Common ffi-buildinfo
   -- header files!
   Include-Dirs:
     ffi/external-direct-optimization
+
+  -- Specify the header files as required source files here.
+  -- Do not specify them in the c-sources or cxx-sources stanzas.
+  -- This is required for sdist and install commands to work correctly.
+  Install-Includes:
+--    alignCharacters.h
+    alignmentMatrices.h
+--    c_alignment_interface.h
+    c_code_alloc_setup.h
+    costMatrix.h
+    debug_constants.h
+--    dyn_character.h
+--    ukkCheckPoint.h
+--    ukkCommon.h
 
 
 Common ghc-flags
