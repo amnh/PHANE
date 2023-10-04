@@ -119,7 +119,7 @@ myStrategyRPAR = rpar
 -- | getNumThreads gets number of Concurrent  threads
 {-# NOINLINE getNumThreads #-}
 getNumThreads ∷ Int
-getNumThreads = unsafePerformIO getNumCapabilities
+getNumThreads = unsafeDupablePerformIO getNumCapabilities
 
 
 -- NFData instance for parmap/rdeepseq "bit-vector-like" types
