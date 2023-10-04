@@ -15,6 +15,7 @@ module Layout.Compact.Symbols.Unsafe (
 import Data.Coerce
 import Data.Vector.Storable (Vector, force, generate)
 import Data.Word (Word16)
+import Foreign.C.Types (CUShort (..))
 import Layout.Compact.States (StateTransitionsCompact, initialize)
 import Layout.Compact.Symbols.Internal (SymbolDistanceMatrix (..))
 import Layout.Compact.Symbols.Square (SymbolDistanceMatrixSquare (..), rowMajorVector)
@@ -40,7 +41,7 @@ unsafeCompactStateFromSDMS
 unsafeCompactStateFromSDMS penalty sdms =
     let dimension = coerce $ symbolCount sdms
         gapSeqCost = coerce penalty
-        costVector = coerce $ rowMajorVector sdms
+        costVector = (coerce ∷ Vector Word16 → Vector CUShort) $ rowMajorVector sdms
     in  initialize dimension gapSeqCost costVector
 
 
