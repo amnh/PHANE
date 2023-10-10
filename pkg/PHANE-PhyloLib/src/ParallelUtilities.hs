@@ -67,10 +67,9 @@ parmap strat f = withStrategy (parTraversable strat) . fmap f
 
 -- | seqParMap takes strategy,  if numThread == 1 retuns fmap otherwise parmap and
 seqParMap ∷ (Traversable t) ⇒ Strategy b → (a → b) → t a → t b
-seqParMap strat f =
-    if getNumThreads > 1
-        then parmap strat f
-        else fmap f
+seqParMap strat f
+    | getNumThreads > 1 = parmap strat f
+    | otherwise = fmap f
 
 
 myParListChunk ∷ Strategy a → Strategy [a]
@@ -120,7 +119,7 @@ myStrategyRPAR = rpar
 -- | getNumThreads gets number of Concurrent  threads
 {-# NOINLINE getNumThreads #-}
 getNumThreads ∷ Int
-getNumThreads = unsafePerformIO getNumCapabilities
+getNumThreads = unsafeDupablePerformIO getNumCapabilities
 
 
 -- NFData instance for parmap/rdeepseq "bit-vector-like" types

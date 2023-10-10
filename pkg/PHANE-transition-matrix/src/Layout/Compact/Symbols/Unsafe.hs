@@ -13,8 +13,9 @@ module Layout.Compact.Symbols.Unsafe (
 ) where
 
 import Data.Coerce
-import Data.Vector.Storable (Vector, force, generate)
+import Data.Vector.Storable (Vector, force, generate, unsafeCoerceVector)
 import Data.Word (Word16)
+import Foreign.C.Types (CUShort (..))
 import Layout.Compact.States (StateTransitionsCompact, initialize)
 import Layout.Compact.Symbols.Internal (SymbolDistanceMatrix (..))
 import Layout.Compact.Symbols.Square (SymbolDistanceMatrixSquare (..), rowMajorVector)
@@ -38,9 +39,12 @@ unsafeCompactStateFromSDMS
     -- ^ The dense, pre-computed matrix of costs to shift between symbols.
     → StateTransitionsCompact
 unsafeCompactStateFromSDMS penalty sdms =
-    let dimension = coerce $ symbolCount sdms
+    let castVec ∷ Vector Word16 → Vector CUShort
+        castVec = unsafeCoerceVector
+
+        dimension = coerce $ symbolCount sdms
         gapSeqCost = coerce penalty
-        costVector = coerce $ rowMajorVector sdms
+        costVector = castVec $ rowMajorVector sdms
     in  initialize dimension gapSeqCost costVector
 
 

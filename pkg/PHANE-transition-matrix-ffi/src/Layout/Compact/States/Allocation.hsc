@@ -23,8 +23,7 @@ module Layout.Compact.States.Allocation
 --  , fromSDMλ
   ) where
 
-import Data.Coerce
-import Data.Vector.Storable (Vector)
+import Data.Vector.Storable (Vector, unsafeCast)
 import Data.Vector.Storable qualified as V
 import Foreign
 import Foreign.C.Types
@@ -141,16 +140,16 @@ initialize dim penalty inputVector =
 
 -- |
 -- Ensure that the size does not exceed 'maximumDimension'.
-clampSize :: Word -> (Vector a -> Vector CUShort, Word)
+clampSize :: Storable a => Word -> (Vector a -> Vector CUShort, Word)
 clampSize n =
   let truncateVector :: Vector CUShort -> Vector CUShort
       truncateVector =
         let x = fromEnum maximumDimension
-        in  V.slice 0 (x*x)
+        in  V.slice 0 (x * x)
       
       transform :: Vector CUShort -> Vector CUShort
       transform
         | n <= maximumDimension = id
         | otherwise             = truncateVector
 
-  in  (transform . coerce, min maximumDimension n)
+  in  (transform . unsafeCast, min maximumDimension n)
