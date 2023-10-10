@@ -23,6 +23,13 @@ The changelog is available [on GitHub][GitHub-Changelog].
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 
+### [`PHANE-dynamic-character-alignment`][GitHub-Lib-07]
+
+  * Added initial library version
+
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
+
 ### [`PHANE-dynamic-character-element`][GitHub-Lib-01]
 
   * Added initial library version
@@ -53,6 +60,22 @@ The changelog is available [on GitHub][GitHub-Changelog].
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 
+### [`PHANE-transition-matrix`][GitHub-Lib-08]
+
+  * Added initial library version
+
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
+
+### [`PHANE-transition-matrix-ffi`][GitHub-Lib-09]
+
+  * Added initial library version
+
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
+  * Updated type-class `HasStateTransitionsCompact` to expose opaque structure
+
+
 ### [`PHANE-PhyloLib`][GitHub-Lib-03]
 
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
@@ -72,6 +95,9 @@ The changelog is available [on GitHub][GitHub-Changelog].
 [GitHub-Lib-04]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character#readme
 [GitHub-Lib-05]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-class#readme
 [GitHub-Lib-06]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-transition#readme
+[GitHub-Lib-07]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-alignment#readme
+[GitHub-Lib-08]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix#readme
+[GitHub-Lib-09]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme
 [GitHub-Changelog]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
 [Hackage-fourmolu]: https://hackage.haskell.org/package/fourmolu#fourmolu
 [SemVer-URI]: https://semver.org/spec/v2.0.0.html

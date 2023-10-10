@@ -90,12 +90,8 @@ instance HasStateTransitions (Sparse a) a where
 
 
 instance HasStateTransitionsCompact (Sparse a) where
-    {-# INLINE getCompactPairwise #-}
-    getCompactPairwise = const Nothing
-
-
-    {-# INLINE getCompactThreeway #-}
-    getCompactThreeway = const Nothing
+    {-# INLINE stateTransitionCompact #-}
+    stateTransitionCompact = const Nothing
 
 
 instance MeasurableRange (Sparse a) SymbolIndex where

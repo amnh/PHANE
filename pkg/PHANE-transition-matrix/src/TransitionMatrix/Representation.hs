@@ -38,7 +38,7 @@ If any measure has an 'iota' symbol count, i.e. a symbol count of less than
 or equal to 'infimumSymbolLimit', the compact representation will pre-compute
 the entire transition cost matrix in a structure which is 'Storable' and
 inter-operable with the C FFI. If and only if the measure is specified for an
-'iota' symbol count will 'getCompactPairwise' return a @Just@ value.
+'iota' symbol count will 'stateTransitionCompact' return a @Just@ value.
 
 Additionally, the compact representation notes if the discrete metric, the
 discrete metric adjoined by the gap symbol, or the L1 norm are the specified
@@ -47,7 +47,7 @@ are more efficient will be returned when calling 'symbolDistances', 'stateTransi
 'getStateTransitionCubeλ'.
 
 Notably, if it is the case that /both/ the measure has an 'iota' symbol count
-/and/ the measure is a specialized metric described above, then calling 'getCompactPairwise'
+/and/ the measure is a specialized metric described above, then calling 'stateTransitionCompact'
 returns a /compile-time/ pre-computed transition cost matrix. Multiple
 "constructions" of the same metric will result in the same "singlton" compact
 representation.
@@ -63,7 +63,7 @@ Use the following accessor to the retrieve the desired functionality:
   * 'symbolDistances'
   * 'stateTransitionPairwiseDispersion'
   * 'getStateTransitionCubeλ'
-  * 'getCompactPairwise'
+  * 'stateTransitionCompact'
 -}
 data TransitionMatrix a
     = IotaMatrix {-# UNPACK #-} (Maybe SpecializableMetric) {-# UNPACK #-} StateTransitionsCompact
@@ -152,12 +152,8 @@ instance HasStateTransitionsCompact (TransitionMatrix a) where
     {-# SPECIALIZE instance HasStateTransitionsCompact (TransitionMatrix WideState) #-}
 
 
-    getCompactPairwise (IotaMatrix _ mtx) = getCompactPairwise mtx
-    getCompactPairwise _ = Nothing
-
-
-    getCompactThreeway (IotaMatrix _ mtx) = getCompactThreeway mtx
-    getCompactThreeway _ = Nothing
+    stateTransitionCompact (IotaMatrix _ mtx) = stateTransitionCompact mtx
+    stateTransitionCompact _ = Nothing
 
 
 instance (FiniteBits a, Hashable a) ⇒ HasStateTransitions (TransitionMatrix a) a where

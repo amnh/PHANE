@@ -4,7 +4,6 @@ module Layout.Compact.Class (
     FFI3D (),
 ) where
 
-import Foreign (Ptr)
 import Layout.Compact.States
 
 
@@ -21,17 +20,11 @@ symbol alphabet is compatible with FFI string alignment interoperability.
 of 'Measure.Centroid.Centroid' and 'Measure.Distance.Distance'.
 -}
 class HasStateTransitionsCompact a where
-    getCompactPairwise ∷ a → Maybe (Ptr FFI2D)
-
-
-    getCompactThreeway ∷ a → Maybe (Ptr FFI3D)
+    stateTransitionCompact ∷ a → Maybe StateTransitionsCompact
 
 
 {- |
-/ϴ(1)/ for both 'getCompactPairwise' and 'getCompactThreeway'.
+/ϴ(1)/ for access for 'stateTransitionCompact'
 -}
 instance HasStateTransitionsCompact StateTransitionsCompact where
-    getCompactPairwise = Just . getFFI2D
-
-
-    getCompactThreeway = Just . getFFI3D
+    stateTransitionCompact = Just
