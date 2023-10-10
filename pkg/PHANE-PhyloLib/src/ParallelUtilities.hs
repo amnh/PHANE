@@ -85,12 +85,12 @@ r0 seems fastest in tests of PhyG
 -}
 myStrategy ∷ Strategy b
 -- myStrategy :: NFData b => Strategy b
-myStrategy = r0 -- rseq -- rpar -- rseq -- r0
+myStrategy = rpar -- rseq -- rpar -- rseq -- r0
 
 
 myStrategyLowLevel ∷ Strategy b
 -- myStrategyLowLevel :: (NFData b) => Strategy b
-myStrategyLowLevel = r0
+myStrategyLowLevel = rpar
 
 
 myStrategyHighLevel ∷ (NFData b) ⇒ Strategy b

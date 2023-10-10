@@ -3,7 +3,7 @@
 ***Phylogenetic Haskell Analytic Network Engine***
 
 The Phylogenetic Haskell Analytic Network Engine (PHANE) project is collection of Haskell libraries exposing abstract interfaces intended for use general-purpose use by bioinformatics community.
-The project is produced by the [American Museum of Natural History][AMNH-Website] (AMNH); specifically the [Ward Wheeler Lab][AMNH-Wheeler] of the [Invertebrate Zoology Department][AMNH-InvtZoo] as an undertaking of the mueseum's [computational sciences][AMNH-CompSci] initative.
+The project is produced by the [American Museum of Natural History][AMNH-Website] (AMNH); specifically the [Ward Wheeler Lab][AMNH-Wheeler] of the [Invertebrate Zoology Department][AMNH-InvtZoo] as an undertaking of the museum's [computational sciences][AMNH-CompSci] initative.
 
 
 ## Libraries
