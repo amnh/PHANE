@@ -187,5 +187,5 @@ firstColExtrama
     → b
 firstColExtrama f (SDMT (SymbolDistanceMatrix (SymbolCount n) v)) =
     let r = fromEnum n
-        g i = v V.! (i * r)
+        g i = v V.! (i * (i + 1) `shiftR` 1)
     in  fromIntegral $ f (comparing g) [0 .. r - 1]
