@@ -9,6 +9,7 @@
 module TransitionMatrix.Metricity (
     -- * Diagnosable Metrics
     Metricity (..),
+    SpecializableMetric (..),
 
     -- * Diagnoses
     metricityOfDistance,
