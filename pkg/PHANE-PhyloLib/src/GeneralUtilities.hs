@@ -69,12 +69,9 @@ import Text.Read
 a line feed (\n) after message
 -}
 traceNoLF ∷ String → a → a
-traceNoLF = trace
-{-
 traceNoLF string expr = unsafePerformIO $ do
     traceNoLFIO string
     pure expr
--}
 
 {- | traceNOLFIO is traceIO modified from Debug/Trace to not have
 a line feed (\n) after message
