@@ -39,6 +39,13 @@ The changelog is available [on GitHub][GitHub-Changelog].
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 
+### [`PHANE-evaluation`][GitHub-Lib-10]
+
+  * Added initial library version
+
+  * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
+
+
 ### [`PHANE-measure-class`][GitHub-Lib-05]
 
   * Added initial library version
@@ -98,6 +105,7 @@ The changelog is available [on GitHub][GitHub-Changelog].
 [GitHub-Lib-07]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-alignment#readme
 [GitHub-Lib-08]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix#readme
 [GitHub-Lib-09]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme
+[GitHub-Lib-10]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-evaluation#readme
 [GitHub-Changelog]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
 [Hackage-fourmolu]: https://hackage.haskell.org/package/fourmolu#fourmolu
 [SemVer-URI]: https://semver.org/spec/v2.0.0.html

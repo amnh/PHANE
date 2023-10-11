@@ -62,6 +62,7 @@ import Measure.Transition
 import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
 import Measure.Unit.SymbolIndex
+import Numeric
 import Numeric.Natural
 import TransitionMatrix.Diagnosis.Error
 import TransitionMatrix.Metricity
@@ -82,6 +83,19 @@ data TransitionMeasureDiagnosis a = TransitionMeasureDiagnosis
     }
     deriving stock (Eq, Generic)
     deriving anyclass (NFData)
+
+
+instance Show (TransitionMeasureDiagnosis a) where
+    show d =
+        let display ∷ Int → Rational → String
+            display n x = (showFFloat (Just n) $ fromRat x) ""
+        in  unwords
+                [ "TransitionMeasureDiagnosis"
+                , "("
+                , display 4 $ factoredCoefficient d
+                , show $ transitionMetricity d
+                , ")"
+                ]
 
 
 {- |

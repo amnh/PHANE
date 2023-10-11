@@ -7,6 +7,7 @@ packages:
     pkg/PHANE-dynamic-character-alignment
     pkg/PHANE-dynamic-character-element
     pkg/PHANE-dynamic-character
+    pkg/PHANE-evaluation
     pkg/PHANE-measure-class
     pkg/PHANE-measure-transition
     pkg/PHANE-transition-matrix
