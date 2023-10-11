@@ -56,7 +56,6 @@ import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Vector qualified as V
 import Data.Word
--- imports for traceNoLFIO
 import Foreign.C.String
 import Numeric
 import System.IO.Unsafe
