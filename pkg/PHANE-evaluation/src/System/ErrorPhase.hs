@@ -35,7 +35,7 @@ Define which phase of a computation the error occurred in.
 Combining this with another "error" monand allows the use of custom exit codes.
 -}
 data ErrorPhase
-    = Inputing
+    = Inputting
     | Parsing
     | Unifying
     | Computing
@@ -45,7 +45,7 @@ data ErrorPhase
 
 instance Arbitrary ErrorPhase where
     {-# INLINE arbitrary #-}
-    arbitrary = elements [Inputing, Parsing, Unifying, Computing, Outputting]
+    arbitrary = elements [Inputting, Parsing, Unifying, Computing, Outputting]
 
 
 instance CoArbitrary ErrorPhase where
@@ -93,7 +93,7 @@ errorPhaseToExitCode ∷ Bimap ErrorPhase ExitCode
 errorPhaseToExitCode =
     fromAscPairList . force $
         second buildExitCode
-            <$> [ (Inputing, [2])
+            <$> [ (Inputting, [2])
                 , (Parsing, [3])
                 , (Unifying, [2, 3])
                 , (Computing, [4])

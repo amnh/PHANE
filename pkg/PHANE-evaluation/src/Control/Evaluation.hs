@@ -607,7 +607,7 @@ doLog config level loc txt =
 
                 logger = feedLogger feed
             in  case timeStamp of
-                    Just ts → pushLogStrLn logger $ prefix renderedLevelFull <> renderedTime ts <> txt
+                    Just ts → pushLogStr logger $ prefix renderedLevelFull <> renderedTime ts <> txt
                     Nothing →
                         let coloredOutput ∷ LogStr
                             coloredOutput =
