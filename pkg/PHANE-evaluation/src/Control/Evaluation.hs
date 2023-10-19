@@ -51,6 +51,7 @@ import Control.Exception
 import Control.Monad (when)
 import Control.Monad.Fix (MonadFix (..))
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.Random.Class (MonadRandom (..))
@@ -253,6 +254,13 @@ instance MonadReader env (Evaluation env) where
 
 
     local f = Evaluation . local (fmap f) . unwrapEvaluation
+
+
+instance MonadUnliftIO (Evaluation env) where
+    {-# INLINE withRunInIO #-}
+    -- f :: (forall a. Evaluation env a -> IO a) -> IO b
+    withRunInIO f = Evaluation . ReaderT $ \env →
+        pure <$> f (executeEvaluation env)
 
 
 instance MonadZip (Evaluation env) where

@@ -128,6 +128,7 @@ Library
     quickcheck-instances >= 0.3.22 && < 1.0,
     random >= 1.2 && < 2.0,
     time >= 1.12 && < 2.0,
+    unliftio-core >= 0.2 && < 1.0,
 
   Exposed-Modules:
     Control.Evaluation
