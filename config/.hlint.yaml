@@ -27,14 +27,6 @@
         , rhs: fold
         }
 
-# Custom suggestion hints
-- suggestion: { name: Strict sum
-              , note: Prefer custom strict sum to lazy sum. Decreases laziness
-              , lhs: sum
-              , rhs: sum'
-              }
-
-
 # Replace a $ b $ c with a . b $ c
 - group: { name: dollar, enabled: true }
 

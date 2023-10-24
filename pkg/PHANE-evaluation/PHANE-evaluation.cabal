@@ -60,6 +60,7 @@ Common ghc-flags
     Ghc-Options:
       -O2
       -threaded
+
       -- Optimization flags
       -fexcess-precision
       -fexpose-all-unfoldings
@@ -104,21 +105,44 @@ Common language-specs
     LambdaCase
     NoGeneralizedNewtypeDeriving
     UnicodeSyntax
-    
+
   Default-Language:
     GHC2021
 
 
-Library 
+Executable test-harness
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Main-Is:
+    tester.hs
+
+  Build-Depends:
+    PHANE-evaluation,
+    base >= 4.11 && < 5.0,
+    MonadRandom >= 0.6 && < 1.0,
+
+  GHC-Options:
+    -threaded
+
+  Hs-Source-Dirs:
+    app
+
+
+Library
 
   Import:
     ghc-flags,
     language-specs
 
   Build-Depends:
+    async >= 2.2 && < 3.0,
     base >= 4.11 && < 5.0,
     bimap >= 0.3 && < 1.0,
     deepseq >= 1.4 && < 2.0,
+    exceptions,
     fast-logger >= 3.2 && < 4.0,
     MonadRandom >= 0.6 && < 1.0,
     mtl >= 2.2.2 && < 3.0,
@@ -140,8 +164,3 @@ Library
 
   Other-Modules:
     Control.Evaluation.Result
-
-  Visibility:
-    public
-
-

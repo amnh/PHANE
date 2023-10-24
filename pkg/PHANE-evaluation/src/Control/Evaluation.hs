@@ -5,10 +5,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -32,6 +33,7 @@ module Control.Evaluation (
 
     -- * Parallel operations
     getParallelChunkMap,
+    getParallelChunkTraverse,
 
     -- * Randomness operations
     RandomSeed (),
@@ -44,32 +46,35 @@ module Control.Evaluation (
 ) where
 
 import Control.Applicative (Alternative (..))
-import Control.Concurrent (getNumCapabilities)
+import Control.Arrow ((&&&))
+import Control.Concurrent.Async
 import Control.DeepSeq
 import Control.Evaluation.Result
 import Control.Exception
-import Control.Monad (when)
-import Control.Monad.Fix (MonadFix (..))
+import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
-import Control.Monad.Random.Class (MonadRandom (..))
+import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
 import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
 import Data.Bits (xor)
-import Data.Foldable (fold, traverse_)
+import Data.Foldable (fold, toList, traverse_)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Semigroup (sconcat)
 import Data.String
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import GHC.Conc (getNumCapabilities)
 import GHC.Generics
 import GHC.Stack (CallStack)
 import GHC.Stack qualified as GHC
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.ErrorPhase
 import System.Exit
-import System.Log.FastLogger
+import System.Log.FastLogger hiding (check)
 import System.Random.Stateful
 
 
@@ -103,9 +108,11 @@ The following should hold:
 
      Use the 'MonadRandom' type-class methods to generate random values.
 
-  *  __Parallel Map:__
+  *  __Parallelism:__
 
-     Use the 'getParallelChunkMap' to compute in parallel, equal sized-chunks of the list.
+     Use the 'getParallelChunkMap' to compute a pure function in parallel, equal sized-chunks of the list.
+
+     Use the 'getParallelChunkTraverse' to compute an effectful function in parallel, equal sized-chunks of the list.
 -}
 newtype Evaluation env a = Evaluation
     --    { unwrapEvaluation ∷ RWST env Void (ImplicitEnvironment) IO (EvaluationResult a)
@@ -115,18 +122,28 @@ newtype Evaluation env a = Evaluation
     deriving stock (Generic)
 
 
+type role Evaluation representational nominal
+
+
 data ImplicitEnvironment env = ImplicitEnvironment
-    { implicitLogConfig ∷ {-# UNPACK #-} LogConfig
+    { implicitBucketNum ∷ {-# UNPACK #-} ParallelBucketCount
+    , implicitLogConfig ∷ {-# UNPACK #-} LogConfig
     , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
-    , implicitBucketMap ∷ !(∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
     , explicitReader ∷ env
     }
+
+
+type role ImplicitEnvironment representational
 
 
 data LoggerFeed = LoggerFeed
     { feedLevel ∷ Verbosity
     , feedLogger ∷ LoggerSet
     }
+
+
+newtype ParallelBucketCount = MaxPar Word
+    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
 
 
 {- |
@@ -256,11 +273,21 @@ instance MonadReader env (Evaluation env) where
     local f = Evaluation . local (fmap f) . unwrapEvaluation
 
 
+instance MonadThrow (Evaluation env) where
+    throwM e = Evaluation $ throwM e
+
+
 instance MonadUnliftIO (Evaluation env) where
     {-# INLINE withRunInIO #-}
     -- f :: (forall a. Evaluation env a -> IO a) -> IO b
-    withRunInIO f = Evaluation . ReaderT $ \env →
-        pure <$> f (executeEvaluation env)
+    withRunInIO f =
+        {-# SCC withRunInIO_Evaluation #-}
+        Evaluation . ReaderT $ \env →
+            {-# SCC withRunInIO_ReaderT_f #-}
+            withRunInIO $
+                {-# SCC withRunInIO_WITH_run #-}
+                \run →
+                    pure <$> f (run . executeEvaluation env)
 
 
 instance MonadZip (Evaluation env) where
@@ -299,18 +326,16 @@ Initial randomness seed and configuration for logging outputs required to initia
 runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
-    maxBuckets ← liftIO $ pred <$> getNumCapabilities
-    let bucketMap ∷ ∀ a b. (NFData b) ⇒ (a → b) → [a] → [b]
-        bucketMap
-            | maxBuckets <= 1 = fmap
-            | otherwise = \f xs →
-                let len = length xs
-                    num = case len `quotRem` maxBuckets of
-                        (q, 0) → q
-                        (q, _) → q + 1
-                in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
+    maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
+    let implicit =
+            ImplicitEnvironment
+                { implicitBucketNum = maxBuckets
+                , implicitLogConfig = logConfig
+                , implicitRandomGen = randomRef
+                , explicitReader = environ
+                }
 
-    executeEvaluation (ImplicitEnvironment logConfig randomRef bucketMap environ) eval
+    executeEvaluation implicit eval
 
 
 {- |
@@ -380,20 +405,6 @@ setVerbosityFileLog =
     in  setVerbosityOf' modConfigStream
 
 
-{-
-
-modConfigStream f x =
-    let transformation = modImplicitLogConfig $
-          updat
-
-        (f (setFeedLevel v))
-
-            x{configStream = f $ configStream x}
-   setVerbosityOf
-    setVerbosityOf modConfigStream
-    in  Evaluation . withReaderT transformation . unwrapEvaluation
--}
-
 {- |
 /Note:/ Does not work on infinite lists!
 
@@ -403,8 +414,44 @@ queried and memoized at the start of the 'Evaluation'. The length of the supplie
 list is calculated, and the list is split into sub-lists of equal length (± 1).
 Each sub list is given to a thread and fully evaluated.
 -}
-getParallelChunkMap ∷ Evaluation env (∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
-getParallelChunkMap = Evaluation $ reader (pure . implicitBucketMap)
+getParallelChunkMap ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → b) → [a] → [b])
+getParallelChunkMap =
+    let construct ∷ Word → (a → b) → [a] → [b]
+        construct = \case
+            0 → fmap
+            1 → fmap
+            n → \f → \case
+                [] → []
+                x : xs →
+                    let !maxBuckets = fromIntegral n
+                        len = length xs
+                        num = case len `quotRem` maxBuckets of
+                            (q, 0) → q
+                            (q, _) → q + 1
+                        y :| ys = withStrategy (parListChunk' num rdeepseq) $ f <$> x :| xs
+                    in  y : ys
+    in  Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
+
+
+{- | Divides a list into chunks, and applies the strategy
+@'evalList' strat@ to each chunk in parallel.
+
+It is expected that this function will be replaced by a more
+generic clustering infrastructure in the future.
+
+If the chunk size is 1 or less, 'parListChunk' is equivalent to
+'parList'
+-}
+parListChunk' ∷ Int → Strategy a → Strategy (NonEmpty a)
+parListChunk' n strat xs = sconcat `fmap` parTraversable (evalTraversable strat) (chunk' n xs)
+
+
+chunk' ∷ Int → NonEmpty a → NonEmpty (NonEmpty a)
+chunk' n (x :| xs) =
+    let (as, bs) = splitAt (n - 1) xs
+    in  (x :| as) :| case bs of
+            [] → []
+            y : ys → toList . chunk' n $ y :| ys
 
 
 {- |
@@ -423,10 +470,9 @@ initializeRandomSeed = do
 Set the random seed for the sub-'Evaluation'.
 -}
 setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env () → Evaluation env ()
-setRandomSeed seed eval = Evaluation $ do
-    newGen ← newAtomicGenM $ mkStdGen (fromEnum seed)
-    let transformation store = store{implicitRandomGen = newGen}
-    withReaderT transformation $ unwrapEvaluation eval
+setRandomSeed seed eval =
+    let gen = mkStdGen $ fromEnum seed
+    in  withRandomGenerator gen eval
 
 
 {- |
@@ -440,7 +486,27 @@ mapEvaluation f = Evaluation . withReaderT (fmap f) . unwrapEvaluation
 Fail and indicate the phase in which the failure occurred.
 -}
 failWithPhase ∷ (ToLogStr s) ⇒ ErrorPhase → s → Evaluation env a
-failWithPhase p = Evaluation . pure . evalUnitWithPhase p
+failWithPhase p message = do
+    logWith LogFail message
+    Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
+
+
+chunkEvenlyBy ∷ Word → [a] → [[a]]
+chunkEvenlyBy n xs =
+    let num = fromEnum n
+        len = length xs
+        (q, r) = len `quotRem` num
+        sizes = replicate r (q + 1) <> replicate (num - r) q
+    in  chunkInto sizes xs
+
+
+chunkInto ∷ [Int] → [a] → [[a]]
+chunkInto (n : ns) jobs@(_ : _) = as : chunkInto ns bs where (as, bs) = splitAt n jobs
+chunkInto _ _ = []
+
+
+splitGenInto ∷ (RandomGenM (AtomicGenM StdGen) StdGen m) ⇒ Word → AtomicGenM StdGen → m [StdGen]
+splitGenInto n = fmap force . replicateM (fromEnum n) . splitGenM
 
 
 executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
@@ -450,11 +516,11 @@ executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
         flushLogBuffers ∷ IO ()
         flushLogBuffers =
             let flushBufferOf ∷ (LogConfig → LoggerFeed) → IO ()
-                flushBufferOf g = rmLoggerSet . feedLogger $ g logConfig
+                flushBufferOf g = flushLogStr . feedLogger $ g logConfig
             in  do
                     flushBufferOf configSTDERR
                     flushBufferOf configSTDOUT
-                    traverse_ (rmLoggerSet . feedLogger) $ configStream logConfig
+                    traverse_ (flushLogStr . feedLogger) $ configStream logConfig
     in  liftIO . flip finally flushLogBuffers $ do
             res ← f implicitEnv
             case runEvaluationResult res of
@@ -511,6 +577,14 @@ initLoggerSetSTDOUT = newStdoutLoggerSet bufferSize
 
 initLoggerSetStream ∷ FilePath → IO LoggerSet
 initLoggerSetStream = newFileLoggerSet bufferSize
+
+
+withRandomGenerator ∷ StdGen → Evaluation env a → Evaluation env a
+withRandomGenerator gen eval =
+    let transformation ∷ AtomicGenM StdGen → ImplicitEnvironment env → ImplicitEnvironment env
+        transformation val store = store{implicitRandomGen = val}
+    in  liftIO (newAtomicGenM gen) >>= \ref →
+            Evaluation . local (transformation ref) $ unwrapEvaluation eval
 
 
 bind ∷ Evaluation env a → (a → Evaluation env b) → Evaluation env b
@@ -603,6 +677,9 @@ doLog config level loc txt =
                     LogTech → mkColor 5
                     LogDump → mkColor 5
 
+        printer ∷ LoggerSet → LogStr → IO ()
+        printer = pushLogStr
+
         outputLogFor ∷ LoggerFeed → Maybe FormattedTime → IO ()
         outputLogFor feed timeStamp =
             let prefix ∷ LogStr → LogStr
@@ -615,7 +692,7 @@ doLog config level loc txt =
 
                 logger = feedLogger feed
             in  case timeStamp of
-                    Just ts → pushLogStr logger $ prefix renderedLevelFull <> renderedTime ts <> txt
+                    Just ts → printer logger $ prefix renderedLevelFull <> renderedTime ts <> txt
                     Nothing →
                         let coloredOutput ∷ LogStr
                             coloredOutput =
@@ -626,7 +703,7 @@ doLog config level loc txt =
                                     , txt
                                     , resetColor
                                     ]
-                        in  pushLogStrLn logger coloredOutput
+                        in  printer logger coloredOutput
 
         errFeed = configSTDERR config
         outFeed = configSTDOUT config
@@ -645,3 +722,67 @@ doLog config level loc txt =
                         Just feed →
                             when (optShow feed) $
                                 configTiming config >>= outputLogFor feed . Just
+
+
+getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse =
+    let construct ∷ AtomicGenM StdGen → Word → (a → m b) → [a] → m [b]
+        construct randomRef = \case
+            n | n <= 1 → traverse
+            maxBuckets → flip $ \case
+                [] → const $ pure []
+                xs → \f →
+                    let jobCount ∷ Word
+                        jobCount = toEnum . force $ length xs
+
+                        allotBuckets ∷ [a] → m [(StdGen, [a])]
+                        allotBuckets ys =
+                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+
+                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                        evalBucket (gen, jobs) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> traverse f jobs
+
+                        evalJob ∷ (StdGen, a) → IO (m b)
+                        evalJob (gen, job) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> f job
+{-
+                        inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
+                        inParallel = pooledMapConcurrentlyN . fromEnum $ min maxBuckets jobCount
+-}
+                        -- For when the number of jobs do not exceed the maximum parallel threads
+                        parallelLess' ∷ m [b]
+                        parallelLess' = do
+                            (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
+                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+                        --                        (done :: [b]) <- join . liftIO $ sequenceA <$> inParallel evalJob jobs
+                        --                        pure $ force done
+
+                        -- If the number of jobs exceed the maximum parallel threads,
+                        -- we evenly distribute the jobs into "buckets" and then
+                        -- give each thread a bucket of jobs to complete concurrently.
+                        parallelMore' ∷ m [b]
+                        parallelMore' = do
+                            buckets ← allotBuckets xs
+                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                    in  {-
+                                            -- For when the number of jobs do not exceed the maximum parallel threads
+                                            parallelLess ∷ m [b]
+                                            parallelLess = do
+                                                jobs ← flip zip xs <$> splitGenInto jobCount randomRef
+                                                fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+
+                                            -- If the number of jobs exceed the maximum parallel threads,
+                                            -- we evenly distribute the jobs into "buckets" and then
+                                            -- give each thread a bucket of jobs to complete concurrently.
+                                            parallelMore ∷ m [b]
+                                            parallelMore = do
+                                                buckets ← allotBuckets xs
+                                                fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                        -}
+                        force
+                            <$> if jobCount <= maxBuckets
+                                then parallelLess'
+                                else parallelMore'
+    in  Evaluation $ reader (pure . uncurry construct . (implicitRandomGen &&& fromIntegral . implicitBucketNum))

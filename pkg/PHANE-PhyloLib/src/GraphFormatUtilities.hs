@@ -154,6 +154,7 @@ import Data.Text qualified as StrictT
 import Data.Text.Lazy qualified as T
 import GeneralUtilities
 import ParallelUtilities
+import Text.Read
 
 
 -- import qualified Data.Graph.Analysis  as GAC  currently doesn't compile (wanted to use for cycles)
@@ -1034,7 +1035,11 @@ stringGraph2TextGraphDouble inStringGraph =
     in  G.mkGraph newNodes newEdges
     where
         dummyRelabelEdges ∷ (a, b, String) → (a, b, Double)
-        dummyRelabelEdges (a, b, c) = (a, b, read c ∷ Double)
+        dummyRelabelEdges (a, b, c) =
+            let newC = readMaybe c ∷ Maybe Double
+            in  if isJust newC
+                    then (a, b, fromJust newC)
+                    else (a, b, 0.0)
 
 
 -- |  textGraph2StringGraph take P.Gr String a and converts to P.Gr Text a
