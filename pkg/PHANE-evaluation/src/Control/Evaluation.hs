@@ -5,10 +5,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -24,7 +25,7 @@ module Control.Evaluation (
     runEvaluation,
 
     -- * Logging operations
-    LogConfig (),
+    LogConfiguration (),
     initializeLogging,
     setVerbositySTDERR,
     setVerbositySTDOUT,
@@ -32,6 +33,7 @@ module Control.Evaluation (
 
     -- * Parallel operations
     getParallelChunkMap,
+    getParallelChunkTraverse,
 
     -- * Randomness operations
     RandomSeed (),
@@ -44,39 +46,41 @@ module Control.Evaluation (
 ) where
 
 import Control.Applicative (Alternative (..))
-import Control.Concurrent (getNumCapabilities)
 import Control.DeepSeq
+import Control.Evaluation.Logging.Class
+import Control.Evaluation.Logging.Configuration
 import Control.Evaluation.Result
+import Control.Evaluation.Verbosity
 import Control.Exception
-import Control.Monad (when)
-import Control.Monad.Fix (MonadFix (..))
+import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
-import Control.Monad.Random.Class (MonadRandom (..))
+import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
 import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
 import Data.Bits (xor)
-import Data.Foldable (fold, traverse_)
-import Data.String
+import Data.Foldable (toList)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Semigroup (sconcat)
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import GHC.Conc (getNumCapabilities)
 import GHC.Generics
-import GHC.Stack (CallStack)
-import GHC.Stack qualified as GHC
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.ErrorPhase
 import System.Exit
-import System.Log.FastLogger
 import System.Random.Stateful
+import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
+import Test.QuickCheck.Gen (Gen (..), variant)
+import UnliftIO.Async (pooledMapConcurrently)
 
 
 {- |
 A computational "evaluation."
 
-An evaluation has a /read-only/ global enviroment @env@, accessible to it's computation.
+An evaluation has a /read-only/ global environment @env@, accessible to it's computation.
 
 An evaluation can be in one of two states, "successful" or "failure".
 Use 'pure' to place a value inside a successful computational context.
@@ -103,9 +107,11 @@ The following should hold:
 
      Use the 'MonadRandom' type-class methods to generate random values.
 
-  *  __Parallel Map:__
+  *  __Parallelism:__
 
-     Use the 'getParallelChunkMap' to compute in parallel, equal sized-chunks of the list.
+     Use the 'getParallelChunkMap' to compute a pure function in parallel, equal sized-chunks of the list.
+
+     Use the 'getParallelChunkTraverse' to compute an effectful function in parallel, equal sized-chunks of the list.
 -}
 newtype Evaluation env a = Evaluation
     --    { unwrapEvaluation ∷ RWST env Void (ImplicitEnvironment) IO (EvaluationResult a)
@@ -115,29 +121,22 @@ newtype Evaluation env a = Evaluation
     deriving stock (Generic)
 
 
+type role Evaluation representational nominal
+
+
 data ImplicitEnvironment env = ImplicitEnvironment
-    { implicitLogConfig ∷ {-# UNPACK #-} LogConfig
+    { implicitBucketNum ∷ {-# UNPACK #-} ParallelBucketCount
+    , implicitLogConfig ∷ {-# UNPACK #-} LogConfiguration
     , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
-    , implicitBucketMap ∷ !(∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
     , explicitReader ∷ env
     }
 
 
-data LoggerFeed = LoggerFeed
-    { feedLevel ∷ Verbosity
-    , feedLogger ∷ LoggerSet
-    }
+type role ImplicitEnvironment representational
 
 
-{- |
-Configuration specifying how log messages are to be handled.
--}
-data LogConfig = LogConfig
-    { configSTDERR ∷ {-# UNPACK #-} LoggerFeed
-    , configSTDOUT ∷ {-# UNPACK #-} LoggerFeed
-    , configStream ∷ {-# UNPACK #-} Maybe LoggerFeed
-    , configTiming ∷ IO FormattedTime
-    }
+newtype ParallelBucketCount = MaxPar Word
+    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
 
 
 {- |
@@ -145,6 +144,18 @@ A seed from which a /(practically infinite)/ stream of pseudorandomness can be g
 -}
 newtype RandomSeed = RandomSeed Int
     deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
+
+
+instance Alternative (Evaluation env) where
+    {-# INLINEABLE (<|>) #-}
+    (<|>) x y = Evaluation . ReaderT $ \store → do
+        res ← runReaderT (unwrapEvaluation x) store
+        case runEvaluationResult res of
+            Left _ → runReaderT (unwrapEvaluation y) store
+            Right _ → pure res
+
+
+    empty = fail "Alternative identity"
 
 
 instance Applicative (Evaluation env) where
@@ -160,16 +171,18 @@ instance Applicative (Evaluation env) where
     (*>) = propagate
 
 
-instance Alternative (Evaluation env) where
-    {-# INLINEABLE (<|>) #-}
-    (<|>) x y = Evaluation . ReaderT $ \store → do
-        res ← runReaderT (unwrapEvaluation x) store
-        case runEvaluationResult res of
-            Left _ → runReaderT (unwrapEvaluation y) store
-            Right _ → pure res
+instance (Arbitrary a, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
+    arbitrary = do
+        fun ← (arbitrary ∷ Gen (ImplicitEnvironment env → EvaluationResult a))
+        pure . Evaluation . ReaderT $ pure . fun
 
 
-    empty = fail "Alternative identity"
+instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitEnvironment env) where
+    coarbitrary store =
+        let x = implicitBucketNum store
+            y = implicitLogConfig store
+            z = explicitReader store
+        in  coarbitrary z . coarbitrary y . variant x
 
 
 deriving stock instance Functor ImplicitEnvironment
@@ -185,7 +198,7 @@ instance Logger (Evaluation env) where
     logWith level str = Evaluation $ do
         impEnv ← ask
         let logConfig = implicitLogConfig impEnv
-        liftIO . fmap pure . doLogCs logConfig level ?callStack $ toLogStr str
+        liftIO . fmap pure . processMessage logConfig level $ logToken str
 
 
 instance (NFData a) ⇒ NFData (Evaluation env a) where
@@ -215,6 +228,14 @@ instance MonadFail (Evaluation env) where
 
 instance MonadFix (Evaluation env) where
     mfix f = let a = a >>= f in a
+
+
+instance MonadInterleave (Evaluation env) where
+    interleave action = Evaluation . ReaderT $ \store → do
+        let gen = implicitRandomGen store
+        gen' ← applyAtomicGen split gen >>= newAtomicGenM
+        let store' = store{implicitRandomGen = gen'}
+        pure <$> executeEvaluation store' action
 
 
 instance MonadIO (Evaluation env) where
@@ -256,11 +277,21 @@ instance MonadReader env (Evaluation env) where
     local f = Evaluation . local (fmap f) . unwrapEvaluation
 
 
+instance MonadThrow (Evaluation env) where
+    throwM e = Evaluation $ throwM e
+
+
 instance MonadUnliftIO (Evaluation env) where
     {-# INLINE withRunInIO #-}
     -- f :: (forall a. Evaluation env a -> IO a) -> IO b
-    withRunInIO f = Evaluation . ReaderT $ \env →
-        pure <$> f (executeEvaluation env)
+    withRunInIO f =
+        {-# SCC withRunInIO_Evaluation #-}
+        Evaluation . ReaderT $ \env →
+            {-# SCC withRunInIO_ReaderT_f #-}
+            withRunInIO $
+                {-# SCC withRunInIO_WITH_run #-}
+                \run →
+                    pure <$> f (run . executeEvaluation env)
 
 
 instance MonadZip (Evaluation env) where
@@ -285,10 +316,11 @@ instance PrimMonad (Evaluation env) where
 
 instance Semigroup (Evaluation env a) where
     {-# INLINE (<>) #-}
-    x <> y =
-        let xReader = unwrapEvaluation x
-            yReader = unwrapEvaluation y
-        in  Evaluation $ liftA2 (<>) xReader yReader
+    lhs <> rhs = Evaluation . ReaderT $ \store → do
+        x ← runReaderT (unwrapEvaluation lhs) store
+        case runEvaluationResult x of
+            Left s → pure . EU $ Left s
+            _ → runReaderT (unwrapEvaluation rhs) store
 
 
 {- |
@@ -296,58 +328,18 @@ Run the 'Evaluation' computation.
 
 Initial randomness seed and configuration for logging outputs required to initiate the computation.
 -}
-runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
+runEvaluation ∷ (MonadIO m) ⇒ LogConfiguration → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
-    maxBuckets ← liftIO $ pred <$> getNumCapabilities
-    let bucketMap ∷ ∀ a b. (NFData b) ⇒ (a → b) → [a] → [b]
-        bucketMap
-            | maxBuckets <= 1 = fmap
-            | otherwise = \f xs →
-                let len = length xs
-                    num = case len `quotRem` maxBuckets of
-                        (q, 0) → q
-                        (q, _) → q + 1
-                in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
-
-    executeEvaluation (ImplicitEnvironment logConfig randomRef bucketMap environ) eval
-
-
-{- |
-Create configuration for logging output stream to initialize an 'Evaluation'.
--}
-initializeLogging
-    ∷ Verbosity
-    -- ^ Verbosity level for STDOUT
-    → Verbosity
-    -- ^ Verbosity level for STDERR
-    → Maybe (Verbosity, FilePath)
-    -- ^ optional verbosity level for a file stream
-    → IO LogConfig
-initializeLogging vOut vErr vFile =
-    let builderFilePath ∷ Maybe (Verbosity, FilePath) → IO (Maybe LoggerFeed)
-        builderFilePath fileMay =
-            let mkFeed ∷ Maybe (Verbosity, LoggerSet) → Maybe LoggerFeed
-                mkFeed = fmap (uncurry LoggerFeed)
-
-                create = traverse (traverse initLoggerSetStream)
-
-                blankFile ∷ (Verbosity, FilePath) → Maybe (Verbosity, FilePath)
-                blankFile = \case
-                    (_, []) → Nothing
-                    x → Just x
-            in  fmap mkFeed . create $ fileMay >>= blankFile
-
-        builderStandard ∷ Verbosity → IO LoggerSet → IO LoggerFeed
-        builderStandard level = fmap (LoggerFeed level)
-
-        timeFormat ∷ TimeFormat
-        timeFormat = "%Y-%m-%d %T %z"
-    in  LogConfig
-            <$> builderStandard vErr initLoggerSetSTDERR
-            <*> builderStandard vOut initLoggerSetSTDOUT
-            <*> builderFilePath vFile
-            <*> newTimeCache timeFormat
+    maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
+    let implicit =
+            ImplicitEnvironment
+                { implicitBucketNum = maxBuckets
+                , implicitLogConfig = logConfig
+                , implicitRandomGen = randomRef
+                , explicitReader = environ
+                }
+    executeEvaluation implicit eval
 
 
 {- |
@@ -370,41 +362,55 @@ Set the verbosity level of log data streamed to the log file (if any) for the su
 setVerbosityFileLog ∷ Verbosity → Evaluation env () → Evaluation env ()
 setVerbosityFileLog =
     let setVerbosityOf'
-            ∷ ((Maybe LoggerFeed → Maybe LoggerFeed) → LogConfig → LogConfig)
+            ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)
             → Verbosity
             → Evaluation env a
             → Evaluation env a
         setVerbosityOf' f v =
-            let transformation = modImplicitLogConfig (f (fmap (setFeedLevel v)))
+            let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
             in  Evaluation . withReaderT transformation . unwrapEvaluation
     in  setVerbosityOf' modConfigStream
 
-
-{-
-
-modConfigStream f x =
-    let transformation = modImplicitLogConfig $
-          updat
-
-        (f (setFeedLevel v))
-
-            x{configStream = f $ configStream x}
-   setVerbosityOf
-    setVerbosityOf modConfigStream
-    in  Evaluation . withReaderT transformation . unwrapEvaluation
--}
 
 {- |
 /Note:/ Does not work on infinite lists!
 
 Get a parallel mapping function which evenly distributes elements of the list
-accross available threads. The number of threads available on they system is
+across available threads. The number of threads available on they system is
 queried and memoized at the start of the 'Evaluation'. The length of the supplied
 list is calculated, and the list is split into sub-lists of equal length (± 1).
 Each sub list is given to a thread and fully evaluated.
 -}
-getParallelChunkMap ∷ Evaluation env (∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
-getParallelChunkMap = Evaluation $ reader (pure . implicitBucketMap)
+getParallelChunkMap ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → b) → [a] → [b])
+getParallelChunkMap =
+    let construct ∷ Word → (a → b) → [a] → [b]
+        construct = \case
+            0 → fmap
+            1 → fmap
+            n → \f → \case
+                [] → []
+                x : xs →
+                    let !maxBuckets = fromIntegral n
+                        len = length xs
+                        num = case len `quotRem` maxBuckets of
+                            (q, 0) → q
+                            (q, _) → q + 1
+                        y :| ys = withStrategy (parListChunk' num rdeepseq) $ f <$> x :| xs
+                    in  y : ys
+    in  Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
+
+
+{- |
+/Note:/ Does not work on infinite lists!
+
+Like getParallelChunkMap, but performs monadic actions over the list in parallel.
+Each thread will have a different, /uncorrelated/ random number generator.
+-}
+getParallelChunkTraverse
+    ∷ ∀ a b env t
+     . (NFData b, Traversable t)
+    ⇒ Evaluation env ((a → Evaluation env b) → t a → Evaluation env (t b))
+getParallelChunkTraverse = pure parallelTraverseEvaluation
 
 
 {- |
@@ -423,10 +429,9 @@ initializeRandomSeed = do
 Set the random seed for the sub-'Evaluation'.
 -}
 setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env () → Evaluation env ()
-setRandomSeed seed eval = Evaluation $ do
-    newGen ← newAtomicGenM $ mkStdGen (fromEnum seed)
-    let transformation store = store{implicitRandomGen = newGen}
-    withReaderT transformation $ unwrapEvaluation eval
+setRandomSeed seed eval =
+    let gen = mkStdGen $ fromEnum seed
+    in  withRandomGenerator gen eval
 
 
 {- |
@@ -439,209 +444,120 @@ mapEvaluation f = Evaluation . withReaderT (fmap f) . unwrapEvaluation
 {- |
 Fail and indicate the phase in which the failure occurred.
 -}
-failWithPhase ∷ (ToLogStr s) ⇒ ErrorPhase → s → Evaluation env a
-failWithPhase p = Evaluation . pure . evalUnitWithPhase p
+failWithPhase ∷ (Loggable s) ⇒ ErrorPhase → s → Evaluation env a
+failWithPhase p message = do
+    logWith LogFail message
+    Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
 
 
 executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
 executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
     let logConfig = implicitLogConfig implicitEnv
-
-        flushLogBuffers ∷ IO ()
-        flushLogBuffers =
-            let flushBufferOf ∷ (LogConfig → LoggerFeed) → IO ()
-                flushBufferOf g = rmLoggerSet . feedLogger $ g logConfig
-            in  do
-                    flushBufferOf configSTDERR
-                    flushBufferOf configSTDOUT
-                    traverse_ (rmLoggerSet . feedLogger) $ configStream logConfig
-    in  liftIO . flip finally flushLogBuffers $ do
+    in  liftIO . flip finally (flushLogs logConfig) $ do
             res ← f implicitEnv
             case runEvaluationResult res of
                 Right value → pure value
                 Left (phase, txt) →
                     let exitCode = errorPhaseToExitCode BM.! phase
-                    in  doLogCs logConfig LogFail ?callStack txt *> exitWith exitCode
+                    in  processMessage logConfig LogFail txt *> exitWith exitCode
+
+
+parallelTraverseEvaluation
+    ∷ ∀ a b env t
+     . (NFData b, Traversable t)
+    ⇒ (a → Evaluation env b)
+    → t a
+    → Evaluation env (t b)
+parallelTraverseEvaluation f = pooledMapConcurrently (interleave . fmap force . f)
 
 
 setVerbosityOf
-    ∷ ((LoggerFeed → LoggerFeed) → LogConfig → LogConfig)
+    ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)
     → Verbosity
     → Evaluation env a
     → Evaluation env a
 setVerbosityOf f v =
-    let transformation = modImplicitLogConfig (f (setFeedLevel v))
+    let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
     in  Evaluation . withReaderT transformation . unwrapEvaluation
 
 
-modConfigSTDERR ∷ (LoggerFeed → LoggerFeed) → LogConfig → LogConfig
-modConfigSTDERR f x = x{configSTDERR = f $ configSTDERR x}
-
-
-modConfigSTDOUT ∷ (LoggerFeed → LoggerFeed) → LogConfig → LogConfig
-modConfigSTDOUT f x = x{configSTDOUT = f $ configSTDOUT x}
-
-
-modConfigStream ∷ (Maybe LoggerFeed → Maybe LoggerFeed) → LogConfig → LogConfig
-modConfigStream f x = x{configStream = f $ configStream x}
-
-
-setFeedLevel ∷ Verbosity → LoggerFeed → LoggerFeed
-setFeedLevel v x = x{feedLevel = v}
-
-
-modImplicitLogConfig
-    ∷ (LogConfig → LogConfig)
+modImplicitLogConfiguration
+    ∷ (LogConfiguration → LogConfiguration)
     → ImplicitEnvironment env
     → ImplicitEnvironment env
-modImplicitLogConfig f x = x{implicitLogConfig = f $ implicitLogConfig x}
+modImplicitLogConfiguration f x = x{implicitLogConfig = f $ implicitLogConfig x}
 
 
-bufferSize ∷ BufSize
-bufferSize = 4096
-
-
-initLoggerSetSTDERR ∷ IO LoggerSet
-initLoggerSetSTDERR = newStderrLoggerSet bufferSize
-
-
-initLoggerSetSTDOUT ∷ IO LoggerSet
-initLoggerSetSTDOUT = newStdoutLoggerSet bufferSize
-
-
-initLoggerSetStream ∷ FilePath → IO LoggerSet
-initLoggerSetStream = newFileLoggerSet bufferSize
+withRandomGenerator ∷ StdGen → Evaluation env a → Evaluation env a
+withRandomGenerator gen eval =
+    let transformation ∷ AtomicGenM StdGen → ImplicitEnvironment env → ImplicitEnvironment env
+        transformation val store = store{implicitRandomGen = val}
+    in  liftIO (newAtomicGenM gen) >>= \ref →
+            Evaluation . local (transformation ref) $ unwrapEvaluation eval
 
 
 bind ∷ Evaluation env a → (a → Evaluation env b) → Evaluation env b
-bind x f = Evaluation $ do
-    y ← unwrapEvaluation x
+bind x f = Evaluation . ReaderT $ \store → do
+    y ← runReaderT (unwrapEvaluation x) store
     case runEvaluationResult y of
         Left s → pure . EU $ Left s
-        Right v → unwrapEvaluation (f v)
+        Right v → runReaderT (unwrapEvaluation (f v)) store
 
 
 apply ∷ Evaluation env (t → a) → Evaluation env t → Evaluation env a
-apply lhs rhs = Evaluation $ do
-    x ← unwrapEvaluation lhs
+apply lhs rhs = Evaluation . ReaderT $ \store → do
+    x ← runReaderT (unwrapEvaluation lhs) store
     case runEvaluationResult x of
         Left s → pure . EU $ Left s
         Right f → do
-            y ← unwrapEvaluation rhs
+            y ← runReaderT (unwrapEvaluation rhs) store
             pure . EU $ case runEvaluationResult y of
                 Left s → Left s
                 Right v → Right $ f v
 
 
 propagate ∷ Evaluation env a → Evaluation env b → Evaluation env b
-propagate lhs rhs = Evaluation $ do
-    x ← unwrapEvaluation lhs
+propagate lhs rhs = Evaluation . ReaderT $ \store → do
+    x ← runReaderT (unwrapEvaluation lhs) store
     case runEvaluationResult x of
         Left s → pure . EU $ Left s
-        Right _ → unwrapEvaluation rhs
+        _ → runReaderT (unwrapEvaluation rhs) store
 
 
-doLogCs ∷ (MonadIO m) ⇒ LogConfig → LogLevel → CallStack → LogStr → m ()
-doLogCs config level cs txt =
-    let loc = case GHC.getCallStack cs of
-            ((_, l) : _) → GHC.srcLocFile l <> ":" <> show (GHC.srcLocStartLine l)
-            _ → "unknown"
-    in  doLog config level (toLogStr loc) txt
+{- |
+Divides a list into chunks, and applies the strategy
+@'evalList' s@ to each chunk in parallel.
+
+It is expected that this function will be replaced by a more
+generic clustering infrastructure in the future.
+
+If the chunk size is 1 or less, 'parListChunk' is equivalent to
+'parList'
+-}
+parListChunk' ∷ Int → Strategy a → Strategy (NonEmpty a)
+parListChunk' n s xs = sconcat `fmap` parTraversable (evalTraversable s) (chunk' n xs)
 
 
-doLog ∷ (MonadIO m) ⇒ LogConfig → LogLevel → LogStr → LogStr → m ()
-doLog config level loc txt =
-    let renderedLevelFull ∷ LogStr
-        renderedLevelFull = case level of
-            LogFail → "[FAIL]"
-            LogWarn → "[WARN]"
-            LogDone → "[DONE]"
-            LogInfo → "[INFO]"
-            LogMore → "[MORE]"
-            LogTech → "[TECH]"
-            LogDump → "[DUMP]"
+chunk' ∷ Int → NonEmpty a → NonEmpty (NonEmpty a)
+chunk' n (x :| xs) =
+    let (as, bs) = splitAt (n - 1) xs
+    in  (x :| as) :| case bs of
+            [] → []
+            y : ys → toList . chunk' n $ y :| ys
 
-        renderedLevelNice ∷ LogStr
-        renderedLevelNice = case level of
-            LogFail → "[FAIL]"
-            LogWarn → "[WARN]"
-            LogTech → "[TECH]"
-            LogDump → "[DUMP]"
-            _ → ""
+{-
+chunkEvenlyBy ∷ Word → [a] → [[a]]
+chunkEvenlyBy n xs =
+    let num = fromEnum n
+        len = length xs
+        (q, r) = len `quotRem` num
+        sizes = replicate r (q + 1) <> replicate (num - r) q
+    in  chunkInto sizes xs
 
-        renderedLoc ∷ LogStr
-        renderedLoc =
-            let fullTrace = " <" <> toLogStr loc <> ">"
-            in  case level of
-                    LogTech → fullTrace
-                    LogDump → fullTrace
-                    _ → mempty
+chunkInto ∷ [Int] → [a] → [[a]]
+chunkInto (n : ns) jobs@(_ : _) = as : chunkInto ns bs where (as, bs) = splitAt n jobs
+chunkInto _ _ = []
 
-        renderedTime ∷ FormattedTime → LogStr
-        renderedTime t = toLogStr t <> " @ "
-
-        resetColor = "\o33[0;0m"
-
-        (setColorPrefix, setColorSuffix) =
-            let mkColorNum ∷ Word → Word → LogStr
-                mkColorNum m n = fromString . show $ m + n
-
-                mkColorPref ∷ Word → LogStr
-                mkColorPref n = "\o33[0;" <> mkColorNum 90 n <> "m"
-
-                mkColorSuff ∷ Word → LogStr
-                mkColorSuff n = "\o33[0;" <> mkColorNum 30 n <> "m"
-
-                mkColor ∷ Word → (LogStr, LogStr)
-                mkColor x = (mkColorPref x, mkColorSuff x)
-            in  case level of
-                    LogFail → mkColor 1
-                    LogWarn → mkColor 3
-                    LogDone → mkColor 2
-                    LogInfo → mkColor 7
-                    LogMore → mkColor 6
-                    LogTech → mkColor 5
-                    LogDump → mkColor 5
-
-        outputLogFor ∷ LoggerFeed → Maybe FormattedTime → IO ()
-        outputLogFor feed timeStamp =
-            let prefix ∷ LogStr → LogStr
-                prefix x =
-                    let openning = x <> renderedLoc
-                        seperatorOf
-                            | openning == "" = id
-                            | otherwise = (<> " ")
-                    in  seperatorOf openning
-
-                logger = feedLogger feed
-            in  case timeStamp of
-                    Just ts → pushLogStr logger $ prefix renderedLevelFull <> renderedTime ts <> txt
-                    Nothing →
-                        let coloredOutput ∷ LogStr
-                            coloredOutput =
-                                fold
-                                    [ setColorPrefix
-                                    , prefix renderedLevelNice
-                                    , setColorSuffix
-                                    , txt
-                                    , resetColor
-                                    ]
-                        in  pushLogStrLn logger coloredOutput
-
-        errFeed = configSTDERR config
-        outFeed = configSTDOUT config
-        errShow = optShow errFeed
-        outShow = optShow outFeed && not errShow
-        optShow x = case verbosityToLogLevel $ feedLevel x of
-            Just spec | spec <= level → True
-            _ → False
-    in  liftIO $
-            let
-            in  do
-                    when errShow $ outputLogFor errFeed Nothing
-                    when outShow $ outputLogFor outFeed Nothing
-                    case configStream config of
-                        Nothing → pure ()
-                        Just feed →
-                            when (optShow feed) $
-                                configTiming config >>= outputLogFor feed . Just
+splitGenInto ∷ (RandomGenM (AtomicGenM StdGen) StdGen m) ⇒ Word → AtomicGenM StdGen → m [StdGen]
+splitGenInto n = fmap force . replicateM (fromEnum n) . splitGenM
+-}

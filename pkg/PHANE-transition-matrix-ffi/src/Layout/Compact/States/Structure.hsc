@@ -1,9 +1,6 @@
--- |
--- License     :  BSD-style
---
--- Maintainer  :  wheeler@amnh.org
--- Portability :  portable
---
+{- |
+Allocate matricies across the FFI.
+-}
 
 {-# Language FlexibleInstances #-}
 {-# Language ForeignFunctionInterface #-}
@@ -60,12 +57,15 @@ module Layout.Compact.States.Structure
 
 import Control.DeepSeq
 import Data.Foldable
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Foldable1 (last)
 import Foreign
 import Foreign.C.Types
 import GHC.Generics (Generic)
 import Measure.Transition
 import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolIndex
+import Prelude hiding (head, last)
 import System.IO.Unsafe (unsafePerformIO)
 
 -- |
@@ -794,8 +794,22 @@ renderMatrix tcm =
             let shown = show v
             in replicate (maxVal - length shown) ' ' <> shown
 
-        range  = [ 0 .. n - 1 ]
-        values = [ [ costSymbol tcm i j | j <- range ] | i <- range ]
+        range :: NonEmpty Word
+        range = 0 :| [ 1 .. n - 1 ]
+        
+        values :: NonEmpty (NonEmpty Word)
+        values = do
+            i <- range
+            pure $ do
+                j <- range
+                pure $ costSymbol tcm i j
+
+        rowHead :| rowTail = values
+        rowBody = case rowTail of
+            [] -> []
+            x:xs -> [ last $  x :| xs ]
+        rowLast = last values
+
         maxVal = length . show . maximum $ maximum <$> values
         endcap = \b e str -> indent $ fold [ b, " ", fold $ pad <$> str, " ", e ]
         indent = ("  " <>)
@@ -803,8 +817,8 @@ renderMatrix tcm =
         rowStr = endcap "│" "│"
         endStr = endcap "└" "┘"
         mtxStr = fold
-            [ fstStr <$> [        head values ]
-            , rowStr <$> ( init $ tail values )
-            , endStr <$> [        last values ]
+            [ fstStr <$> [ rowHead ]
+            , rowStr <$> rowBody
+            , endStr <$> [ rowLast ]
             ]
     in  unlines mtxStr

@@ -51,7 +51,7 @@ Common ghc-flags
     -fprof-auto
     -fprof-cafs
     -optc
-    -rdynamic
+--    -rdynamic
 
   If !flag(Optimize)
     Ghc-Options:
@@ -59,7 +59,9 @@ Common ghc-flags
   Else
     Ghc-Options:
       -O2
+      -rtsopts
       -threaded
+
       -- Optimization flags
       -fexcess-precision
       -fexpose-all-unfoldings
@@ -104,12 +106,73 @@ Common language-specs
     LambdaCase
     NoGeneralizedNewtypeDeriving
     UnicodeSyntax
-    
+
   Default-Language:
     GHC2021
 
 
-Library 
+Executable test-harness
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Main-Is:
+    tester.hs
+
+  Build-Depends:
+    PHANE-evaluation,
+    base >= 4.11 && < 5.0,
+    MonadRandom >= 0.6 && < 1.0,
+
+  GHC-Options:
+    -threaded
+
+  Hs-Source-Dirs:
+    app
+
+
+Library
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Build-Depends:
+    PHANE-evaluation:result,
+    base >= 4.11 && < 5.0,
+    bimap >= 0.3 && < 1.0,
+    deepseq >= 1.4 && < 2.0,
+    directory >= 1.3.8 && < 2.0,
+    exceptions,
+    filepath >= 1.4.100 && < 2.0,
+    MonadRandom >= 0.6 && < 1.0,
+    mtl >= 2.2.2 && < 3.0,
+    parallel >= 3.2 && < 4.0,
+    primitive >= 0.8 && < 1.0,
+    QuickCheck >= 2.14 && < 3.0,
+    random >= 1.2 && < 2.0,
+    time >= 1.12 && < 2.0,
+    unliftio >= 0.2 && < 1.0,
+    unliftio-core >= 0.2 && < 1.0,
+
+  Exposed-Modules:
+    Control.Evaluation
+    Control.Evaluation.Verbosity
+
+  Other-Modules:
+    Control.Evaluation.Logging.Configuration
+
+  Reexported-Modules:
+    Control.Evaluation.Logging.Class,
+    Control.Evaluation.Logging.Message,
+    System.ErrorPhase,
+
+  Hs-Source-Dirs:
+    src
+
+
+Library result
 
   Import:
     ghc-flags,
@@ -118,30 +181,52 @@ Library
   Build-Depends:
     base >= 4.11 && < 5.0,
     bimap >= 0.3 && < 1.0,
+    containers >= 0.6.0 && < 1.0,
     deepseq >= 1.4 && < 2.0,
-    fast-logger >= 3.2 && < 4.0,
-    MonadRandom >= 0.6 && < 1.0,
     mtl >= 2.2.2 && < 3.0,
-    parallel >= 3.2 && < 4.0,
-    primitive >= 0.8 && < 1.0,
     QuickCheck >= 2.14 && < 3.0,
     quickcheck-instances >= 0.3.22 && < 1.0,
-    random >= 1.2 && < 2.0,
-    time >= 1.12 && < 2.0,
-    unliftio-core >= 0.2 && < 1.0,
+    text >= 2.1 && < 3.0,
+    text-builder-linear >= 0.1.2 && < 1.0,
 
   Exposed-Modules:
-    Control.Evaluation
-    Control.Monad.Logger
+    Control.Evaluation.Logging.Class
+    Control.Evaluation.Logging.Message
+    Control.Evaluation.Result
     System.ErrorPhase
 
   Hs-Source-Dirs:
-    src
+    lib
+
+
+Test-Suite test-cases
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Build-Depends:
+    PHANE-evaluation,
+    PHANE-evaluation:result,
+    base >= 4.11 && < 5.0,
+    deepseq >= 1.4 && < 2.0,
+    QuickCheck >= 2.14 && < 3.0,
+    tasty >= 1.2 && < 2.0,
+    tasty-quickcheck >= 0.9 && < 1.0,
+    tasty-rerun >= 1.1.14 && < 2.0,
+
+  Ghc-Options:
+    -threaded
+
+  Hs-Source-Dirs:
+    test
+
+  Main-Is:
+    TestSuite.hs
 
   Other-Modules:
-    Control.Evaluation.Result
+    Control.Evaluation.Test
+    System.ErrorPhase.Test
 
-  Visibility:
-    public
-
-
+  Type:
+    exitcode-stdio-1.0
