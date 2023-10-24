@@ -32,6 +32,7 @@ module Control.Evaluation (
 
     -- * Parallel operations
     getParallelChunkMap,
+    getParallelChunkTraverse,
 
     -- * Randomness operations
     RandomSeed (),
@@ -45,16 +46,15 @@ module Control.Evaluation (
 
 import Control.Applicative (Alternative (..))
 import Control.Concurrent (getNumCapabilities)
+import Control.Concurrent.Async (mapConcurrently)
 import Control.DeepSeq
 import Control.Evaluation.Result
 import Control.Exception
-import Control.Monad (when)
-import Control.Monad.Fix (MonadFix (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
-import Control.Monad.Random.Class (MonadRandom (..))
+import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
 import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
@@ -119,6 +119,7 @@ data ImplicitEnvironment env = ImplicitEnvironment
     { implicitLogConfig ∷ {-# UNPACK #-} LogConfig
     , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
     , implicitBucketMap ∷ !(∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
+    , implicitBucketTraverse ∷ !(∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b])
     , explicitReader ∷ env
     }
 
@@ -310,7 +311,43 @@ runEvaluation logConfig randomSeed environ eval = do
                         (q, _) → q + 1
                 in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
 
-    executeEvaluation (ImplicitEnvironment logConfig randomRef bucketMap environ) eval
+    let bucketTraverse ∷ ∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b]
+        bucketTraverse
+            | maxBuckets <= 1 = traverse
+            | otherwise = \f xs →
+                let allotBuckets ys =
+                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+
+                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                    evalBucket (gen, jobs) = flip evalRandT gen $ do
+                        -- RandT StdGen IO a
+                        liftIO . pure . fmap force $ traverse f jobs
+                in  do
+                        buckets ← allotBuckets xs
+                        fmap (force . fold) . join . liftIO $ (sequenceA <$> mapConcurrently evalBucket buckets)
+
+    let implicit = ImplicitEnvironment logConfig randomRef bucketMap bucketTraverse environ
+
+    executeEvaluation implicit eval
+
+
+splitGenInto ∷ (RandomGenM (AtomicGenM StdGen) StdGen m) ⇒ Int → AtomicGenM StdGen → m [StdGen]
+splitGenInto n =
+    fmap force . replicateM n . splitGenM
+
+
+chunkEvenlyBy ∷ Int → [a] → [[a]]
+chunkEvenlyBy n xs =
+    let len = length xs
+        (q, r) = len `quotRem` n
+        sizes = replicate (n - r) q <> replicate r (q - 1)
+    in  chunkInto sizes xs
+
+
+chunkInto ∷ [Int] → [a] → [[a]]
+chunkInto (n : ns) (x : xs) = as : chunkInto ns bs where (as, bs) = splitAt n $ x : xs
+chunkInto _ _ = []
 
 
 {- |
@@ -408,6 +445,16 @@ getParallelChunkMap = Evaluation $ reader (pure . implicitBucketMap)
 
 
 {- |
+/Note:/ Does not work on infinite lists!
+
+Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
+Each thread will have a different /uncorrolated/ random numer generator.
+-}
+getParallelChunkTraverse ∷ Evaluation env (∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b])
+getParallelChunkTraverse = Evaluation $ reader (pure . implicitBucketTraverse)
+
+
+{- |
 Generate a 'RandomSeed' to initialize an 'Evaluation' by using system entropy.
 -}
 initializeRandomSeed ∷ IO RandomSeed
@@ -423,10 +470,9 @@ initializeRandomSeed = do
 Set the random seed for the sub-'Evaluation'.
 -}
 setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env () → Evaluation env ()
-setRandomSeed seed eval = Evaluation $ do
-    newGen ← newAtomicGenM $ mkStdGen (fromEnum seed)
-    let transformation store = store{implicitRandomGen = newGen}
-    withReaderT transformation $ unwrapEvaluation eval
+setRandomSeed seed eval =
+    let gen = mkStdGen $ fromEnum seed
+    in  withRandomGenerator gen eval
 
 
 {- |
@@ -511,6 +557,14 @@ initLoggerSetSTDOUT = newStdoutLoggerSet bufferSize
 
 initLoggerSetStream ∷ FilePath → IO LoggerSet
 initLoggerSetStream = newFileLoggerSet bufferSize
+
+
+withRandomGenerator ∷ StdGen → Evaluation env a → Evaluation env a
+withRandomGenerator gen eval =
+    let transformation ∷ AtomicGenM StdGen → ImplicitEnvironment env → ImplicitEnvironment env
+        transformation val store = store{implicitRandomGen = val}
+    in  liftIO (newAtomicGenM gen) >>= \ref →
+            Evaluation . local (transformation ref) $ unwrapEvaluation eval
 
 
 bind ∷ Evaluation env a → (a → Evaluation env b) → Evaluation env b
