@@ -420,7 +420,7 @@ getParallelChunkTraverse =
             | maxBuckets <= 1 = traverse
             | otherwise = \f xs →
                 let jobCount ∷ Int
-                    jobCount = length xs
+                    jobCount = force $ length xs
 
                     allotBuckets ∷ [a] → m [(StdGen, [a])]
                     allotBuckets ys =
@@ -435,7 +435,6 @@ getParallelChunkTraverse =
 
                     evalJob ∷ (StdGen, a) → IO (m b)
                     evalJob (gen, job) = flip evalRandT gen $ do
-                        liftIO $ putStrLn "Evaluating JOB in parallel"
                         -- RandT StdGen IO a
                         liftIO . pure $ force <$> f job
 
@@ -443,7 +442,7 @@ getParallelChunkTraverse =
                     parallelLess ∷ m [b]
                     parallelLess = do
                         jobs ← flip zip xs <$> splitGenInto jobCount randomRef
-                        join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+                        fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
 
                     -- If the number of jobs exceed the maximum parallel threads,
                     -- we evenly distribute the jobs into "buckets" and then
@@ -451,10 +450,11 @@ getParallelChunkTraverse =
                     parallelMore ∷ m [b]
                     parallelMore = do
                         buckets ← allotBuckets xs
-                        fmap (force . fold) . join . liftIO $ (sequenceA <$> mapConcurrently evalBucket buckets)
-                in  if jobCount <= maxBuckets
-                        then parallelLess
-                        else parallelMore
+                        fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                in  force
+                        <$> if jobCount <= maxBuckets
+                            then parallelLess
+                            else parallelMore
     in  Evaluation $ reader (pure . construct . (fromEnum . implicitBucketNum &&& implicitRandomGen))
 
 
