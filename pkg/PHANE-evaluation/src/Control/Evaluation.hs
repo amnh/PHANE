@@ -9,6 +9,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -45,6 +46,7 @@ module Control.Evaluation (
 ) where
 
 import Control.Applicative (Alternative (..))
+import Control.Arrow ((&&&))
 import Control.Concurrent (getNumCapabilities)
 import Control.Concurrent.Async (mapConcurrently)
 import Control.DeepSeq
@@ -116,10 +118,9 @@ newtype Evaluation env a = Evaluation
 
 
 data ImplicitEnvironment env = ImplicitEnvironment
-    { implicitLogConfig ∷ {-# UNPACK #-} LogConfig
+    { implicitBucketNum ∷ {-# UNPACK #-} ParallelBucketCount
+    , implicitLogConfig ∷ {-# UNPACK #-} LogConfig
     , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
-    , implicitBucketMap ∷ !(∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
-    , implicitBucketTraverse ∷ !(∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b])
     , explicitReader ∷ env
     }
 
@@ -128,6 +129,10 @@ data LoggerFeed = LoggerFeed
     { feedLevel ∷ Verbosity
     , feedLogger ∷ LoggerSet
     }
+
+
+newtype ParallelBucketCount = MaxPar Word
+    deriving newtype (Enum, Eq, Ord)
 
 
 {- |
@@ -300,34 +305,41 @@ Initial randomness seed and configuration for logging outputs required to initia
 runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
-    maxBuckets ← liftIO $ pred <$> getNumCapabilities
-    let bucketMap ∷ ∀ a b. (NFData b) ⇒ (a → b) → [a] → [b]
-        bucketMap
-            | maxBuckets <= 1 = fmap
-            | otherwise = \f xs →
-                let len = length xs
-                    num = case len `quotRem` maxBuckets of
-                        (q, 0) → q
-                        (q, _) → q + 1
-                in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
+    maxBuckets ← liftIO $ toEnum . pred <$> getNumCapabilities
+    {-
+        let bucketMap ∷ ∀ a b. (NFData b) ⇒ (a → b) → [a] → [b]
+            bucketMap
+                | maxBuckets <= 1 = fmap
+                | otherwise = \f xs →
+                    let len = length xs
+                        num = case len `quotRem` maxBuckets of
+                            (q, 0) → q
+                            (q, _) → q + 1
+                    in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
 
-    let bucketTraverse ∷ ∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b]
-        bucketTraverse
-            | maxBuckets <= 1 = traverse
-            | otherwise = \f xs →
-                let allotBuckets ys =
-                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+        let bucketTraverse ∷ ∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b]
+            bucketTraverse
+                | maxBuckets <= 1 = traverse
+                | otherwise = \f xs →
+                    let allotBuckets ys =
+                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
 
-                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
-                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
-                    evalBucket (gen, jobs) = flip evalRandT gen $ do
-                        -- RandT StdGen IO a
-                        liftIO . pure . fmap force $ traverse f jobs
-                in  do
-                        buckets ← allotBuckets xs
-                        fmap (force . fold) . join . liftIO $ (sequenceA <$> mapConcurrently evalBucket buckets)
-
-    let implicit = ImplicitEnvironment logConfig randomRef bucketMap bucketTraverse environ
+                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                        evalBucket (gen, jobs) = flip evalRandT gen $ do
+                            -- RandT StdGen IO a
+                            liftIO . pure . fmap force $ traverse f jobs
+                    in  do
+                            buckets ← allotBuckets xs
+                            fmap (force . fold) . join . liftIO $ (sequenceA <$> mapConcurrently evalBucket buckets)
+    -}
+    let implicit =
+            ImplicitEnvironment
+                { implicitBucketNum = maxBuckets
+                , implicitLogConfig = logConfig
+                , implicitRandomGen = randomRef
+                , explicitReader = environ
+                }
 
     executeEvaluation implicit eval
 
@@ -440,8 +452,18 @@ queried and memoized at the start of the 'Evaluation'. The length of the supplie
 list is calculated, and the list is split into sub-lists of equal length (± 1).
 Each sub list is given to a thread and fully evaluated.
 -}
-getParallelChunkMap ∷ Evaluation env (∀ a b. (NFData b) ⇒ (a → b) → [a] → [b])
-getParallelChunkMap = Evaluation $ reader (pure . implicitBucketMap)
+getParallelChunkMap ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → b) → [a] → [b])
+getParallelChunkMap =
+    let construct ∷ Int → (a → b) → [a] → [b]
+        construct maxBuckets
+            | maxBuckets <= 1 = fmap
+            | otherwise = \f xs →
+                let len = length xs
+                    num = case len `quotRem` maxBuckets of
+                        (q, 0) → q
+                        (q, _) → q + 1
+                in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
+    in  Evaluation $ reader (pure . construct . fromEnum . implicitBucketNum)
 
 
 {- |
@@ -450,8 +472,24 @@ getParallelChunkMap = Evaluation $ reader (pure . implicitBucketMap)
 Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
 Each thread will have a different /uncorrolated/ random numer generator.
 -}
-getParallelChunkTraverse ∷ Evaluation env (∀ a b m. (MonadIO m, NFData b) ⇒ (a → m b) → [a] → m [b])
-getParallelChunkTraverse = Evaluation $ reader (pure . implicitBucketTraverse)
+getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse =
+    let construct ∷ (Int, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
+        construct (maxBuckets, randomRef)
+            | maxBuckets <= 1 = traverse
+            | otherwise = \f xs →
+                let allotBuckets ys =
+                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+
+                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                    evalBucket (gen, jobs) = flip evalRandT gen $ do
+                        -- RandT StdGen IO a
+                        liftIO . pure . fmap force $ traverse f jobs
+                in  do
+                        buckets ← allotBuckets xs
+                        fmap (force . fold) . join . liftIO $ (sequenceA <$> mapConcurrently evalBucket buckets)
+    in  Evaluation $ reader (pure . construct . (fromEnum . implicitBucketNum &&& implicitRandomGen))
 
 
 {- |
