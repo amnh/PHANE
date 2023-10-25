@@ -419,8 +419,10 @@ getParallelChunkTraverse =
         construct (maxBuckets, randomRef)
             | maxBuckets <= 1 = traverse
             | otherwise = \f xs →
-                let jobCount = length xs
+                let jobCount ∷ Int
+                    jobCount = length xs
 
+                    allotBuckets ∷ [a] → m [(StdGen, [a])]
                     allotBuckets ys =
                         flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
 
