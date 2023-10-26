@@ -429,13 +429,10 @@ getParallelChunkTraverse =
                     -- For MonadInterleave we use the type: (RandT StdGen IO a)
                     evalBucket ∷ (StdGen, [a]) → IO (m [b])
                     evalBucket (gen, jobs) = flip evalRandT gen $ do
-                        liftIO $ putStrLn "Evaluating BUCKET in parallel"
-                        -- RandT StdGen IO a
                         liftIO . pure $ force <$> traverse f jobs
 
                     evalJob ∷ (StdGen, a) → IO (m b)
                     evalJob (gen, job) = flip evalRandT gen $ do
-                        -- RandT StdGen IO a
                         liftIO . pure $ force <$> f job
 
                     -- For when the number of jobs do not exceed the maximum parallel threads
@@ -678,6 +675,9 @@ doLog config level loc txt =
                     LogTech → mkColor 5
                     LogDump → mkColor 5
 
+        printer ∷ LoggerSet → LogStr → IO ()
+        printer = pushLogStr
+
         outputLogFor ∷ LoggerFeed → Maybe FormattedTime → IO ()
         outputLogFor feed timeStamp =
             let prefix ∷ LogStr → LogStr
@@ -690,7 +690,7 @@ doLog config level loc txt =
 
                 logger = feedLogger feed
             in  case timeStamp of
-                    Just ts → pushLogStr logger $ prefix renderedLevelFull <> renderedTime ts <> txt
+                    Just ts → printer logger $ prefix renderedLevelFull <> renderedTime ts <> txt
                     Nothing →
                         let coloredOutput ∷ LogStr
                             coloredOutput =
@@ -701,7 +701,7 @@ doLog config level loc txt =
                                     , txt
                                     , resetColor
                                     ]
-                        in  pushLogStrLn logger coloredOutput
+                        in  printer logger coloredOutput
 
         errFeed = configSTDERR config
         outFeed = configSTDOUT config
