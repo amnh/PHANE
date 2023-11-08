@@ -5,11 +5,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -117,12 +117,18 @@ newtype Evaluation env a = Evaluation
     deriving stock (Generic)
 
 
+type role Evaluation representational nominal
+
+
 data ImplicitEnvironment env = ImplicitEnvironment
     { implicitBucketNum ∷ {-# UNPACK #-} ParallelBucketCount
     , implicitLogConfig ∷ {-# UNPACK #-} LogConfig
     , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
     , explicitReader ∷ env
     }
+
+
+type role ImplicitEnvironment representational
 
 
 data LoggerFeed = LoggerFeed
