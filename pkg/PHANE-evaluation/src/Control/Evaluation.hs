@@ -63,6 +63,7 @@ import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
 import Data.Bits (xor)
 import Data.Foldable (fold, traverse_)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.String
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import GHC.Generics
@@ -272,8 +273,14 @@ instance MonadUnliftIO (Evaluation env) where
     {-# INLINE withRunInIO #-}
     -- f :: (forall a. Evaluation env a -> IO a) -> IO b
     withRunInIO f = Evaluation . ReaderT $ \env →
-        pure <$> f (executeEvaluation env)
+        withRunInIO $ \run →
+            pure <$> f (run . executeEvaluation env)
 
+
+{-
+    withRunInIO f = Evaluation . ReaderT $ \env →
+        pure <$> f (executeEvaluation env)
+-}
 
 instance MonadZip (Evaluation env) where
     {-# INLINEABLE mzip #-}
@@ -404,14 +411,38 @@ getParallelChunkMap =
     let construct ∷ Int → (a → b) → [a] → [b]
         construct maxBuckets
             | maxBuckets <= 1 = fmap
-            | otherwise = \f xs →
-                let len = length xs
-                    num = case len `quotRem` maxBuckets of
-                        (q, 0) → q
-                        (q, _) → q + 1
-                in  withStrategy (parListChunk num rdeepseq) $ f <$> xs
+            | otherwise = \f → \case
+                [] → []
+                x : xs →
+                    let val = x : xs
+                        len = length val
+                        num = case len `quotRem` maxBuckets of
+                            (q, 0) → q
+                            (q, _) → q + 1
+                        y : ys = withStrategy (parListChunk num rdeepseq) $ f <$> val
+                    in  y : ys
     in  Evaluation $ reader (pure . construct . fromEnum . implicitBucketNum)
 
+
+{-
+-- | Divides a list into chunks, and applies the strategy
+-- @'evalList' strat@ to each chunk in parallel.
+--
+-- It is expected that this function will be replaced by a more
+-- generic clustering infrastructure in the future.
+--
+-- If the chunk size is 1 or less, 'parListChunk' is equivalent to
+-- 'parList'
+--
+parListChunk' :: Int -> Strategy a -> Strategy (NonEmpty a)
+parListChunk' n strat xs
+  | n <= 1    = parList strat xs
+  | otherwise = concat `fmap` parList (evalList strat) (chunk n xs)
+
+chunk' :: Int -> NonEmpty a -> NonEmpty (NonEmpty a)
+chunk' _ [] = []
+chunk' n xs = as : chunk n bs where (as,bs) = splitAt n xs
+-}
 
 {- |
 /Note:/ Does not work on infinite lists!

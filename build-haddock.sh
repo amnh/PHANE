@@ -3,7 +3,7 @@
 # Configurable Constants:
 
 DOC_DIR='doc/html'
-GHC_VER='9.6.3'
+GHC_VER='9.8.1'
 PKG_VER='0.1.0'
 
 LIB_NAMES=(
