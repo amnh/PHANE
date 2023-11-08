@@ -128,7 +128,9 @@ Library
     QuickCheck >= 2.14 && < 3.0,
     quickcheck-instances >= 0.3.22 && < 1.0,
     random >= 1.2 && < 2.0,
+    stm,
     time >= 1.12 && < 2.0,
+    unliftio >= 0.2 && < 1.0,
     unliftio-core >= 0.2 && < 1.0,
 
   Exposed-Modules:

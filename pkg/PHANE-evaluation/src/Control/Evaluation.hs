@@ -47,11 +47,21 @@ module Control.Evaluation (
 
 import Control.Applicative (Alternative (..))
 import Control.Arrow ((&&&))
-import Control.Concurrent (getNumCapabilities)
-import Control.Concurrent.Async (mapConcurrently)
+-- For the implementation of Conc below, we do not want any of the
+-- smart async exception handling logic from UnliftIO.Exception, since
+-- (eg) we're low-level enough to need to explicit be throwing async
+-- exceptions synchronously.
+
+import Control.Concurrent (getNumCapabilities, threadDelay)
+import Control.Concurrent qualified as C
+import Control.Concurrent.Async (Async, mapConcurrently)
+import Control.Concurrent.Async qualified as A
+import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Evaluation.Result
 import Control.Exception
+import Control.Exception (Exception, SomeException)
+import Control.Exception qualified as E
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
@@ -62,17 +72,19 @@ import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
 import Data.Bits (xor)
-import Data.Foldable (fold, traverse_)
+import Data.Foldable (fold, for_, toList, traverse_)
+import Data.IORef (IORef, atomicModifyIORef', atomicWriteIORef, newIORef, readIORef)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.String
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Traversable (for)
 import GHC.Generics
 import GHC.Stack (CallStack)
 import GHC.Stack qualified as GHC
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.ErrorPhase
 import System.Exit
-import System.Log.FastLogger
+import System.Log.FastLogger hiding (check)
 import System.Random.Stateful
 
 
@@ -445,54 +457,6 @@ chunk' n xs = as : chunk n bs where (as,bs) = splitAt n xs
 -}
 
 {- |
-/Note:/ Does not work on infinite lists!
-
-Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
-Each thread will have a different /uncorrolated/ random numer generator.
--}
-getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
-getParallelChunkTraverse =
-    let construct ∷ (Int, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
-        construct (maxBuckets, randomRef)
-            | maxBuckets <= 1 = traverse
-            | otherwise = \f xs →
-                let jobCount ∷ Int
-                    jobCount = force $ length xs
-
-                    allotBuckets ∷ [a] → m [(StdGen, [a])]
-                    allotBuckets ys =
-                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
-
-                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
-                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
-                    evalBucket (gen, jobs) = flip evalRandT gen $ do
-                        liftIO . pure $ force <$> traverse f jobs
-
-                    evalJob ∷ (StdGen, a) → IO (m b)
-                    evalJob (gen, job) = flip evalRandT gen $ do
-                        liftIO . pure $ force <$> f job
-
-                    -- For when the number of jobs do not exceed the maximum parallel threads
-                    parallelLess ∷ m [b]
-                    parallelLess = do
-                        jobs ← flip zip xs <$> splitGenInto jobCount randomRef
-                        fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
-
-                    -- If the number of jobs exceed the maximum parallel threads,
-                    -- we evenly distribute the jobs into "buckets" and then
-                    -- give each thread a bucket of jobs to complete concurrently.
-                    parallelMore ∷ m [b]
-                    parallelMore = do
-                        buckets ← allotBuckets xs
-                        fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                in  force
-                        <$> if jobCount <= maxBuckets
-                            then parallelLess
-                            else parallelMore
-    in  Evaluation $ reader (pure . construct . (fromEnum . implicitBucketNum &&& implicitRandomGen))
-
-
-{- |
 Generate a 'RandomSeed' to initialize an 'Evaluation' by using system entropy.
 -}
 initializeRandomSeed ∷ IO RandomSeed
@@ -759,3 +723,431 @@ doLog config level loc txt =
                         Just feed →
                             when (optShow feed) $
                                 configTiming config >>= outputLogFor feed . Just
+
+
+{- |
+/Note:/ Does not work on infinite lists!
+
+Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
+Each thread will have a different /uncorrolated/ random numer generator.
+-}
+getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse =
+    let construct ∷ (Int, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
+        construct (maxBuckets, randomRef)
+            | maxBuckets <= 1 = traverse
+            | otherwise = \f xs →
+                let jobCount ∷ Int
+                    jobCount = force $ length xs
+
+                    allotBuckets ∷ [a] → m [(StdGen, [a])]
+                    allotBuckets ys =
+                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+
+                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                    evalBucket (gen, jobs) = flip evalRandT gen $ do
+                        liftIO . pure $ force <$> traverse f jobs
+
+                    evalJob ∷ (StdGen, a) → IO (m b)
+                    evalJob (gen, job) = flip evalRandT gen $ do
+                        liftIO . pure $ force <$> f job
+
+                    inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
+                    inParallel = pooledMapConcurrentlyN $ min maxBuckets jobCount
+
+                    -- For when the number of jobs do not exceed the maximum parallel threads
+                    parallelLess' ∷ m [b]
+                    parallelLess' = do
+                        (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
+                        fmap force . join . liftIO $ sequenceA <$> inParallel evalJob jobs
+                    --                        (done :: [b]) <- join . liftIO $ sequenceA <$> inParallel evalJob jobs
+                    --                        pure $ force done
+
+                    -- If the number of jobs exceed the maximum parallel threads,
+                    -- we evenly distribute the jobs into "buckets" and then
+                    -- give each thread a bucket of jobs to complete concurrently.
+                    parallelMore' ∷ m [b]
+                    parallelMore' = do
+                        buckets ← allotBuckets xs
+                        fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                in  {-
+                                        -- For when the number of jobs do not exceed the maximum parallel threads
+                                        parallelLess ∷ m [b]
+                                        parallelLess = do
+                                            jobs ← flip zip xs <$> splitGenInto jobCount randomRef
+                                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+
+                                        -- If the number of jobs exceed the maximum parallel threads,
+                                        -- we evenly distribute the jobs into "buckets" and then
+                                        -- give each thread a bucket of jobs to complete concurrently.
+                                        parallelMore ∷ m [b]
+                                        parallelMore = do
+                                            buckets ← allotBuckets xs
+                                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                    -}
+                    force
+                        <$> if jobCount <= maxBuckets
+                            then parallelLess'
+                            else parallelMore'
+    in  Evaluation $ reader (pure . construct . (fromEnum . implicitBucketNum &&& implicitRandomGen))
+
+
+pooledMapConcurrentlyN
+    ∷ (MonadUnliftIO m, Traversable t)
+    ⇒ Int
+    -- ^ Max. number of threads. Should not be less than 1.
+    → (a → m b)
+    → t a
+    → m (t b)
+pooledMapConcurrentlyN numProcs f xs =
+    withRunInIO $ \run → pooledMapConcurrentlyIO numProcs (run . f) xs
+
+
+pooledMapConcurrentlyIO ∷ (Traversable t) ⇒ Int → (a → IO b) → t a → IO (t b)
+pooledMapConcurrentlyIO numProcs f xs =
+    if (numProcs < 1)
+        then error "pooledMapconcurrentlyIO: number of threads < 1"
+        else pooledMapConcurrentlyIO' numProcs f xs
+
+
+pooledMapConcurrentlyIO'
+    ∷ (Traversable t)
+    ⇒ Int
+    -- ^ Max. number of threads. Should not be less than 1.
+    → (a → IO b)
+    → t a
+    → IO (t b)
+pooledMapConcurrentlyIO' numProcs f xs = do
+    -- prepare one IORef per result...
+    jobs ∷ t (a, IORef b) ←
+        for xs (\x → (x,) <$> newIORef (error "pooledMapConcurrentlyIO': empty IORef"))
+    -- ...put all the inputs in a queue..
+    jobsVar ∷ IORef [(a, IORef b)] ← newIORef (toList jobs)
+    -- ...run `numProcs` threads in parallel, each
+    -- of them consuming the queue and filling in
+    -- the respective IORefs.
+    pooledConcurrently numProcs jobsVar $ \(x, outRef) → f x >>= atomicWriteIORef outRef -- Read all the IORefs
+    for jobs (\(_, outputRef) → readIORef outputRef)
+
+
+{- | Performs the actual pooling for the tasks. This function will
+continue execution until the task queue becomes empty. When one of
+the pooled thread finishes it's task, it will pickup the next task
+from the queue if an job is available.
+-}
+pooledConcurrently
+    ∷ Int
+    -- ^ Max. number of threads. Should not be less than 1.
+    → IORef [a]
+    -- ^ Task queue. These are required as inputs for the jobs.
+    → (a → IO ())
+    -- ^ The task which will be run concurrently (but
+    -- will be pooled properly).
+    → IO ()
+pooledConcurrently numProcs jobsVar f = do
+    replicateConcurrently_ numProcs $ do
+        let loop = do
+                mbJob ∷ Maybe a ← atomicModifyIORef' jobsVar $ \x → case x of
+                    [] → ([], Nothing)
+                    var : vars → (vars, Just var)
+                case mbJob of
+                    Nothing → return ()
+                    Just x → do
+                        f x
+                        loop
+         in loop
+
+
+{-# INLINE replicateConcurrently_ #-}
+replicateConcurrently_ cnt m =
+    case compare cnt 1 of
+        LT → pure ()
+        EQ → void m
+        GT → mapConcurrently_ id (replicate cnt m)
+
+
+{- | Executes a 'Traversable' container of items concurrently, it uses the 'Flat'
+type internally. This function ignores the results.
+
+@since 0.1.0.0
+-}
+mapConcurrently_ ∷ (MonadUnliftIO m) ⇒ (Foldable f) ⇒ (a → m b) → f a → m ()
+mapConcurrently_ f t = withRunInIO $ \run →
+    runFlat $
+        traverse_
+            (FlatApp . FlatAction . run . f)
+            t
+{-# INLINE mapConcurrently_ #-}
+
+
+-------------------------
+-- Conc implementation --
+-------------------------
+
+-- Data types for flattening out the original @Conc@ into a simplified
+-- view. Goals:
+--
+
+-- * We want to get rid of the Empty data constructor. We don't want
+
+
+--   it anyway, it's only there because of the Alternative typeclass.
+--
+
+-- * We want to ensure that there is no nesting of Alt data
+
+
+--   constructors. There is a bookkeeping overhead to each time we
+--   need to track raced threads, and we want to minimize that
+--   bookkeeping.
+--
+
+-- * We want to ensure that, when racing, we're always racing at least
+
+
+--   two threads.
+--
+
+-- * We want to simplify down to IO.
+
+
+-- | Flattened structure, either Applicative or Alternative
+data Flat a
+    = FlatApp !(FlatApp a)
+    | -- | Flattened Alternative. Has at least 2 entries, which must be
+      -- FlatApp (no nesting of FlatAlts).
+      FlatAlt !(FlatApp a) !(FlatApp a) ![FlatApp a]
+
+
+deriving instance Functor Flat
+
+
+instance Applicative Flat where
+    pure = FlatApp . pure
+    (<*>) f a = FlatApp (FlatLiftA2 id f a)
+    liftA2 f a b = FlatApp (FlatLiftA2 f a b)
+
+
+{- | Flattened Applicative. No Alternative stuff directly in here, but may be in
+the children. Notice this type doesn't have a type parameter for monadic
+contexts, it hardwires the base monad to IO given concurrency relies
+eventually on that.
+
+@since 0.2.9.0
+-}
+data FlatApp a where
+    FlatPure ∷ a → FlatApp a
+    FlatAction ∷ IO a → FlatApp a
+    FlatApply ∷ Flat (v → a) → Flat v → FlatApp a
+    FlatLiftA2 ∷ (x → y → a) → Flat x → Flat y → FlatApp a
+
+
+deriving instance Functor FlatApp
+
+
+instance Applicative FlatApp where
+    pure = FlatPure
+    (<*>) mf ma = FlatApply (FlatApp mf) (FlatApp ma)
+    liftA2 f a b = FlatLiftA2 f (FlatApp a) (FlatApp b)
+
+
+-- | Simple difference list, for nicer types below
+type DList a = [a] → [a]
+
+
+dlistConcat ∷ DList a → DList a → DList a
+dlistConcat = (.)
+{-# INLINE dlistConcat #-}
+
+
+dlistCons ∷ a → DList a → DList a
+dlistCons a as = dlistSingleton a `dlistConcat` as
+{-# INLINE dlistCons #-}
+
+
+dlistConcatAll ∷ [DList a] → DList a
+dlistConcatAll = foldr (.) id
+{-# INLINE dlistConcatAll #-}
+
+
+dlistToList ∷ DList a → [a]
+dlistToList = ($ [])
+{-# INLINE dlistToList #-}
+
+
+dlistSingleton ∷ a → DList a
+dlistSingleton a = (a :)
+{-# INLINE dlistSingleton #-}
+
+
+dlistEmpty ∷ DList a
+dlistEmpty = id
+{-# INLINE dlistEmpty #-}
+
+
+-- | Run a @Flat a@ on multiple threads.
+runFlat ∷ Flat a → IO a
+-- Silly, simple optimizations
+runFlat (FlatApp (FlatAction io)) = io
+runFlat (FlatApp (FlatPure x)) = pure x
+-- Start off with all exceptions masked so we can install proper cleanup.
+runFlat f0 = E.uninterruptibleMask $ \restore → do
+    -- How many threads have been spawned and finished their task? We need to
+    -- ensure we kill all child threads and wait for them to die.
+    resultCountVar ← newTVarIO 0
+
+    -- Forks off as many threads as necessary to run the given Flat a,
+    -- and returns:
+    --
+    -- + An STM action that will block until completion and return the
+    --   result.
+    --
+    -- + The IDs of all forked threads. These need to be tracked so they
+    --   can be killed (either when an exception is thrown, or when one
+    --   of the alternatives completes first).
+    --
+    -- It would be nice to have the returned STM action return an Either
+    -- and keep the SomeException values somewhat explicit, but in all
+    -- my testing this absolutely kills performance. Instead, we're
+    -- going to use a hack of providing a TMVar to fill up with a
+    -- SomeException when things fail.
+    --
+    -- TODO: Investigate why performance degradation on Either
+    let go
+            ∷ ∀ a
+             . TMVar E.SomeException
+            → Flat a
+            → IO (STM a, DList C.ThreadId)
+        go _excVar (FlatApp (FlatPure x)) = pure (pure x, dlistEmpty)
+        go excVar (FlatApp (FlatAction io)) = do
+            resVar ← newEmptyTMVarIO
+            tid ← C.forkIOWithUnmask $ \restore1 → do
+                res ← E.try $ restore1 io
+                atomically $ do
+                    modifyTVar' resultCountVar (+ 1)
+                    case res of
+                        Left e → void $ tryPutTMVar excVar e
+                        Right x → putTMVar resVar x
+            pure (readTMVar resVar, dlistSingleton tid)
+        go excVar (FlatApp (FlatApply cf ca)) = do
+            (f, tidsf) ← go excVar cf
+            (a, tidsa) ← go excVar ca
+            pure (f <*> a, tidsf `dlistConcat` tidsa)
+        go excVar (FlatApp (FlatLiftA2 f a b)) = do
+            (a', tidsa) ← go excVar a
+            (b', tidsb) ← go excVar b
+            pure (liftA2 f a' b', tidsa `dlistConcat` tidsb)
+        go excVar0 (FlatAlt x y z) = do
+            -- As soon as one of the children finishes, we need to kill the siblings,
+            -- we're going to create our own excVar here to pass to the children, so
+            -- we can prevent the ThreadKilled exceptions we throw to the children
+            -- here from propagating and taking down the whole system.
+            excVar ← newEmptyTMVarIO
+            resVar ← newEmptyTMVarIO
+            pairs ← traverse (go excVar . FlatApp) (x : y : z)
+            let (blockers, workerTids) = unzip pairs
+
+            -- Fork a helper thread to wait for the first child to
+            -- complete, or for one of them to die with an exception so we
+            -- can propagate it to excVar0.
+            helperTid ← C.forkIOWithUnmask $ \restore1 → do
+                eres ←
+                    E.try $
+                        restore1 $
+                            atomically $
+                                foldr
+                                    (\blocker rest → (Right <$> blocker) <|> rest)
+                                    (Left <$> readTMVar excVar)
+                                    blockers
+                atomically $ do
+                    modifyTVar' resultCountVar (+ 1)
+                    case eres of
+                        -- NOTE: The child threads are spawned from @traverse go@ call above, they
+                        -- are _not_ children of this helper thread, and helper thread doesn't throw
+                        -- synchronous exceptions, so, any exception that the try above would catch
+                        -- must be an async exception.
+                        -- We were killed by an async exception, do nothing.
+                        Left (_ ∷ E.SomeException) → pure ()
+                        -- Child thread died, propagate it
+                        Right (Left e) → void $ tryPutTMVar excVar0 e
+                        -- Successful result from one of the children
+                        Right (Right res) → putTMVar resVar res
+
+                -- And kill all of the threads
+                for_ workerTids $ \tids' →
+                    -- NOTE: Replacing A.AsyncCancelled with KillThread as the
+                    -- 'A.AsyncCancelled' constructor is not exported in older versions
+                    -- of the async package
+                    -- for_ (tids' []) $ \workerTid -> E.throwTo workerTid A.AsyncCancelled
+                    for_ (dlistToList tids') $ \workerTid → C.killThread workerTid
+
+            pure
+                ( readTMVar resVar
+                , helperTid `dlistCons` dlistConcatAll workerTids
+                )
+
+    excVar ← newEmptyTMVarIO
+    (getRes, tids0) ← go excVar f0
+    let tids = dlistToList tids0
+        tidCount = length tids
+        allDone count =
+            if count > tidCount
+                then
+                    error
+                        ( "allDone: count ("
+                            <> show count
+                            <> ") should never be greater than tidCount ("
+                            <> show tidCount
+                            <> ")"
+                        )
+                else count == tidCount
+
+    -- Automatically retry if we get killed by a
+    -- BlockedIndefinitelyOnSTM. For more information, see:
+    --
+    -- + https:\/\/github.com\/simonmar\/async\/issues\/14
+    -- + https:\/\/github.com\/simonmar\/async\/pull\/15
+    --
+    let autoRetry action =
+            action
+                `E.catch` \E.BlockedIndefinitelyOnSTM → autoRetry action
+
+    -- Restore the original masking state while blocking and catch
+    -- exceptions to allow the parent thread to be killed early.
+    res ←
+        E.try $
+            restore $
+                autoRetry $
+                    atomically $
+                        (Left <$> readTMVar excVar)
+                            <|> (Right <$> getRes)
+
+    count0 ← atomically $ readTVar resultCountVar
+    unless (allDone count0) $ do
+        -- Kill all of the threads
+        -- NOTE: Replacing A.AsyncCancelled with KillThread as the
+        -- 'A.AsyncCancelled' constructor is not exported in older versions
+        -- of the async package
+        -- for_ tids $ \tid -> E.throwTo tid A.AsyncCancelled
+        for_ tids $ \tid → C.killThread tid
+
+        -- Wait for all of the threads to die. We're going to restore the original
+        -- masking state here, just in case there's a bug in the cleanup code of a
+        -- child thread, so that we can be killed by an async exception. We decided
+        -- this is a better behavior than hanging indefinitely and wait for a SIGKILL.
+        restore $ atomically $ do
+            count ← readTVar resultCountVar
+            -- retries until resultCountVar has increased to the threadId count returned by go
+            check $ allDone count
+
+    -- Return the result or throw an exception. Yes, we could use
+    -- either or join, but explicit pattern matching is nicer here.
+    case res of
+        -- Parent thread was killed with an async exception
+        Left e → E.throwIO (e ∷ E.SomeException)
+        -- Some child thread died
+        Right (Left e) → E.throwIO e
+        -- Everything worked!
+        Right (Right x) → pure x
+{-# INLINEABLE runFlat #-}
