@@ -487,7 +487,9 @@ mapEvaluation f = Evaluation . withReaderT (fmap f) . unwrapEvaluation
 Fail and indicate the phase in which the failure occurred.
 -}
 failWithPhase ∷ (ToLogStr s) ⇒ ErrorPhase → s → Evaluation env a
-failWithPhase p = Evaluation . pure . evalUnitWithPhase p
+failWithPhase p message = do
+    logWith LogFail message
+    Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
 
 
 chunkEvenlyBy ∷ Int → [a] → [[a]]
