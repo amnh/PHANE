@@ -736,60 +736,62 @@ getParallelChunkTraverse =
     let construct ∷ (Int, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
         construct (maxBuckets, randomRef)
             | maxBuckets <= 1 = traverse
-            | otherwise = \f xs →
-                let jobCount ∷ Int
-                    jobCount = force $ length xs
+            | otherwise = \f → \case
+                [] → pure []
+                xs →
+                    let jobCount ∷ Int
+                        jobCount = force $ length xs
 
-                    allotBuckets ∷ [a] → m [(StdGen, [a])]
-                    allotBuckets ys =
-                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+                        allotBuckets ∷ [a] → m [(StdGen, [a])]
+                        allotBuckets ys =
+                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
 
-                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
-                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
-                    evalBucket (gen, jobs) = flip evalRandT gen $ do
-                        liftIO . pure $ force <$> traverse f jobs
+                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                        evalBucket (gen, jobs) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> traverse f jobs
 
-                    evalJob ∷ (StdGen, a) → IO (m b)
-                    evalJob (gen, job) = flip evalRandT gen $ do
-                        liftIO . pure $ force <$> f job
+                        evalJob ∷ (StdGen, a) → IO (m b)
+                        evalJob (gen, job) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> f job
 
-                    inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
-                    inParallel = pooledMapConcurrentlyN $ min maxBuckets jobCount
+                        inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
+                        inParallel = pooledMapConcurrentlyN $ min maxBuckets jobCount
 
-                    -- For when the number of jobs do not exceed the maximum parallel threads
-                    parallelLess' ∷ m [b]
-                    parallelLess' = do
-                        (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
-                        fmap force . join . liftIO $ sequenceA <$> inParallel evalJob jobs
-                    --                        (done :: [b]) <- join . liftIO $ sequenceA <$> inParallel evalJob jobs
-                    --                        pure $ force done
+                        -- For when the number of jobs do not exceed the maximum parallel threads
+                        parallelLess' ∷ m [b]
+                        parallelLess' = do
+                            (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
+                            fmap force . join . liftIO $ sequenceA <$> inParallel evalJob jobs
+                        --                        (done :: [b]) <- join . liftIO $ sequenceA <$> inParallel evalJob jobs
+                        --                        pure $ force done
 
-                    -- If the number of jobs exceed the maximum parallel threads,
-                    -- we evenly distribute the jobs into "buckets" and then
-                    -- give each thread a bucket of jobs to complete concurrently.
-                    parallelMore' ∷ m [b]
-                    parallelMore' = do
-                        buckets ← allotBuckets xs
-                        fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                in  {-
-                                        -- For when the number of jobs do not exceed the maximum parallel threads
-                                        parallelLess ∷ m [b]
-                                        parallelLess = do
-                                            jobs ← flip zip xs <$> splitGenInto jobCount randomRef
-                                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+                        -- If the number of jobs exceed the maximum parallel threads,
+                        -- we evenly distribute the jobs into "buckets" and then
+                        -- give each thread a bucket of jobs to complete concurrently.
+                        parallelMore' ∷ m [b]
+                        parallelMore' = do
+                            buckets ← allotBuckets xs
+                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                    in  {-
+                                            -- For when the number of jobs do not exceed the maximum parallel threads
+                                            parallelLess ∷ m [b]
+                                            parallelLess = do
+                                                jobs ← flip zip xs <$> splitGenInto jobCount randomRef
+                                                fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
 
-                                        -- If the number of jobs exceed the maximum parallel threads,
-                                        -- we evenly distribute the jobs into "buckets" and then
-                                        -- give each thread a bucket of jobs to complete concurrently.
-                                        parallelMore ∷ m [b]
-                                        parallelMore = do
-                                            buckets ← allotBuckets xs
-                                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                    -}
-                    force
-                        <$> if jobCount <= maxBuckets
-                            then parallelLess'
-                            else parallelMore'
+                                            -- If the number of jobs exceed the maximum parallel threads,
+                                            -- we evenly distribute the jobs into "buckets" and then
+                                            -- give each thread a bucket of jobs to complete concurrently.
+                                            parallelMore ∷ m [b]
+                                            parallelMore = do
+                                                buckets ← allotBuckets xs
+                                                fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                        -}
+                        force
+                            <$> if jobCount <= maxBuckets
+                                then parallelLess'
+                                else parallelMore'
     in  Evaluation $ reader (pure . construct . (fromEnum . implicitBucketNum &&& implicitRandomGen))
 
 
