@@ -159,21 +159,15 @@ Library
     exceptions,
     fast-logger >= 3.2 && < 4.0,
     MonadRandom >= 0.6 && < 1.0,
-    monad-control >= 1.0.3,
     mtl >= 2.2.2 && < 3.0,
     parallel >= 3.2 && < 4.0,
     primitive >= 0.8 && < 1.0,
     QuickCheck >= 2.14 && < 3.0,
     quickcheck-instances >= 0.3.22 && < 1.0,
     random >= 1.2 && < 2.0,
-    stm,
-    streamly >= 0.10.0,
-    streamly-core >= 0.2.0,
     time >= 1.12 && < 2.0,
-    transformers-base >= 0.4.6,
-    unliftio >= 0.2 && < 1.0,
     unliftio-core >= 0.2 && < 1.0,
-    SafeSemaphore,
+
 
   Exposed-Modules:
     Control.Evaluation
