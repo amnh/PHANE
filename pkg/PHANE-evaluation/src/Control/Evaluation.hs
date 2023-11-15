@@ -81,7 +81,7 @@ import System.Random.Stateful
 {- |
 A computational "evaluation."
 
-An evaluation has a /read-only/ global enviroment @env@, accessible to it's computation.
+An evaluation has a /read-only/ global environment @env@, accessible to it's computation.
 
 An evaluation can be in one of two states, "successful" or "failure".
 Use 'pure' to place a value inside a successful computational context.
@@ -409,7 +409,7 @@ setVerbosityFileLog =
 /Note:/ Does not work on infinite lists!
 
 Get a parallel mapping function which evenly distributes elements of the list
-accross available threads. The number of threads available on they system is
+across available threads. The number of threads available on they system is
 queried and memoized at the start of the 'Evaluation'. The length of the supplied
 list is calculated, and the list is split into sub-lists of equal length (± 1).
 Each sub list is given to a thread and fully evaluated.
@@ -433,25 +433,54 @@ getParallelChunkMap =
     in  Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
 
 
-{- | Divides a list into chunks, and applies the strategy
-@'evalList' strat@ to each chunk in parallel.
+{- |
+/Note:/ Does not work on infinite lists!
 
-It is expected that this function will be replaced by a more
-generic clustering infrastructure in the future.
-
-If the chunk size is 1 or less, 'parListChunk' is equivalent to
-'parList'
+Like getParallelChunkMap, but performs monadic actions over the list in parallel.
+Each thread will have a different, /uncorrelated/ random number generator.
 -}
-parListChunk' ∷ Int → Strategy a → Strategy (NonEmpty a)
-parListChunk' n strat xs = sconcat `fmap` parTraversable (evalTraversable strat) (chunk' n xs)
+getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse =
+    let construct ∷ AtomicGenM StdGen → Word → (a → m b) → [a] → m [b]
+        construct randomRef = \case
+            n | n <= 1 → traverse
+            maxBuckets → flip $ \case
+                [] → const $ pure []
+                xs → \f →
+                    let jobCount ∷ Word
+                        jobCount = toEnum . force $ length xs
 
+                        allotBuckets ∷ [a] → m [(StdGen, [a])]
+                        allotBuckets ys =
+                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
 
-chunk' ∷ Int → NonEmpty a → NonEmpty (NonEmpty a)
-chunk' n (x :| xs) =
-    let (as, bs) = splitAt (n - 1) xs
-    in  (x :| as) :| case bs of
-            [] → []
-            y : ys → toList . chunk' n $ y :| ys
+                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                        evalBucket (gen, jobs) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> traverse f jobs
+
+                        evalJob ∷ (StdGen, a) → IO (m b)
+                        evalJob (gen, job) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> f job
+
+                        -- For when the number of jobs do not exceed the maximum parallel threads
+                        parallelLess' ∷ m [b]
+                        parallelLess' = do
+                            (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
+                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+
+                        -- If the number of jobs exceed the maximum parallel threads,
+                        -- we evenly distribute the jobs into "buckets" and then
+                        -- give each thread a bucket of jobs to complete concurrently.
+                        parallelMore' ∷ m [b]
+                        parallelMore' = do
+                            buckets ← allotBuckets xs
+                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                    in  force
+                            <$> if jobCount <= maxBuckets
+                                then parallelLess'
+                                else parallelMore'
+    in  Evaluation $ reader (pure . uncurry construct . (implicitRandomGen &&& fromIntegral . implicitBucketNum))
 
 
 {- |
@@ -684,11 +713,11 @@ doLog config level loc txt =
         outputLogFor feed timeStamp =
             let prefix ∷ LogStr → LogStr
                 prefix x =
-                    let openning = x <> renderedLoc
+                    let opening = x <> renderedLoc
                         seperatorOf
-                            | openning == "" = id
+                            | opening == "" = id
                             | otherwise = (<> " ")
-                    in  seperatorOf openning
+                    in  seperatorOf opening
 
                 logger = feedLogger feed
             in  case timeStamp of
@@ -724,65 +753,23 @@ doLog config level loc txt =
                                 configTiming config >>= outputLogFor feed . Just
 
 
-getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
-getParallelChunkTraverse =
-    let construct ∷ AtomicGenM StdGen → Word → (a → m b) → [a] → m [b]
-        construct randomRef = \case
-            n | n <= 1 → traverse
-            maxBuckets → flip $ \case
-                [] → const $ pure []
-                xs → \f →
-                    let jobCount ∷ Word
-                        jobCount = toEnum . force $ length xs
+{- |
+Divides a list into chunks, and applies the strategy
+@'evalList' s@ to each chunk in parallel.
 
-                        allotBuckets ∷ [a] → m [(StdGen, [a])]
-                        allotBuckets ys =
-                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+It is expected that this function will be replaced by a more
+generic clustering infrastructure in the future.
 
-                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
-                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
-                        evalBucket (gen, jobs) = flip evalRandT gen $ do
-                            liftIO . pure $ force <$> traverse f jobs
-
-                        evalJob ∷ (StdGen, a) → IO (m b)
-                        evalJob (gen, job) = flip evalRandT gen $ do
-                            liftIO . pure $ force <$> f job
-{-
-                        inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
-                        inParallel = pooledMapConcurrentlyN . fromEnum $ min maxBuckets jobCount
+If the chunk size is 1 or less, 'parListChunk' is equivalent to
+'parList'
 -}
-                        -- For when the number of jobs do not exceed the maximum parallel threads
-                        parallelLess' ∷ m [b]
-                        parallelLess' = do
-                            (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
-                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
-                        --                        (done :: [b]) <- join . liftIO $ sequenceA <$> inParallel evalJob jobs
-                        --                        pure $ force done
+parListChunk' ∷ Int → Strategy a → Strategy (NonEmpty a)
+parListChunk' n s xs = sconcat `fmap` parTraversable (evalTraversable s) (chunk' n xs)
 
-                        -- If the number of jobs exceed the maximum parallel threads,
-                        -- we evenly distribute the jobs into "buckets" and then
-                        -- give each thread a bucket of jobs to complete concurrently.
-                        parallelMore' ∷ m [b]
-                        parallelMore' = do
-                            buckets ← allotBuckets xs
-                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                    in  {-
-                                            -- For when the number of jobs do not exceed the maximum parallel threads
-                                            parallelLess ∷ m [b]
-                                            parallelLess = do
-                                                jobs ← flip zip xs <$> splitGenInto jobCount randomRef
-                                                fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
 
-                                            -- If the number of jobs exceed the maximum parallel threads,
-                                            -- we evenly distribute the jobs into "buckets" and then
-                                            -- give each thread a bucket of jobs to complete concurrently.
-                                            parallelMore ∷ m [b]
-                                            parallelMore = do
-                                                buckets ← allotBuckets xs
-                                                fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                        -}
-                        force
-                            <$> if jobCount <= maxBuckets
-                                then parallelLess'
-                                else parallelMore'
-    in  Evaluation $ reader (pure . uncurry construct . (implicitRandomGen &&& fromIntegral . implicitBucketNum))
+chunk' ∷ Int → NonEmpty a → NonEmpty (NonEmpty a)
+chunk' n (x :| xs) =
+    let (as, bs) = splitAt (n - 1) xs
+    in  (x :| as) :| case bs of
+            [] → []
+            y : ys → toList . chunk' n $ y :| ys
