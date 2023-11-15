@@ -330,7 +330,7 @@ Initial randomness seed and configuration for logging outputs required to initia
 runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
-    maxBuckets ← liftIO $ toEnum . pred <$> getNumCapabilities
+    maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
     let implicit =
             ImplicitEnvironment
                 { implicitBucketNum = maxBuckets
