@@ -110,39 +110,25 @@ Common language-specs
     GHC2021
 
 
--- Executable test-harness
--- 
---   Import:
---     ghc-flags,
---     language-specs
--- 
---   Main-Is:
---     tester.hs
--- 
---   Build-Depends:
---     PHANE-evaluation,
---     async >= 2.2 && < 3.0,
---     base >= 4.11 && < 5.0,
---     bimap >= 0.3 && < 1.0,
---     deepseq >= 1.4 && < 2.0,
---     fast-logger >= 3.2 && < 4.0,
---     MonadRandom >= 0.6 && < 1.0,
---     mtl >= 2.2.2 && < 3.0,
---     parallel >= 3.2 && < 4.0,
---     primitive >= 0.8 && < 1.0,
---     QuickCheck >= 2.14 && < 3.0,
---     quickcheck-instances >= 0.3.22 && < 1.0,
---     random >= 1.2 && < 2.0,
---     stm,
---     time >= 1.12 && < 2.0,
---     unliftio >= 0.2 && < 1.0,
---     unliftio-core >= 0.2 && < 1.0,
--- 
---   GHC-Options:
---     -threaded
--- 
---   Hs-Source-Dirs:
---     app
+Executable test-harness
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Main-Is:
+    tester.hs
+
+  Build-Depends:
+    PHANE-evaluation,
+    base >= 4.11 && < 5.0,
+    MonadRandom >= 0.6 && < 1.0,
+
+  GHC-Options:
+    -threaded
+
+  Hs-Source-Dirs:
+    app
 
 
 Library
@@ -167,7 +153,6 @@ Library
     random >= 1.2 && < 2.0,
     time >= 1.12 && < 2.0,
     unliftio-core >= 0.2 && < 1.0,
-
 
   Exposed-Modules:
     Control.Evaluation
