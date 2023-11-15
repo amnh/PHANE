@@ -52,7 +52,7 @@ import Control.Arrow ((&&&))
 -- (eg) we're low-level enough to need to explicit be throwing async
 -- exceptions synchronously.
 
-import Control.Concurrent (getNumCapabilities, threadDelay)
+import Control.Concurrent (threadDelay)
 import Control.Concurrent qualified as C
 import Control.Concurrent.Async (Async, mapConcurrently)
 import Control.Concurrent.Async qualified as A
@@ -62,12 +62,14 @@ import Control.Evaluation.Result
 import Control.Exception
 import Control.Exception (Exception, SomeException)
 import Control.Exception qualified as E
+import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
+import Control.Monad.Trans.Control (ComposeSt, MonadBaseControl (..))
 import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
@@ -75,17 +77,24 @@ import Data.Bits (xor)
 import Data.Foldable (fold, for_, toList, traverse_)
 import Data.IORef (IORef, atomicModifyIORef', atomicWriteIORef, newIORef, readIORef)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Semigroup (sconcat)
 import Data.String
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Traversable (for)
+import GHC.Conc (getNumCapabilities, numCapabilities)
 import GHC.Generics
 import GHC.Stack (CallStack)
 import GHC.Stack qualified as GHC
+import Streamly.Data.Fold qualified as Fold
+import Streamly.Data.Stream.Prelude (MonadAsync)
+import Streamly.Data.Stream.Prelude qualified as Stream
+import Streamly.Internal.Data.Stream.Concurrent qualified as Stream
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.ErrorPhase
 import System.Exit
 import System.Log.FastLogger hiding (check)
 import System.Random.Stateful
+import UnliftIO.Async (pooledMapConcurrently, pooledMapConcurrentlyN)
 
 
 {- |
@@ -151,7 +160,7 @@ data LoggerFeed = LoggerFeed
 
 
 newtype ParallelBucketCount = MaxPar Word
-    deriving newtype (Enum, Eq, Ord)
+    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
 
 
 {- |
@@ -233,6 +242,16 @@ instance Monad (Evaluation env) where
     return = pure
 
 
+{-
+instance MonadBaseControl IO (Evaluation env) where
+
+    type StM (Evaluation env) a = ComposeSt (Evaluation env) IO a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM     = defaultRestoreM
+    {-# INLINABLE liftBaseWith #-}
+    {-# INLINABLE restoreM #-}
+-}
+
 instance MonadFail (Evaluation env) where
     {-# INLINE fail #-}
     fail = Evaluation . pure . fail
@@ -279,6 +298,10 @@ instance MonadReader env (Evaluation env) where
 
 
     local f = Evaluation . local (fmap f) . unwrapEvaluation
+
+
+instance MonadThrow (Evaluation env) where
+    throwM e = Evaluation $ throwM e
 
 
 instance MonadUnliftIO (Evaluation env) where
@@ -330,7 +353,7 @@ Initial randomness seed and configuration for logging outputs required to initia
 runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
-    maxBuckets ← liftIO $ toEnum . pred <$> getNumCapabilities
+    maxBuckets ← liftIO $ max 1 . toEnum . pred <$> getNumCapabilities
     let implicit =
             ImplicitEnvironment
                 { implicitBucketNum = maxBuckets
@@ -420,41 +443,43 @@ Each sub list is given to a thread and fully evaluated.
 -}
 getParallelChunkMap ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → b) → [a] → [b])
 getParallelChunkMap =
-    let construct ∷ Int → (a → b) → [a] → [b]
-        construct maxBuckets
-            | maxBuckets <= 1 = fmap
-            | otherwise = \f → \case
+    let construct ∷ Word → (a → b) → [a] → [b]
+        construct = \case
+            0 → fmap
+            1 → fmap
+            n → \f → \case
                 [] → []
-                x : xs →
-                    let val = x : xs
+                val@(x : xs) →
+                    let !maxBuckets = fromIntegral n
                         len = length val
                         num = case len `quotRem` maxBuckets of
                             (q, 0) → q
                             (q, _) → q + 1
                         y : ys = withStrategy (parListChunk num rdeepseq) $ f <$> val
                     in  y : ys
-    in  Evaluation $ reader (pure . construct . fromEnum . implicitBucketNum)
+    in  Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
 
 
-{-
--- | Divides a list into chunks, and applies the strategy
--- @'evalList' strat@ to each chunk in parallel.
---
--- It is expected that this function will be replaced by a more
--- generic clustering infrastructure in the future.
---
--- If the chunk size is 1 or less, 'parListChunk' is equivalent to
--- 'parList'
---
-parListChunk' :: Int -> Strategy a -> Strategy (NonEmpty a)
-parListChunk' n strat xs
-  | n <= 1    = parList strat xs
-  | otherwise = concat `fmap` parList (evalList strat) (chunk n xs)
+{- | Divides a list into chunks, and applies the strategy
+@'evalList' strat@ to each chunk in parallel.
 
-chunk' :: Int -> NonEmpty a -> NonEmpty (NonEmpty a)
-chunk' _ [] = []
-chunk' n xs = as : chunk n bs where (as,bs) = splitAt n xs
+It is expected that this function will be replaced by a more
+generic clustering infrastructure in the future.
+
+If the chunk size is 1 or less, 'parListChunk' is equivalent to
+'parList'
 -}
+parListChunk' ∷ Int → Strategy a → Strategy (NonEmpty a)
+parListChunk' n strat xs = sconcat `fmap` parTraversable (evalTraversable strat) (chunk' n xs)
+
+
+chunk' ∷ Int → NonEmpty a → NonEmpty (NonEmpty a)
+chunk' n (x :| xs) =
+    let (as, bs) = splitAt (n - 1) xs
+    in  (x :| as) :| case bs of
+            [] → []
+            y : ys → toList . chunk' n $ y :| ys
+
 
 {- |
 Generate a 'RandomSeed' to initialize an 'Evaluation' by using system entropy.
@@ -493,11 +518,12 @@ failWithPhase p message = do
     Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
 
 
-chunkEvenlyBy ∷ Int → [a] → [[a]]
+chunkEvenlyBy ∷ Word → [a] → [[a]]
 chunkEvenlyBy n xs =
-    let len = length xs
-        (q, r) = len `quotRem` n
-        sizes = replicate r (q + 1) <> replicate (n - r) q
+    let num = fromEnum n
+        len = length xs
+        (q, r) = len `quotRem` num
+        sizes = replicate r (q + 1) <> replicate (num - r) q
     in  chunkInto sizes xs
 
 
@@ -506,8 +532,8 @@ chunkInto (n : ns) jobs@(_ : _) = as : chunkInto ns bs where (as, bs) = splitAt 
 chunkInto _ _ = []
 
 
-splitGenInto ∷ (RandomGenM (AtomicGenM StdGen) StdGen m) ⇒ Int → AtomicGenM StdGen → m [StdGen]
-splitGenInto n = fmap force . replicateM n . splitGenM
+splitGenInto ∷ (RandomGenM (AtomicGenM StdGen) StdGen m) ⇒ Word → AtomicGenM StdGen → m [StdGen]
+splitGenInto n = fmap force . replicateM (fromEnum n) . splitGenM
 
 
 executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
@@ -731,97 +757,100 @@ doLog config level loc txt =
 Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
 Each thread will have a different /uncorrolated/ random numer generator.
 -}
-getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse ∷ ∀ a b env m. (MonadAsync m, MonadUnliftIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
 getParallelChunkTraverse =
-    let construct ∷ (Int, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
-        construct (maxBuckets, randomRef)
-            | maxBuckets <= 1 = traverse
-            | otherwise = \f xs →
-                let jobCount ∷ Int
-                    jobCount = force $ length xs
+    {-
+        let allotBuckets ∷ Word → AtomicGenM StdGen → [a] → m [(StdGen, [a])]
+            allotBuckets n gen ys = flip zip (chunkEvenlyBy n ys) <$> splitGenInto n gen
 
-                    allotBuckets ∷ [a] → m [(StdGen, [a])]
-                    allotBuckets ys =
-                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+            -- For MonadInterleave we use the type: (RandT StdGen IO a)
+            evalBucket ∷ (a → m b) -> (StdGen, [a]) → IO (m [b])
+            evalBucket f (gen, jobs) = flip evalRandT gen $ do
+                liftIO . pure $ force <$> traverse f jobs
+    -}
+    let evalBucket ∷ (a → m b) → [a] → m [b]
+        evalBucket f jobs =
+            -- force <$> traverse f jobs
+            traverse f jobs
 
-                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
-                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
-                    evalBucket (gen, jobs) = flip evalRandT gen $ do
-                        liftIO . pure $ force <$> traverse f jobs
+        modifyStreamConfig ∷ Word → Stream.Config → Stream.Config
+        modifyStreamConfig n = Stream.eager True . Stream.ordered True . Stream.maxThreads (fromEnum n)
 
-                    evalJob ∷ (StdGen, a) → IO (m b)
-                    evalJob (gen, job) = flip evalRandT gen $ do
-                        liftIO . pure $ force <$> f job
+        construct2 ∷ Word → (a → m b) → [a] → m [b]
+        construct2 maxBuckets = \f →
+            Stream.fold Fold.toList . Stream.parMapM (modifyStreamConfig maxBuckets) f . Stream.fromList
 
-                    inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
-                    inParallel = pooledMapConcurrentlyN $ min maxBuckets jobCount
+        -- !!! TODO: Add SCC annotations
 
-                    -- For when the number of jobs do not exceed the maximum parallel threads
-                    parallelLess' ∷ m [b]
-                    parallelLess' = do
-                        (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
-                        fmap force . join . liftIO $ sequenceA <$> inParallel evalJob jobs
-                    --                        (done :: [b]) <- join . liftIO $ sequenceA <$> inParallel evalJob jobs
-                    --                        pure $ force done
+        construct ∷ Word → (a → m b) → [a] → m [b]
+        construct maxBuckets = \f xs → do
+            let buckets = chunkEvenlyBy maxBuckets xs
+            --                buckets ← allotBuckets maxBuckets randomRef xs
+            fold <$> pooledMapConcurrentlyN (fromEnum maxBuckets) (evalBucket f) buckets
+    in  {-
+                    n -> flip $ \case
+                        [] → const $ pure []
+                        xs → case toEnum $ length xs of
+                            -- For when the number of jobs do not exceed the maximum parallel threads
+                            jobCount | jobCount <= maxBuckets ->
+                                let evalJob ∷ (a → m b) → (StdGen, a) → IO (m b)
+                                    evalJob f (gen, job) = flip evalRandT gen $ do
+                                        liftIO . pure $ force <$> f job
 
-                    -- If the number of jobs exceed the maximum parallel threads,
-                    -- we evenly distribute the jobs into "buckets" and then
-                    -- give each thread a bucket of jobs to complete concurrently.
-                    parallelMore' ∷ m [b]
-                    parallelMore' = do
-                        buckets ← allotBuckets xs
-                        fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                in  {-
-                                        -- For when the number of jobs do not exceed the maximum parallel threads
-                                        parallelLess ∷ m [b]
-                                        parallelLess = do
-                                            jobs ← flip zip xs <$> splitGenInto jobCount randomRef
-                                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+                                    inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
+                                    inParallel = pooledMapConcurrentlyN $ fromEnum jobCount
 
-                                        -- If the number of jobs exceed the maximum parallel threads,
-                                        -- we evenly distribute the jobs into "buckets" and then
-                                        -- give each thread a bucket of jobs to complete concurrently.
-                                        parallelMore ∷ m [b]
-                                        parallelMore = do
-                                            buckets ← allotBuckets xs
-                                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                    -}
-                    force
-                        <$> if jobCount <= maxBuckets
-                            then parallelLess'
-                            else parallelMore'
-    in  Evaluation $ reader (pure . construct . (fromEnum . implicitBucketNum &&& implicitRandomGen))
+                                in  do  -- (jobs ∷ [(StdGen, a)]) ← flip zip xs <$>
+                                        gens <- splitGenInto jobCount randomRef
+                                        let jobs = gens `seq` flip zip xs gens
+                                        \f -> fmap force . join . liftIO $ sequenceA <$> inParallel (evalJob f) jobs
 
+                            -- If the number of jobs exceed the maximum parallel threads,
+                            -- we evenly distribute the jobs into "buckets" and then
+                            -- give each thread a bucket of jobs to complete concurrently.
+                            jobCount -> \f ->
+                                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                                    evalBucket (gen, jobs) = flip evalRandT gen $ do
+                                        liftIO . pure $ force <$> traverse f jobs
 
-pooledMapConcurrentlyN
+                                    inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
+                                    inParallel = pooledMapConcurrentlyN $ fromEnum jobCount
+
+                                in  do  buckets ← allotBuckets xs
+                                        fmap (force . fold) . join . liftIO $ sequenceA <$> pooledMapConcurrently evalBucket buckets
+            in  Evaluation $ reader (pure . construct . (fromIntegral . implicitBucketNum &&& implicitRandomGen))
+        -}
+        Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
+
+{-
+pooledMapConcurrentlyN'
     ∷ (MonadUnliftIO m, Traversable t)
     ⇒ Int
     -- ^ Max. number of threads. Should not be less than 1.
     → (a → m b)
     → t a
     → m (t b)
-pooledMapConcurrentlyN numProcs f xs =
-    withRunInIO $ \run → pooledMapConcurrentlyIO numProcs (run . f) xs
+pooledMapConcurrentlyN' numProcs f xs =
+    withRunInIO $ \run → pooledMapConcurrentlyIO'' numProcs (run . f) xs
 
-
-pooledMapConcurrentlyIO ∷ (Traversable t) ⇒ Int → (a → IO b) → t a → IO (t b)
-pooledMapConcurrentlyIO numProcs f xs =
+pooledMapConcurrentlyIO'' ∷ (Traversable t) ⇒ Int → (a → IO b) → t a → IO (t b)
+pooledMapConcurrentlyIO'' numProcs f xs =
     if (numProcs < 1)
         then error "pooledMapconcurrentlyIO: number of threads < 1"
-        else pooledMapConcurrentlyIO' numProcs f xs
+        else pooledMapConcurrentlyIO''' numProcs f xs
 
-
-pooledMapConcurrentlyIO'
+pooledMapConcurrentlyIO'''
     ∷ (Traversable t)
     ⇒ Int
     -- ^ Max. number of threads. Should not be less than 1.
     → (a → IO b)
     → t a
     → IO (t b)
-pooledMapConcurrentlyIO' numProcs f xs = do
+pooledMapConcurrentlyIO''' numProcs f xs = do
     -- prepare one IORef per result...
     jobs ∷ t (a, IORef b) ←
-        for xs (\x → (x,) <$> newIORef (error "pooledMapConcurrentlyIO': empty IORef"))
+        for xs (\x → (x,) <$> newIORef (error "pooledMapConcurrentlyIO''': empty IORef"))
     -- ...put all the inputs in a queue..
     jobsVar ∷ IORef [(a, IORef b)] ← newIORef (toList jobs)
     -- ...run `numProcs` threads in parallel, each
@@ -829,7 +858,6 @@ pooledMapConcurrentlyIO' numProcs f xs = do
     -- the respective IORefs.
     pooledConcurrently numProcs jobsVar $ \(x, outRef) → f x >>= atomicWriteIORef outRef -- Read all the IORefs
     for jobs (\(_, outputRef) → readIORef outputRef)
-
 
 {- | Performs the actual pooling for the tasks. This function will
 continue execution until the task queue becomes empty. When one of
@@ -858,14 +886,12 @@ pooledConcurrently numProcs jobsVar f = do
                         loop
          in loop
 
-
 {-# INLINE replicateConcurrently_ #-}
 replicateConcurrently_ cnt m =
     case compare cnt 1 of
         LT → pure ()
         EQ → void m
         GT → mapConcurrently_ id (replicate cnt m)
-
 
 {- | Executes a 'Traversable' container of items concurrently, it uses the 'Flat'
 type internally. This function ignores the results.
@@ -880,7 +906,6 @@ mapConcurrently_ f t = withRunInIO $ \run →
             t
 {-# INLINE mapConcurrently_ #-}
 
-
 -------------------------
 -- Conc implementation --
 -------------------------
@@ -891,12 +916,10 @@ mapConcurrently_ f t = withRunInIO $ \run →
 
 -- * We want to get rid of the Empty data constructor. We don't want
 
-
 --   it anyway, it's only there because of the Alternative typeclass.
 --
 
 -- * We want to ensure that there is no nesting of Alt data
-
 
 --   constructors. There is a bookkeeping overhead to each time we
 --   need to track raced threads, and we want to minimize that
@@ -905,12 +928,10 @@ mapConcurrently_ f t = withRunInIO $ \run →
 
 -- * We want to ensure that, when racing, we're always racing at least
 
-
 --   two threads.
 --
 
 -- * We want to simplify down to IO.
-
 
 -- | Flattened structure, either Applicative or Alternative
 data Flat a
@@ -919,15 +940,12 @@ data Flat a
       -- FlatApp (no nesting of FlatAlts).
       FlatAlt !(FlatApp a) !(FlatApp a) ![FlatApp a]
 
-
 deriving instance Functor Flat
-
 
 instance Applicative Flat where
     pure = FlatApp . pure
     (<*>) f a = FlatApp (FlatLiftA2 id f a)
     liftA2 f a b = FlatApp (FlatLiftA2 f a b)
-
 
 {- | Flattened Applicative. No Alternative stuff directly in here, but may be in
 the children. Notice this type doesn't have a type parameter for monadic
@@ -942,49 +960,39 @@ data FlatApp a where
     FlatApply ∷ Flat (v → a) → Flat v → FlatApp a
     FlatLiftA2 ∷ (x → y → a) → Flat x → Flat y → FlatApp a
 
-
 deriving instance Functor FlatApp
-
 
 instance Applicative FlatApp where
     pure = FlatPure
     (<*>) mf ma = FlatApply (FlatApp mf) (FlatApp ma)
     liftA2 f a b = FlatLiftA2 f (FlatApp a) (FlatApp b)
 
-
 -- | Simple difference list, for nicer types below
 type DList a = [a] → [a]
-
 
 dlistConcat ∷ DList a → DList a → DList a
 dlistConcat = (.)
 {-# INLINE dlistConcat #-}
 
-
 dlistCons ∷ a → DList a → DList a
 dlistCons a as = dlistSingleton a `dlistConcat` as
 {-# INLINE dlistCons #-}
-
 
 dlistConcatAll ∷ [DList a] → DList a
 dlistConcatAll = foldr (.) id
 {-# INLINE dlistConcatAll #-}
 
-
 dlistToList ∷ DList a → [a]
 dlistToList = ($ [])
 {-# INLINE dlistToList #-}
-
 
 dlistSingleton ∷ a → DList a
 dlistSingleton a = (a :)
 {-# INLINE dlistSingleton #-}
 
-
 dlistEmpty ∷ DList a
 dlistEmpty = id
 {-# INLINE dlistEmpty #-}
-
 
 -- | Run a @Flat a@ on multiple threads.
 runFlat ∷ Flat a → IO a
@@ -1151,3 +1159,4 @@ runFlat f0 = E.uninterruptibleMask $ \restore → do
         -- Everything worked!
         Right (Right x) → pure x
 {-# INLINEABLE runFlat #-}
+-}

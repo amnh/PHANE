@@ -11,6 +11,7 @@ LIB_NAMES=(
 	'dynamic-character'
 	'dynamic-character-alignment'
 	'dynamic-character-element'
+        'evaluation'
 	'measure-class'
 	'measure-transition'
 	'transition-matrix'

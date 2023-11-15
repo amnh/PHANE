@@ -146,3 +146,14 @@ package PHANE-measure-units
 
 package PHANE-PhyloLib
   haddock-options: --use-index=../doc-index.html --use-contents=../index.html --base-url=..
+
+
+Source-Repository-Package
+  Type:     git
+  Location: https://github.com/composewell/streamly
+
+
+Source-Repository-Package
+  Type:     git
+  Location: https://github.com/composewell/streamly
+  Subdir:   core
