@@ -33,9 +33,7 @@ module Control.Evaluation (
 
     -- * Parallel operations
     getParallelChunkMap,
-    --    getParallelChunkTraverse,
-    getParallelChunkTraverse2,
-    getParallelChunkTraverse3,
+    getParallelChunkTraverse,
 
     -- * Randomness operations
     RandomSeed (),
@@ -794,8 +792,8 @@ doLog config level loc txt =
                                 configTiming config >>= outputLogFor feed . Just
 
 
-getParallelChunkTraverse3 ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
-getParallelChunkTraverse3 =
+getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse =
     let construct ∷ (Word, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
         construct (maxBuckets, randomRef)
             | maxBuckets <= 1 = traverse
