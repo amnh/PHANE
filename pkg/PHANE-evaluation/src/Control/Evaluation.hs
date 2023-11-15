@@ -33,7 +33,9 @@ module Control.Evaluation (
 
     -- * Parallel operations
     getParallelChunkMap,
-    getParallelChunkTraverse,
+    --    getParallelChunkTraverse,
+    getParallelChunkTraverse2,
+    getParallelChunkTraverse3,
 
     -- * Randomness operations
     RandomSeed (),
@@ -54,14 +56,17 @@ import Control.Arrow ((&&&))
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent qualified as C
+import Control.Concurrent.Async
 import Control.Concurrent.Async (Async, mapConcurrently)
 import Control.Concurrent.Async qualified as A
+import Control.Concurrent.MSem
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Evaluation.Result
 import Control.Exception
 import Control.Exception (Exception, SomeException)
 import Control.Exception qualified as E
+import Control.Monad.Base (MonadBase (..))
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
@@ -69,7 +74,7 @@ import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
-import Control.Monad.Trans.Control (ComposeSt, MonadBaseControl (..))
+import Control.Monad.Trans.Control (MonadBaseControl (..), defaultLiftBaseWith, defaultRestoreM, liftWith)
 import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
@@ -80,6 +85,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (sconcat)
 import Data.String
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Traversable
 import Data.Traversable (for)
 import GHC.Conc (getNumCapabilities, numCapabilities)
 import GHC.Generics
@@ -88,6 +94,7 @@ import GHC.Stack qualified as GHC
 import Streamly.Data.Fold qualified as Fold
 import Streamly.Data.Stream.Prelude (MonadAsync)
 import Streamly.Data.Stream.Prelude qualified as Stream
+import Streamly.Internal.Control.Concurrent qualified as Stream (RunInIO (..), askRunInIO)
 import Streamly.Internal.Data.Stream.Concurrent qualified as Stream
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.ErrorPhase
@@ -127,9 +134,11 @@ The following should hold:
 
      Use the 'MonadRandom' type-class methods to generate random values.
 
-  *  __Parallel Map:__
+  *  __Parallelism:__
 
-     Use the 'getParallelChunkMap' to compute in parallel, equal sized-chunks of the list.
+     Use the 'getParallelChunkMap' to compute a pure function in parallel, equal sized-chunks of the list.
+
+     Use the 'getParallelChunkTraverse' to compute an effectful function in parallel, equal sized-chunks of the list.
 -}
 newtype Evaluation env a = Evaluation
     --    { unwrapEvaluation ∷ RWST env Void (ImplicitEnvironment) IO (EvaluationResult a)
@@ -242,15 +251,44 @@ instance Monad (Evaluation env) where
     return = pure
 
 
-{-
-instance MonadBaseControl IO (Evaluation env) where
+instance MonadBase IO (Evaluation env) where
+    liftBase = liftIO
 
-    type StM (Evaluation env) a = ComposeSt (Evaluation env) IO a
-    liftBaseWith = defaultLiftBaseWith
-    restoreM     = defaultRestoreM
-    {-# INLINABLE liftBaseWith #-}
-    {-# INLINABLE restoreM #-}
--}
+
+instance MonadBaseControl IO (Evaluation env) where
+    type StM (Evaluation env) a = StM IO a
+
+
+    -- type RunInBase m b = forall a. m a -> b (StM m a)
+    -- liftBaseWith :: (RunInBase m b -> b a) -> m a
+    -- liftBaseWith :: (RunInBase (Evaluation env) IO -> IO a) -> (Evaluation env) a
+    -- liftBaseWith :: ((forall a. Evaluation env a -> IO (StM (Evaluation env) a)) -> IO a) -> Evaluation env a
+    -- liftBaseWith :: ((forall a. Evaluation env a -> IO (StM IO a)) -> IO a) -> Evaluation env a
+    -- liftBaseWith :: ((forall a. Evaluation env a -> IO a) -> IO a) -> Evaluation env a
+
+    -- f :: ((forall a. Evaluation env a -> IO a) -> IO a)
+    liftBaseWith f = Evaluation . ReaderT $ \env →
+        fmap pure $ f (executeEvaluation env)
+
+
+    {-
+    --    liftBaseWith :: (RunInBase m b -> b a) -> m a
+    --    liftBaseWith :: ((forall a. m a -> b (StM m a)) -> b a) -> m a
+        liftBaseWith = \f -> -- ((forall a. m a -> b (StM m a)) -> b a)
+            liftWith $ \run -> -- (forall a. m a -> b (StM m a)
+                liftBaseWith $ \runInBase ->
+                    f $ runInBase . fmap pure . run
+
+        -- liftWith :: Monad m => (Run t -> m a) -> t m a
+        -- liftWith :: Monad m => (forall n b. Monad n => t n b -> n (StT t b) -> m a) -> t m a
+    -}
+    --    restoreM :: StM (Evaluation env) a -> (Evaluation env) a
+    --    restoreM :: StM IO a -> (Evaluation env) a
+    restoreM ∷ a → (Evaluation env) a
+    restoreM = Evaluation . ReaderT . const . pure . pure
+    {-# INLINEABLE liftBaseWith #-}
+    {-# INLINEABLE restoreM #-}
+
 
 instance MonadFail (Evaluation env) where
     {-# INLINE fail #-}
@@ -307,9 +345,14 @@ instance MonadThrow (Evaluation env) where
 instance MonadUnliftIO (Evaluation env) where
     {-# INLINE withRunInIO #-}
     -- f :: (forall a. Evaluation env a -> IO a) -> IO b
-    withRunInIO f = Evaluation . ReaderT $ \env →
-        withRunInIO $ \run →
-            pure <$> f (run . executeEvaluation env)
+    withRunInIO f =
+        {-# SCC withRunInIO_Evaluation #-}
+        Evaluation . ReaderT $ \env →
+            {-# SCC withRunInIO_ReaderT_f #-}
+            withRunInIO $
+                {-# SCC withRunInIO_WITH_run #-}
+                \run →
+                    pure <$> f (run . executeEvaluation env)
 
 
 {-
@@ -543,11 +586,11 @@ executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
         flushLogBuffers ∷ IO ()
         flushLogBuffers =
             let flushBufferOf ∷ (LogConfig → LoggerFeed) → IO ()
-                flushBufferOf g = rmLoggerSet . feedLogger $ g logConfig
+                flushBufferOf g = flushLogStr . feedLogger $ g logConfig
             in  do
                     flushBufferOf configSTDERR
                     flushBufferOf configSTDOUT
-                    traverse_ (rmLoggerSet . feedLogger) $ configStream logConfig
+                    traverse_ (flushLogStr . feedLogger) $ configStream logConfig
     in  liftIO . flip finally flushLogBuffers $ do
             res ← f implicitEnv
             case runEvaluationResult res of
@@ -751,44 +794,115 @@ doLog config level loc txt =
                                 configTiming config >>= outputLogFor feed . Just
 
 
+getParallelChunkTraverse3 ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
+getParallelChunkTraverse3 =
+    let construct ∷ (Word, AtomicGenM StdGen) → (a → m b) → [a] → m [b]
+        construct (maxBuckets, randomRef)
+            | maxBuckets <= 1 = traverse
+            | otherwise = \f xs →
+                let jobCount ∷ Word
+                    jobCount = force . toEnum $ length xs
+
+                    allotBuckets ∷ [a] → m [(StdGen, [a])]
+                    allotBuckets ys =
+                        flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+
+                    -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                    evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                    evalBucket (gen, jobs) = flip evalRandT gen $ do
+                        liftIO . pure $ force <$> traverse f jobs
+
+                    evalJob ∷ (StdGen, a) → IO (m b)
+                    evalJob (gen, job) = flip evalRandT gen $ do
+                        liftIO . pure $ force <$> f job
+
+                    -- For when the number of jobs do not exceed the maximum parallel threads
+                    parallelLess ∷ m [b]
+                    parallelLess = do
+                        jobs ← flip zip xs <$> splitGenInto jobCount randomRef
+                        fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+
+                    -- If the number of jobs exceed the maximum parallel threads,
+                    -- we evenly distribute the jobs into "buckets" and then
+                    -- give each thread a bucket of jobs to complete concurrently.
+                    parallelMore ∷ m [b]
+                    parallelMore = do
+                        buckets ← allotBuckets xs
+                        fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                in  force
+                        <$> if jobCount <= maxBuckets
+                            then parallelLess
+                            else parallelMore
+    in  Evaluation $ reader (pure . construct . (fromIntegral . implicitBucketNum &&& implicitRandomGen))
+
+
 {- |
 /Note:/ Does not work on infinite lists!
 
 Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
 Each thread will have a different /uncorrolated/ random numer generator.
 -}
-getParallelChunkTraverse ∷ ∀ a b env m. (MonadAsync m, MonadUnliftIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
-getParallelChunkTraverse =
-    {-
-        let allotBuckets ∷ Word → AtomicGenM StdGen → [a] → m [(StdGen, [a])]
-            allotBuckets n gen ys = flip zip (chunkEvenlyBy n ys) <$> splitGenInto n gen
+getParallelChunkTraverse2 ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → Evaluation env b) → [a] → Evaluation env [b])
+getParallelChunkTraverse2 = do
+    compute ← askRunInIO
+    Evaluation $ do
+        buckets ← reader (fromIntegral . implicitBucketNum)
+        liftIO $ print buckets
+        pure . pure $ \f → liftIO . mapPool buckets (compute . f)
 
-            -- For MonadInterleave we use the type: (RandT StdGen IO a)
-            evalBucket ∷ (a → m b) -> (StdGen, [a]) → IO (m [b])
-            evalBucket f (gen, jobs) = flip evalRandT gen $ do
-                liftIO . pure $ force <$> traverse f jobs
-    -}
-    let evalBucket ∷ (a → m b) → [a] → m [b]
-        evalBucket f jobs =
-            -- force <$> traverse f jobs
-            traverse f jobs
+
+mapPool ∷ (Traversable t) ⇒ Int → (a → IO b) → t a → IO (t b)
+mapPool max f xs = do
+    sem ← new max
+    mapConcurrently (with sem . f) xs
+
+-- A little test:
+-- main = mapPool 10 (\x -> threadDelay 1000000 >> print x) [1..100]
+
+{-
+{- |
+/Note:/ Does not work on infinite lists!
+
+Like 'getParallelChunkMap', but performs monadic actions over the list in parallel.
+Each thread will have a different /uncorrolated/ random numer generator.
+-}
+getParallelChunkTraverse ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → Evaluation env b) → [a] → Evaluation env [b])
+getParallelChunkTraverse =
+    let allotBuckets ∷ Word → AtomicGenM StdGen → [a] → m [(StdGen, [a])]
+        allotBuckets n gen ys = flip zip (chunkEvenlyBy n ys) <$> splitGenInto n gen
+
+--        -- For MonadInterleave we use the type: (RandT StdGen IO a)
+--        evalBucket ∷ (a → m b) -> (StdGen, [a]) → IO (m [b])
+--        evalBucket f (gen, jobs) = flip evalRandT gen $ do
+--            liftIO . pure $ force <$> traverse f jobs
 
         modifyStreamConfig ∷ Word → Stream.Config → Stream.Config
         modifyStreamConfig n = Stream.eager True . Stream.ordered True . Stream.maxThreads (fromEnum n)
+
+{--}
+        evalBucket ∷ (a → m b) → [a] → m [b]
+        evalBucket f jobs =
+            -- force <$> traverse f jobs
+            traverse f jobs
 
         construct2 ∷ Word → (a → m b) → [a] → m [b]
         construct2 maxBuckets = \f →
             Stream.fold Fold.toList . Stream.parMapM (modifyStreamConfig maxBuckets) f . Stream.fromList
 
         -- !!! TODO: Add SCC annotations
-
+{-
         construct ∷ Word → (a → m b) → [a] → m [b]
         construct maxBuckets = \f xs → do
             let buckets = chunkEvenlyBy maxBuckets xs
             --                buckets ← allotBuckets maxBuckets randomRef xs
             fold <$> pooledMapConcurrentlyN (fromEnum maxBuckets) (evalBucket f) buckets
-    in  {-
-                    n -> flip $ \case
+-}
+{--}
+        construct ∷ (Word, AtomicGenM StdGen) → (a → Evaluation env b) → [a] → Evaluation env [b]
+        construct (maxBuckets, randomRef) = case maxBuckets of
+            0 → traverse
+            1 → traverse
+            n → flip $ \case
                         [] → const $ pure []
                         xs → case toEnum $ length xs of
                             -- For when the number of jobs do not exceed the maximum parallel threads
@@ -809,6 +923,7 @@ getParallelChunkTraverse =
                             -- we evenly distribute the jobs into "buckets" and then
                             -- give each thread a bucket of jobs to complete concurrently.
                             jobCount -> \f ->
+                                let
                                     -- For MonadInterleave we use the type: (RandT StdGen IO a)
                                     evalBucket ∷ (StdGen, [a]) → IO (m [b])
                                     evalBucket (gen, jobs) = flip evalRandT gen $ do
@@ -817,11 +932,23 @@ getParallelChunkTraverse =
                                     inParallel ∷ (MonadUnliftIO f) ⇒ (x → f y) → [x] → f [y]
                                     inParallel = pooledMapConcurrentlyN $ fromEnum jobCount
 
-                                in  do  buckets ← allotBuckets xs
+                                in  do  buckets ← allotBuckets maxBuckets randomRef xs
                                         fmap (force . fold) . join . liftIO $ sequenceA <$> pooledMapConcurrently evalBucket buckets
             in  Evaluation $ reader (pure . construct . (fromIntegral . implicitBucketNum &&& implicitRandomGen))
-        -}
-        Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
+{--}
+{-
+        do  compute <- askRunInIO
+            Evaluation $ do
+                buckets <- reader (fromIntegral . implicitBucketNum)
+                liftIO $ print buckets
+                let mod :: Stream.Config → Stream.Config
+                    mod = Stream.eager True . Stream.ordered True . Stream.maxThreads (fromEnum buckets)
+                pure . pure $
+                    let g :: (a → Evaluation env b) → [a] → Evaluation env [b]
+                        g f = liftIO . Stream.fold Fold.toList . Stream.parMapM mod (fmap force . compute . f) . Stream.fromList
+                    in  g
+-}
+-}
 
 {-
 pooledMapConcurrentlyN'
