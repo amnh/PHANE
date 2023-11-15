@@ -60,6 +60,7 @@ Common ghc-flags
     Ghc-Options:
       -O2
       -threaded
+
       -- Optimization flags
       -fexcess-precision
       -fexpose-all-unfoldings
@@ -104,12 +105,47 @@ Common language-specs
     LambdaCase
     NoGeneralizedNewtypeDeriving
     UnicodeSyntax
-    
+
   Default-Language:
     GHC2021
 
 
-Library 
+-- Executable test-harness
+-- 
+--   Import:
+--     ghc-flags,
+--     language-specs
+-- 
+--   Main-Is:
+--     tester.hs
+-- 
+--   Build-Depends:
+--     PHANE-evaluation,
+--     async >= 2.2 && < 3.0,
+--     base >= 4.11 && < 5.0,
+--     bimap >= 0.3 && < 1.0,
+--     deepseq >= 1.4 && < 2.0,
+--     fast-logger >= 3.2 && < 4.0,
+--     MonadRandom >= 0.6 && < 1.0,
+--     mtl >= 2.2.2 && < 3.0,
+--     parallel >= 3.2 && < 4.0,
+--     primitive >= 0.8 && < 1.0,
+--     QuickCheck >= 2.14 && < 3.0,
+--     quickcheck-instances >= 0.3.22 && < 1.0,
+--     random >= 1.2 && < 2.0,
+--     stm,
+--     time >= 1.12 && < 2.0,
+--     unliftio >= 0.2 && < 1.0,
+--     unliftio-core >= 0.2 && < 1.0,
+-- 
+--   GHC-Options:
+--     -threaded
+-- 
+--   Hs-Source-Dirs:
+--     app
+
+
+Library
 
   Import:
     ghc-flags,
@@ -120,8 +156,10 @@ Library
     base >= 4.11 && < 5.0,
     bimap >= 0.3 && < 1.0,
     deepseq >= 1.4 && < 2.0,
+    exceptions,
     fast-logger >= 3.2 && < 4.0,
     MonadRandom >= 0.6 && < 1.0,
+    monad-control >= 1.0.3,
     mtl >= 2.2.2 && < 3.0,
     parallel >= 3.2 && < 4.0,
     primitive >= 0.8 && < 1.0,
@@ -129,9 +167,13 @@ Library
     quickcheck-instances >= 0.3.22 && < 1.0,
     random >= 1.2 && < 2.0,
     stm,
+    streamly >= 0.10.0,
+    streamly-core >= 0.2.0,
     time >= 1.12 && < 2.0,
+    transformers-base >= 0.4.6,
     unliftio >= 0.2 && < 1.0,
     unliftio-core >= 0.2 && < 1.0,
+    SafeSemaphore,
 
   Exposed-Modules:
     Control.Evaluation
@@ -143,8 +185,3 @@ Library
 
   Other-Modules:
     Control.Evaluation.Result
-
-  Visibility:
-    public
-
-
