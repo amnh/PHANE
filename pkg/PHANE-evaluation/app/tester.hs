@@ -1,9 +1,10 @@
 module Main (main) where
 
 import Control.Evaluation
+import Control.Evaluation.Verbosity
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class
-import Control.Monad.Logger
+-- import Control.Monad.Logger
 import Control.Monad.Random.Class (MonadRandom (..))
 import Data.Ratio
 import Numeric.Natural

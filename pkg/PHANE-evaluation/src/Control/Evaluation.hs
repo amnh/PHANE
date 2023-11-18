@@ -25,7 +25,7 @@ module Control.Evaluation (
     runEvaluation,
 
     -- * Logging operations
-    LogConfig (),
+    LogConfiguration (),
     initializeLogging,
     setVerbositySTDERR,
     setVerbositySTDOUT,
@@ -49,12 +49,16 @@ import Control.Applicative (Alternative (..))
 import Control.Arrow ((&&&))
 import Control.Concurrent.Async
 import Control.DeepSeq
+import Control.Evaluation.Logging.Class
+import Control.Evaluation.Logging.Configuration
+import Control.Evaluation.Logging.Message
 import Control.Evaluation.Result
+import Control.Evaluation.Verbosity
 import Control.Exception
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Control.Monad.Logger
+-- import Control.Monad.Logger
 import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
@@ -74,6 +78,7 @@ import GHC.Stack qualified as GHC
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.ErrorPhase
 import System.Exit
+import System.IO (hFlush)
 import System.Log.FastLogger hiding (check)
 import System.Random.Stateful
 
@@ -127,7 +132,7 @@ type role Evaluation representational nominal
 
 data ImplicitEnvironment env = ImplicitEnvironment
     { implicitBucketNum ∷ {-# UNPACK #-} ParallelBucketCount
-    , implicitLogConfig ∷ {-# UNPACK #-} LogConfig
+    , implicitLogConfiguration ∷ {-# UNPACK #-} LogConfiguration
     , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
     , explicitReader ∷ env
     }
@@ -136,26 +141,26 @@ data ImplicitEnvironment env = ImplicitEnvironment
 type role ImplicitEnvironment representational
 
 
-data LoggerFeed = LoggerFeed
-    { feedLevel ∷ Verbosity
-    , feedLogger ∷ LoggerSet
-    }
-
-
 newtype ParallelBucketCount = MaxPar Word
     deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
 
 
+{-
+data LogFeed = LogFeed
+    { feedLevel ∷ Verbosity
+    , feedSpout ∷ LoggerSet
+    }
+
 {- |
 Configuration specifying how log messages are to be handled.
 -}
-data LogConfig = LogConfig
-    { configSTDERR ∷ {-# UNPACK #-} LoggerFeed
-    , configSTDOUT ∷ {-# UNPACK #-} LoggerFeed
-    , configStream ∷ {-# UNPACK #-} Maybe LoggerFeed
+data LogConfiguration = LogConfiguration
+    { configSTDERR ∷ {-# UNPACK #-} LogFeed
+    , configSTDOUT ∷ {-# UNPACK #-} LogFeed
+    , configStream ∷ {-# UNPACK #-} Maybe LogFeed
     , configTiming ∷ IO FormattedTime
     }
-
+-}
 
 {- |
 A seed from which a /(practically infinite)/ stream of pseudorandomness can be generated.
@@ -201,8 +206,8 @@ instance Logger (Evaluation env) where
     {-# INLINEABLE logWith #-}
     logWith level str = Evaluation $ do
         impEnv ← ask
-        let logConfig = implicitLogConfig impEnv
-        liftIO . fmap pure . doLogCs logConfig level ?callStack $ toLogStr str
+        let logConfig = implicitLogConfiguration impEnv
+        liftIO . fmap pure . processMessage logConfig level $ logToken str
 
 
 instance (NFData a) ⇒ NFData (Evaluation env a) where
@@ -323,14 +328,14 @@ Run the 'Evaluation' computation.
 
 Initial randomness seed and configuration for logging outputs required to initiate the computation.
 -}
-runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
+runEvaluation ∷ (MonadIO m) ⇒ LogConfiguration → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
     maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
     let implicit =
             ImplicitEnvironment
                 { implicitBucketNum = maxBuckets
-                , implicitLogConfig = logConfig
+                , implicitLogConfiguration = logConfig
                 , implicitRandomGen = randomRef
                 , explicitReader = environ
                 }
@@ -338,6 +343,7 @@ runEvaluation logConfig randomSeed environ eval = do
     executeEvaluation implicit eval
 
 
+{-
 {- |
 Create configuration for logging output stream to initialize an 'Evaluation'.
 -}
@@ -348,12 +354,12 @@ initializeLogging
     -- ^ Verbosity level for STDERR
     → Maybe (Verbosity, FilePath)
     -- ^ optional verbosity level for a file stream
-    → IO LogConfig
+    → IO LogConfiguration
 initializeLogging vOut vErr vFile =
-    let builderFilePath ∷ Maybe (Verbosity, FilePath) → IO (Maybe LoggerFeed)
+    let builderFilePath ∷ Maybe (Verbosity, FilePath) → IO (Maybe LogFeed)
         builderFilePath fileMay =
-            let mkFeed ∷ Maybe (Verbosity, LoggerSet) → Maybe LoggerFeed
-                mkFeed = fmap (uncurry LoggerFeed)
+            let mkFeed ∷ Maybe (Verbosity, LoggerSet) → Maybe LogFeed
+                mkFeed = fmap (uncurry LogFeed)
 
                 create = traverse (traverse initLoggerSetStream)
 
@@ -363,17 +369,17 @@ initializeLogging vOut vErr vFile =
                     x → Just x
             in  fmap mkFeed . create $ fileMay >>= blankFile
 
-        builderStandard ∷ Verbosity → IO LoggerSet → IO LoggerFeed
-        builderStandard level = fmap (LoggerFeed level)
+        builderStandard ∷ Verbosity → IO LoggerSet → IO LogFeed
+        builderStandard level = fmap (LogFeed level)
 
         timeFormat ∷ TimeFormat
         timeFormat = "%Y-%m-%d %T %z"
-    in  LogConfig
+    in  LogConfiguration
             <$> builderStandard vErr initLoggerSetSTDERR
             <*> builderStandard vOut initLoggerSetSTDOUT
             <*> builderFilePath vFile
             <*> newTimeCache timeFormat
-
+-}
 
 {- |
 Set the verbosity level of logs streamed to @STDERR@ for the sub-'Evaluation'.
@@ -395,12 +401,12 @@ Set the verbosity level of log data streamed to the log file (if any) for the su
 setVerbosityFileLog ∷ Verbosity → Evaluation env () → Evaluation env ()
 setVerbosityFileLog =
     let setVerbosityOf'
-            ∷ ((Maybe LoggerFeed → Maybe LoggerFeed) → LogConfig → LogConfig)
+            ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)
             → Verbosity
             → Evaluation env a
             → Evaluation env a
         setVerbosityOf' f v =
-            let transformation = modImplicitLogConfig (f (fmap (setFeedLevel v)))
+            let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
             in  Evaluation . withReaderT transformation . unwrapEvaluation
     in  setVerbosityOf' modConfigStream
 
@@ -514,7 +520,7 @@ mapEvaluation f = Evaluation . withReaderT (fmap f) . unwrapEvaluation
 {- |
 Fail and indicate the phase in which the failure occurred.
 -}
-failWithPhase ∷ (ToLogStr s) ⇒ ErrorPhase → s → Evaluation env a
+failWithPhase ∷ (Loggable s) ⇒ ErrorPhase → s → Evaluation env a
 failWithPhase p message = do
     logWith LogFail message
     Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
@@ -540,56 +546,55 @@ splitGenInto n = fmap force . replicateM (fromEnum n) . splitGenM
 
 executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
 executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
-    let logConfig = implicitLogConfig implicitEnv
-
-        flushLogBuffers ∷ IO ()
-        flushLogBuffers =
-            let flushBufferOf ∷ (LogConfig → LoggerFeed) → IO ()
-                flushBufferOf g = flushLogStr . feedLogger $ g logConfig
-            in  do
-                    flushBufferOf configSTDERR
-                    flushBufferOf configSTDOUT
-                    traverse_ (flushLogStr . feedLogger) $ configStream logConfig
-    in  liftIO . flip finally flushLogBuffers $ do
+    let logConfig = implicitLogConfiguration implicitEnv
+    in  {-
+                flushLogBuffers ∷ IO ()
+                flushLogBuffers =
+                    let flushBufferOf ∷ (LogConfiguration → LogFeed) → IO ()
+                        flushBufferOf g = hFlush . feedSpout $ g logConfig
+                    in  do
+                            flushBufferOf configSTDERR
+                            flushBufferOf configSTDOUT
+                            traverse_ (hFlush . feedSpout) $ configStream logConfig
+        -}
+        liftIO . flip finally (flushLogs logConfig) $ do
             res ← f implicitEnv
             case runEvaluationResult res of
                 Right value → pure value
                 Left (phase, txt) →
                     let exitCode = errorPhaseToExitCode BM.! phase
-                    in  doLogCs logConfig LogFail ?callStack txt *> exitWith exitCode
+                    in  processMessage logConfig LogFail txt *> exitWith exitCode
 
 
 setVerbosityOf
-    ∷ ((LoggerFeed → LoggerFeed) → LogConfig → LogConfig)
+    ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)
     → Verbosity
     → Evaluation env a
     → Evaluation env a
 setVerbosityOf f v =
-    let transformation = modImplicitLogConfig (f (setFeedLevel v))
+    let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
     in  Evaluation . withReaderT transformation . unwrapEvaluation
 
 
-modConfigSTDERR ∷ (LoggerFeed → LoggerFeed) → LogConfig → LogConfig
+{-
+modConfigSTDERR ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfiguration
 modConfigSTDERR f x = x{configSTDERR = f $ configSTDERR x}
 
-
-modConfigSTDOUT ∷ (LoggerFeed → LoggerFeed) → LogConfig → LogConfig
+modConfigSTDOUT ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfiguration
 modConfigSTDOUT f x = x{configSTDOUT = f $ configSTDOUT x}
 
-
-modConfigStream ∷ (Maybe LoggerFeed → Maybe LoggerFeed) → LogConfig → LogConfig
+modConfigStream ∷ (Maybe LogFeed → Maybe LogFeed) → LogConfiguration → LogConfiguration
 modConfigStream f x = x{configStream = f $ configStream x}
 
-
-setFeedLevel ∷ Verbosity → LoggerFeed → LoggerFeed
+setFeedLevel ∷ Verbosity → LogFeed → LogFeed
 setFeedLevel v x = x{feedLevel = v}
+-}
 
-
-modImplicitLogConfig
-    ∷ (LogConfig → LogConfig)
+modImplicitLogConfiguration
+    ∷ (LogConfiguration → LogConfiguration)
     → ImplicitEnvironment env
     → ImplicitEnvironment env
-modImplicitLogConfig f x = x{implicitLogConfig = f $ implicitLogConfig x}
+modImplicitLogConfiguration f x = x{implicitLogConfiguration = f $ implicitLogConfiguration x}
 
 
 bufferSize ∷ BufSize
@@ -644,15 +649,15 @@ propagate lhs rhs = Evaluation $ do
         Right _ → unwrapEvaluation rhs
 
 
-doLogCs ∷ (MonadIO m) ⇒ LogConfig → LogLevel → CallStack → LogStr → m ()
+{-
+doLogCs ∷ (MonadIO m) ⇒ LogConfiguration → LogLevel → CallStack → LogStr → m ()
 doLogCs config level cs txt =
     let loc = case GHC.getCallStack cs of
             ((_, l) : _) → GHC.srcLocFile l <> ":" <> show (GHC.srcLocStartLine l)
             _ → "unknown"
     in  doLog config level (toLogStr loc) txt
 
-
-doLog ∷ (MonadIO m) ⇒ LogConfig → LogLevel → LogStr → LogStr → m ()
+doLog ∷ (MonadIO m) ⇒ LogConfiguration → LogLevel → LogStr → LogStr → m ()
 doLog config level loc txt =
     let renderedLevelFull ∷ LogStr
         renderedLevelFull = case level of
@@ -709,7 +714,7 @@ doLog config level loc txt =
         printer ∷ LoggerSet → LogStr → IO ()
         printer = pushLogStr
 
-        outputLogFor ∷ LoggerFeed → Maybe FormattedTime → IO ()
+        outputLogFor ∷ LogFeed → Maybe FormattedTime → IO ()
         outputLogFor feed timeStamp =
             let prefix ∷ LogStr → LogStr
                 prefix x =
@@ -719,7 +724,7 @@ doLog config level loc txt =
                             | otherwise = (<> " ")
                     in  seperatorOf opening
 
-                logger = feedLogger feed
+                logger = feedSpout feed
             in  case timeStamp of
                     Just ts → printer logger $ prefix renderedLevelFull <> renderedTime ts <> txt
                     Nothing →
@@ -751,7 +756,7 @@ doLog config level loc txt =
                         Just feed →
                             when (optShow feed) $
                                 configTiming config >>= outputLogFor feed . Just
-
+-}
 
 {- |
 Divides a list into chunks, and applies the strategy
