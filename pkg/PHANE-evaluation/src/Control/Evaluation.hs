@@ -76,6 +76,9 @@ import System.ErrorPhase
 import System.Exit
 import System.Log.FastLogger hiding (check)
 import System.Random.Stateful
+import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..), coarbitraryEnum)
+-- import Test.QuickCheck.Function (Fun, Function (..), applyFun)
+import Test.QuickCheck.Gen (Gen (..), variant)
 
 
 {- |
@@ -121,6 +124,12 @@ newtype Evaluation env a = Evaluation
     }
     deriving stock (Generic)
 
+
+{-
+instance Show (Evaluation env a) where
+
+    show (Evaluation (ReaderT f)) =
+-}
 
 type role Evaluation representational nominal
 
@@ -187,6 +196,32 @@ instance Alternative (Evaluation env) where
 
 
     empty = fail "Alternative identity"
+
+
+instance (Arbitrary a, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
+    arbitrary = do
+        fun ← (arbitrary ∷ Gen (ImplicitEnvironment env → EvaluationResult a))
+        pure . Evaluation . ReaderT $ pure . fun
+
+
+instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitEnvironment env) where
+    coarbitrary store =
+        let x = implicitBucketNum store
+            y = implicitLogConfig store
+            z = explicitReader store
+        in  coarbitrary z . coarbitrary y . variant x
+
+
+instance CoArbitrary LogConfig where
+    coarbitrary config =
+        let x = configSTDERR config
+            y = configSTDOUT config
+            z = configStream config
+        in  coarbitrary z . coarbitrary y . coarbitrary x
+
+
+instance CoArbitrary LoggerFeed where
+    coarbitrary (LoggerFeed v _) = coarbitraryEnum v
 
 
 deriving stock instance Functor ImplicitEnvironment

@@ -156,11 +156,47 @@ Library
 
   Exposed-Modules:
     Control.Evaluation
+    Control.Evaluation.Result
     Control.Monad.Logger
     System.ErrorPhase
 
   Hs-Source-Dirs:
     src
 
+--  Other-Modules:
+--    Control.Evaluation.Result
+
+
+Test-Suite test-cases
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Build-Depends:
+    PHANE-evaluation,
+    base >= 4.11 && < 5.0,
+    deepseq >= 1.4 && < 2.0,
+--    mtl >= 2.2.2 && < 3.0,
+    QuickCheck >= 2.14 && < 3.0,
+--    semigroupoids >= 5.3 && < 5.4,
+--    transformers >= 0.5.6 && < 1.0,
+    tasty >= 1.2 && < 2.0,
+    tasty-quickcheck >= 0.9 && < 1.0,
+    tasty-rerun >= 1.1.14 && < 2.0,
+
+  Ghc-Options:
+    -threaded
+
+  Hs-Source-Dirs:
+    test
+
+  Main-Is:
+    TestSuite.hs
+
   Other-Modules:
-    Control.Evaluation.Result
+    Control.Evaluation.Test
+    System.ErrorPhase.Test
+
+  Type:
+    exitcode-stdio-1.0
