@@ -138,7 +138,6 @@ Library
     language-specs
 
   Build-Depends:
-    async >= 2.2 && < 3.0,
     base >= 4.11 && < 5.0,
     bimap >= 0.3 && < 1.0,
     deepseq >= 1.4 && < 2.0,
@@ -152,6 +151,7 @@ Library
     quickcheck-instances >= 0.3.22 && < 1.0,
     random >= 1.2 && < 2.0,
     time >= 1.12 && < 2.0,
+    unliftio >= 0.2 && < 1.0,
     unliftio-core >= 0.2 && < 1.0,
 
   Exposed-Modules:

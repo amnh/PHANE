@@ -1,12 +1,11 @@
 module Main (main) where
 
-import Control.Concurrent (threadDelay, yield)
 import Control.Evaluation
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Control.Monad.Random.Class (MonadRandom (..))
-import Data.Functor (($>), (<$))
+import Data.Functor (($>))
 import Data.Ratio
 import Numeric.Natural
 import System.IO
@@ -22,8 +21,13 @@ main = do
     logConfig ← initializeLogging Info Warn Nothing
     firstSeed ← initializeRandomSeed
 
+    print "Test harness: Randomness (isolated)"
     runEvaluation logConfig firstSeed () harnessRanomness
 
+    --    print "Test harness: Paralelism (isolated)"
+    --    result ← runEvaluation logConfig firstSeed () $ runningInParallel True
+
+    print "Test harness: Randomness (parallel)"
     result ← runEvaluation logConfig firstSeed () $ runningInParallel True
     print result
 
@@ -40,15 +44,15 @@ runningInParallelPure = do
 
 
 runningInParallelEffect ∷ Evaluation () [Natural]
-runningInParallelEffect =
-    --    let expensiveOp x = (\n → ackermann (fromIntegral n) x) <$> (getRandomR (5, 10) ∷ Evaluation () Word)
-    let expensiveOp x = do
-            logWith LogInfo $ "Start:\t" <> show x
-            let v = ackermann x x `seq` 24
-            v <$ logWith LogInfo ("Close:\t" <> show x)
-    in  do
-            parTraverse ← getParallelChunkTraverse
-            expensiveOp `parTraverse` [1 .. 16]
+runningInParallelEffect = do
+    parTraverse ← getParallelChunkTraverse
+    (ackermannEffect . Just) `parTraverse` [1 .. 16]
+
+
+runningInParallelRandom ∷ Evaluation () [Natural]
+runningInParallelRandom = do
+    parTraverse ← getParallelChunkTraverse
+    ackermannEffect `parTraverse` replicate 16 Nothing
 
 
 harnessRanomness ∷ Evaluation () ()
@@ -58,22 +62,6 @@ harnessRanomness =
 
         mean ∷ [Integer] → Rational
         mean x = sum x % toInteger n
-
-        display ∷ Int → Rational → String
-        display len rat =
-            let (d', next') = abs num `quotRem` den
-                num = numerator rat
-                den = denominator rat
-
-                go 0 = ""
-                go x =
-                    let (d, next) = (10 * x) `quotRem` den
-                    in  shows d (go next)
-
-                prefix
-                    | num < 0 = "-"
-                    | otherwise = ""
-            in  prefix <> shows d' ("." <> take len (go next'))
     in  do
             observations ← replicateM n $ getRandomR (1, 100) ∷ Evaluation () [Integer]
             liftIO . putStrLn . display 3 $ mean observations
@@ -84,3 +72,31 @@ ackermann 0 0 = 0
 ackermann 0 n = n + 1
 ackermann m 0 = ackermann (m - 1) 1
 ackermann m n = ackermann m (ackermann (m - 1) (n - 1))
+
+
+ackermannEffect ∷ Maybe Natural → Evaluation () Natural
+ackermannEffect x =
+    let randNat ∷ Evaluation () Natural
+        randNat = fromIntegral <$> (getRandomR (1, 5) ∷ Evaluation () Word)
+    in  do
+            n ← maybe randNat pure x
+            logWith LogInfo $ "Start:\t" <> show n
+            let v = ackermann 10 n
+            logWith LogInfo ("Value:\t" <> show v) $> v
+
+
+display ∷ Int → Rational → String
+display len rat =
+    let (d', next') = abs num `quotRem` den
+        num = numerator rat
+        den = denominator rat
+
+        go 0 = ""
+        go x =
+            let (d, next) = (10 * x) `quotRem` den
+            in  shows d (go next)
+
+        prefix
+            | num < 0 = "-"
+            | otherwise = ""
+    in  prefix <> shows d' ("." <> take len (go next'))
