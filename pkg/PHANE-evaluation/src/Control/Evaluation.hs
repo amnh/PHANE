@@ -77,9 +77,99 @@ import System.Exit
 import System.Log.FastLogger hiding (check)
 import System.Random.Stateful
 import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..), coarbitraryEnum)
--- import Test.QuickCheck.Function (Fun, Function (..), applyFun)
 import Test.QuickCheck.Gen (Gen (..), variant)
 
+
+{- |
+/Note:/ Does not work on infinite lists!
+
+Like getParallelChunkMap, but performs monadic actions over the list in parallel.
+Each thread will have a different, /uncorrelated/ random number generator.
+-}
+getParallelChunkTraverse
+    ∷ ∀ a b env
+     . (NFData b)
+    ⇒ Evaluation env ((a → Evaluation env b) → [a] → Evaluation env [b])
+getParallelChunkTraverse = getParallelChunkTraverse_1
+
+
+{- |
+/Note:/ Does not work on infinite lists!
+
+Like getParallelChunkMap, but performs monadic actions over the list in parallel.
+Each thread will have a different, /uncorrelated/ random number generator.
+-}
+getParallelChunkTraverse_1
+    ∷ ∀ a b env
+     . (NFData b)
+    ⇒ Evaluation env ((a → Evaluation env b) → [a] → Evaluation env [b])
+getParallelChunkTraverse_1 = do
+    pMap ← getParallelChunkMap
+    --    Evaluation . ReaderT $ \store → do
+
+    --    let randomGen  = implicitRandomGen store
+    --    let maxBuckets = fromIntegral $ implicitBucketNum store
+    -- go :: ImplicitEnvironment env -> (a → Evaluation env b) -> a → IO (EvaluationResult b)
+    -- pTraverse :: (a → Evaluation env b) → [a] → Evaluation env [b]
+    let pTraverse f xs =
+            let resultsEval = pMap (force <$> f) xs ∷ [Evaluation env b]
+            in  sequenceA resultsEval ∷ Evaluation env [b]
+
+    pure pTraverse
+
+
+{-
+{- |
+/Note:/ Does not work on infinite lists!
+
+Like getParallelChunkMap, but performs monadic actions over the list in parallel.
+Each thread will have a different, /uncorrelated/ random number generator.
+-}
+getParallelChunkTraverse_0
+  ∷ ∀ a b env m. (MonadIO m, NFData b)
+  ⇒ Evaluation env ((a → Evaluation env b) → [a] → Evaluation env [b])
+getParallelChunkTraverse_0 =
+    let construct ∷ AtomicGenM StdGen → Word → (a → m b) → [a] → m [b]
+        construct randomRef = \case
+            n | n <= 1 → traverse
+            maxBuckets → flip $ \case
+                [] → const $ pure []
+                xs → \f →
+                    let jobCount ∷ Word
+                        jobCount = toEnum . force $ length xs
+
+                        allotBuckets ∷ [a] → m [(StdGen, [a])]
+                        allotBuckets ys =
+                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
+
+                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
+                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
+                        evalBucket (gen, jobs) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> traverse f jobs
+
+                        evalJob ∷ (StdGen, a) → IO (m b)
+                        evalJob (gen, job) = flip evalRandT gen $ do
+                            liftIO . pure $ force <$> f job
+
+                        -- For when the number of jobs do not exceed the maximum parallel threads
+                        parallelLess' ∷ m [b]
+                        parallelLess' = do
+                            (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
+                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
+
+                        -- If the number of jobs exceed the maximum parallel threads,
+                        -- we evenly distribute the jobs into "buckets" and then
+                        -- give each thread a bucket of jobs to complete concurrently.
+                        parallelMore' ∷ m [b]
+                        parallelMore' = do
+                            buckets ← allotBuckets xs
+                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
+                    in  force
+                            <$> if jobCount <= maxBuckets
+                                then parallelLess'
+                                else parallelMore'
+    in  Evaluation $ reader (pure . uncurry construct . (implicitRandomGen &&& fromIntegral . implicitBucketNum))
+-}
 
 {- |
 A computational "evaluation."
@@ -151,10 +241,6 @@ data LoggerFeed = LoggerFeed
     }
 
 
-newtype ParallelBucketCount = MaxPar Word
-    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
-
-
 {- |
 Configuration specifying how log messages are to be handled.
 -}
@@ -166,11 +252,27 @@ data LogConfig = LogConfig
     }
 
 
+newtype ParallelBucketCount = MaxPar Word
+    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
+
+
 {- |
 A seed from which a /(practically infinite)/ stream of pseudorandomness can be generated.
 -}
 newtype RandomSeed = RandomSeed Int
     deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
+
+
+instance Alternative (Evaluation env) where
+    {-# INLINEABLE (<|>) #-}
+    (<|>) x y = Evaluation . ReaderT $ \store → do
+        res ← runReaderT (unwrapEvaluation x) store
+        case runEvaluationResult res of
+            Left _ → runReaderT (unwrapEvaluation y) store
+            Right _ → pure res
+
+
+    empty = fail "Alternative identity"
 
 
 instance Applicative (Evaluation env) where
@@ -184,18 +286,6 @@ instance Applicative (Evaluation env) where
 
 
     (*>) = propagate
-
-
-instance Alternative (Evaluation env) where
-    {-# INLINEABLE (<|>) #-}
-    (<|>) x y = Evaluation . ReaderT $ \store → do
-        res ← runReaderT (unwrapEvaluation x) store
-        case runEvaluationResult res of
-            Left _ → runReaderT (unwrapEvaluation y) store
-            Right _ → pure res
-
-
-    empty = fail "Alternative identity"
 
 
 instance (Arbitrary a, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
@@ -347,10 +437,11 @@ instance PrimMonad (Evaluation env) where
 
 instance Semigroup (Evaluation env a) where
     {-# INLINE (<>) #-}
-    x <> y =
-        let xReader = unwrapEvaluation x
-            yReader = unwrapEvaluation y
-        in  Evaluation $ liftA2 (<>) xReader yReader
+    lhs <> rhs = Evaluation . ReaderT $ \store → do
+        x ← runReaderT (unwrapEvaluation lhs) store
+        case runEvaluationResult x of
+            Left s → pure . EU $ Left s
+            _ → runReaderT (unwrapEvaluation rhs) store
 
 
 {- |
@@ -359,7 +450,7 @@ Run the 'Evaluation' computation.
 Initial randomness seed and configuration for logging outputs required to initiate the computation.
 -}
 runEvaluation ∷ (MonadIO m) ⇒ LogConfig → RandomSeed → env → Evaluation env a → m a
-runEvaluation logConfig randomSeed environ eval = do
+runEvaluation logConfig@(LogConfig x y z _) randomSeed environ eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
     maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
     let implicit =
@@ -372,6 +463,13 @@ runEvaluation logConfig randomSeed environ eval = do
 
     executeEvaluation implicit eval
 
+
+{-
+    result ← executeEvaluation implicit eval
+    let cleanup = rmLoggerSet . feedLogger
+    liftIO $ cleanup x *> cleanup y *> maybe (pure ()) cleanup z
+    pure result
+-}
 
 {- |
 Create configuration for logging output stream to initialize an 'Evaluation'.
@@ -466,56 +564,6 @@ getParallelChunkMap =
                         y :| ys = withStrategy (parListChunk' num rdeepseq) $ f <$> x :| xs
                     in  y : ys
     in  Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
-
-
-{- |
-/Note:/ Does not work on infinite lists!
-
-Like getParallelChunkMap, but performs monadic actions over the list in parallel.
-Each thread will have a different, /uncorrelated/ random number generator.
--}
-getParallelChunkTraverse ∷ ∀ a b env m. (MonadIO m, NFData b) ⇒ Evaluation env ((a → m b) → [a] → m [b])
-getParallelChunkTraverse =
-    let construct ∷ AtomicGenM StdGen → Word → (a → m b) → [a] → m [b]
-        construct randomRef = \case
-            n | n <= 1 → traverse
-            maxBuckets → flip $ \case
-                [] → const $ pure []
-                xs → \f →
-                    let jobCount ∷ Word
-                        jobCount = toEnum . force $ length xs
-
-                        allotBuckets ∷ [a] → m [(StdGen, [a])]
-                        allotBuckets ys =
-                            flip zip (chunkEvenlyBy maxBuckets ys) <$> splitGenInto maxBuckets randomRef
-
-                        -- For MonadInterleave we use the type: (RandT StdGen IO a)
-                        evalBucket ∷ (StdGen, [a]) → IO (m [b])
-                        evalBucket (gen, jobs) = flip evalRandT gen $ do
-                            liftIO . pure $ force <$> traverse f jobs
-
-                        evalJob ∷ (StdGen, a) → IO (m b)
-                        evalJob (gen, job) = flip evalRandT gen $ do
-                            liftIO . pure $ force <$> f job
-
-                        -- For when the number of jobs do not exceed the maximum parallel threads
-                        parallelLess' ∷ m [b]
-                        parallelLess' = do
-                            (jobs ∷ [(StdGen, a)]) ← flip zip xs <$> splitGenInto jobCount randomRef
-                            fmap force . join . liftIO $ sequenceA <$> mapConcurrently evalJob jobs
-
-                        -- If the number of jobs exceed the maximum parallel threads,
-                        -- we evenly distribute the jobs into "buckets" and then
-                        -- give each thread a bucket of jobs to complete concurrently.
-                        parallelMore' ∷ m [b]
-                        parallelMore' = do
-                            buckets ← allotBuckets xs
-                            fmap (force . fold) . join . liftIO $ sequenceA <$> mapConcurrently evalBucket buckets
-                    in  force
-                            <$> if jobCount <= maxBuckets
-                                then parallelLess'
-                                else parallelMore'
-    in  Evaluation $ reader (pure . uncurry construct . (implicitRandomGen &&& fromIntegral . implicitBucketNum))
 
 
 {- |
@@ -652,31 +700,31 @@ withRandomGenerator gen eval =
 
 
 bind ∷ Evaluation env a → (a → Evaluation env b) → Evaluation env b
-bind x f = Evaluation $ do
-    y ← unwrapEvaluation x
+bind x f = Evaluation . ReaderT $ \store → do
+    y ← runReaderT (unwrapEvaluation x) store
     case runEvaluationResult y of
         Left s → pure . EU $ Left s
-        Right v → unwrapEvaluation (f v)
+        Right v → runReaderT (unwrapEvaluation (f v)) store
 
 
 apply ∷ Evaluation env (t → a) → Evaluation env t → Evaluation env a
-apply lhs rhs = Evaluation $ do
-    x ← unwrapEvaluation lhs
+apply lhs rhs = Evaluation . ReaderT $ \store → do
+    x ← runReaderT (unwrapEvaluation lhs) store
     case runEvaluationResult x of
         Left s → pure . EU $ Left s
         Right f → do
-            y ← unwrapEvaluation rhs
+            y ← runReaderT (unwrapEvaluation rhs) store
             pure . EU $ case runEvaluationResult y of
                 Left s → Left s
                 Right v → Right $ f v
 
 
 propagate ∷ Evaluation env a → Evaluation env b → Evaluation env b
-propagate lhs rhs = Evaluation $ do
-    x ← unwrapEvaluation lhs
+propagate lhs rhs = Evaluation . ReaderT $ \store → do
+    x ← runReaderT (unwrapEvaluation lhs) store
     case runEvaluationResult x of
         Left s → pure . EU $ Left s
-        Right _ → unwrapEvaluation rhs
+        Right _ → runReaderT (unwrapEvaluation rhs) store
 
 
 doLogCs ∷ (MonadIO m) ⇒ LogConfig → LogLevel → CallStack → LogStr → m ()
