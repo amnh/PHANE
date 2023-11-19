@@ -1,10 +1,12 @@
 module Main (main) where
 
+import Control.Concurrent (threadDelay, yield)
 import Control.Evaluation
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Control.Monad.Random.Class (MonadRandom (..))
+import Data.Functor (($>))
 import Data.Ratio
 import Numeric.Natural
 import System.IO
@@ -24,6 +26,29 @@ main = do
 
     result ← runEvaluation logConfig firstSeed () $ runningInParallel True
     print result
+
+
+runningInParallel ∷ Bool → Evaluation () [Natural]
+runningInParallel False = runningInParallelPure
+runningInParallel True = runningInParallelEffect
+
+
+runningInParallelPure ∷ Evaluation () [Natural]
+runningInParallelPure = do
+    inParallel ← getParallelChunkMap
+    pure $ ackermann 10 `inParallel` [1 .. 16]
+
+
+runningInParallelEffect ∷ Evaluation () [Natural]
+runningInParallelEffect =
+    --    let expensiveOp x = (\n → ackermann (fromIntegral n) x) <$> (getRandomR (5, 10) ∷ Evaluation () Word)
+    let expensiveOp x = do
+            logWith LogInfo $ "Start:\t" <> show x
+            let v = ackermann x x `seq` 24
+            pure v <* logWith LogInfo ("Close:\t" <> show x)
+    in  do
+            parTraverse ← getParallelChunkTraverse
+            expensiveOp `parTraverse` [1 .. 16]
 
 
 harnessRanomness ∷ Evaluation () ()
@@ -52,25 +77,6 @@ harnessRanomness =
     in  do
             observations ← replicateM n $ getRandomR (1, 100) ∷ Evaluation () [Integer]
             liftIO . putStrLn . display 3 $ mean observations
-
-
-runningInParallel ∷ Bool → Evaluation () [Natural]
-runningInParallel False = runningInParallelPure
-runningInParallel True = runningInParallelEffect
-
-
-runningInParallelPure ∷ Evaluation () [Natural]
-runningInParallelPure = do
-    inParallel ← getParallelChunkMap
-    pure $ ackermann 10 `inParallel` [1 .. 16]
-
-
-runningInParallelEffect ∷ Evaluation () [Natural]
-runningInParallelEffect =
-    let expensiveOp x = (\n → ackermann (fromIntegral n) x) <$> (getRandomR (5, 10) ∷ Evaluation () Word)
-    in  do
-            parTraverse ← getParallelChunkTraverse
-            expensiveOp `parTraverse` [1 .. 16]
 
 
 ackermann ∷ Natural → Natural → Natural
