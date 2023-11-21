@@ -53,6 +53,12 @@ data LogLevel
     | LogDump
 
 
+deriving stock instance Bounded LogLevel
+
+
+deriving stock instance Enum LogLevel
+
+
 deriving stock instance Eq LogLevel
 
 

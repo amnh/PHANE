@@ -40,46 +40,21 @@ module Control.Evaluation.Logging.Configuration (
     setFeedLevel,
 ) where
 
-import Control.Applicative (Alternative (..))
-import Control.Arrow ((&&&))
-import Control.Concurrent.Async
-import Control.DeepSeq
 import Control.Evaluation.Logging.Class
 import Control.Evaluation.Logging.Message
-import Control.Evaluation.Result
 import Control.Evaluation.Verbosity
-import Control.Exception
-import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
-import Control.Monad.IO.Unlift
-import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.Random.Strict
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
-import Control.Monad.Zip (MonadZip (..))
-import Control.Parallel.Strategies
-import Data.Bimap qualified as BM
-import Data.Bits (xor)
-import Data.Foldable (fold, toList, traverse_)
-import Data.Function ((&))
+import Data.Foldable (fold, traverse_)
 import Data.List (isPrefixOf)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (mapMaybe, maybe)
-import Data.Semigroup (sconcat)
+import Data.Maybe (mapMaybe)
 import Data.String
-import Data.Text.IO.Utf8 (hPutStr)
-import Data.Time.Clock.POSIX (getPOSIXTime)
-import GHC.Conc (getNumCapabilities)
-import GHC.Generics
-import GHC.Stack (CallStack)
-import GHC.Stack qualified as GHC
-import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.Directory
-import System.ErrorPhase
-import System.Exit
 import System.FilePath.Posix
 import System.IO (Handle, IOMode (WriteMode), hClose, hFlush, openFile, stderr, stdout)
-import System.Log.FastLogger hiding (check)
-import System.Random.Stateful
+import Test.QuickCheck.Arbitrary (CoArbitrary (..), coarbitraryEnum)
+import Test.QuickCheck.Gen (variant)
 import Text.Read (readMaybe)
 
 
@@ -89,10 +64,9 @@ An individual feed which logs output.
 data LogFeed
     = Quashed
     | Defined
-        { feedColor ∷ {-# UNPACK #-} Bool
-        , feedLevel ∷ {-# UNPACK #-} LogLevel
-        , feedSpout ∷ {-# UNPACK #-} Handle
-        }
+        {-# UNPACK #-} Bool
+        {-# UNPACK #-} LogLevel
+        {-# UNPACK #-} Handle
 
 
 {- |
@@ -105,14 +79,19 @@ data LogConfiguration = LogConfiguration
     }
 
 
-{-
-doLogCs ∷ (MonadIO m) ⇒ LogConfiguration → LogLevel → CallStack → LogMessage → m ()
-doLogCs config level cs txt =
-    let loc = case GHC.getCallStack cs of
-            ((_, l) : _) → GHC.srcLocFile l <> ":" <> show (GHC.srcLocStartLine l)
-            _ → "unknown"
-    in  doLog config level (toLogMessage loc) txt
--}
+instance CoArbitrary LogConfiguration where
+    coarbitrary config =
+        let x = configSTDERR config
+            y = configSTDOUT config
+            z = configStream config
+        in  coarbitrary z . coarbitrary y . coarbitrary x
+
+
+instance CoArbitrary LogFeed where
+    coarbitrary = \case
+        Quashed → variant 0
+        Defined x y _ → variant 1 . coarbitraryEnum x . coarbitraryEnum y
+
 
 {- |
 Create configuration for logging output stream to initialize an 'Evaluation'.
@@ -130,11 +109,6 @@ initializeLogging vOut vErr vFile =
         builderFilePath fileMay =
             let withVerbosity ∷ (Verbosity, FilePath) → Maybe (LogLevel, FilePath)
                 withVerbosity (verb, path) = (\level → (level, path)) <$> verbosityToLogLevel verb
-
-                blankFile ∷ (Verbosity, FilePath) → Maybe (Verbosity, FilePath)
-                blankFile = \case
-                    (_, []) → Nothing
-                    x → Just x
 
                 openLogFileFeed ∷ (LogLevel, FilePath) → IO LogFeed
                 openLogFileFeed (level, path) =
@@ -162,7 +136,7 @@ finalizeLogging config =
     let closeLogFeed ∷ LogFeed → IO ()
         closeLogFeed = \case
             Quashed → pure ()
-            defined → hClose $ feedSpout defined
+            Defined _ _ x → hClose x
     in  flushLogs config *> closeLogFeed (configStream config)
 
 
@@ -174,7 +148,7 @@ flushLogs =
     let flushFeed ∷ LogFeed → IO ()
         flushFeed = \case
             Quashed → pure ()
-            defined → hFlush $ feedSpout defined
+            Defined _ _ x → hFlush x
     in  traverse_ flushFeed . ([configSTDERR, configSTDOUT, configStream] <*>) . pure
 
 
@@ -220,18 +194,19 @@ processMessage config level txt =
             Quashed → pure ()
             Defined tinted _ handle →
                 let prefix = prefixer level
-                in  outputMessage handle $ case tinted of
-                        False → prefix <> txt
-                        True →
-                            let (setColorPrefix, setColorSuffix) = renderedColorVals level
-                                resetColor = "\o33[0;0m"
-                            in  fold
-                                    [ setColorPrefix
-                                    , prefix
-                                    , setColorSuffix
-                                    , txt
-                                    , resetColor
-                                    ]
+                in  outputMessage handle $
+                        if not tinted
+                            then prefix <> txt
+                            else
+                                let (setColorPrefix, setColorSuffix) = renderedColorVals level
+                                    resetColor = "\o33[0;0m"
+                                in  fold
+                                        [ setColorPrefix
+                                        , prefix
+                                        , setColorSuffix
+                                        , txt
+                                        , resetColor
+                                        ]
     in  liftIO $ do
             when emitSTDERR $ renderingLevelNice `whileOutputingTo` feedForSTDERR
             when emitSTDOUT $ renderingLevelNice `whileOutputingTo` feedForSTDOUT
@@ -252,7 +227,9 @@ modConfigStream f x = x{configStream = f $ configStream x}
 
 setFeedLevel ∷ Verbosity → LogFeed → LogFeed
 setFeedLevel =
-    let f v x = x{feedLevel = v}
+    let f v = \case
+            Quashed → Quashed
+            Defined x _ z → Defined x v z
     in  maybe (const Quashed) f . verbosityToLogLevel
 
 
