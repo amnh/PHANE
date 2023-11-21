@@ -20,16 +20,12 @@ import Control.Arrow ((***))
 import Control.DeepSeq
 import Control.Evaluation
 import Control.Evaluation.Result
+import Control.Evaluation.Verbosity (Verbosity (..))
 import Control.Monad (join, void)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Logger (Verbosity (..)) -- (Logger (..), LogLevel(..), Verbosity(..) )
--- import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Zip (MonadZip (..))
-import Data.Bifunctor (first)
+import Data.Bifunctor (bimap, first)
 import Data.Foldable
--- import Data.Functor.Alt (Alt (..))
--- import Data.Functor.Apply (Apply (..))
--- import Data.Functor.Bind (Bind (..))
 import Data.Functor.Compose
 import Data.Functor.Identity
 import Data.Semigroup
@@ -61,13 +57,19 @@ type RunEval0 = ENV → Evaluation ENV W → IO W
 type RunEval1 = ENV → Evaluation ENV (Evaluation ENV W) → IO (Evaluation ENV W)
 
 
-type RunEvals = (RunEval0, RunEval1)
+type RunEval2 = ENV → Evaluation ENV (W, W) → IO (W, W)
+
+
+type RunEval3 = ENV → Evaluation ENV () → IO ()
+
+
+type RunEvals = (RunEval0, RunEval1, RunEval2, RunEval3)
 
 
 {- |
 A way to evaluate if two 'Evaluation' results are the same.
 -}
-(====) ∷ IO W → IO W → Property
+(====) ∷ (Eq a, Show a) ⇒ IO a → IO a → Property
 (====) lhs rhs =
     let check ∷ IO c → PropertyM IO (Either String c)
         check = liftIO . fmap (first show) . tryEvaluateIO
@@ -78,13 +80,51 @@ A way to evaluate if two 'Evaluation' results are the same.
 
 
 {- |
+A way to evaluate if two 'Evaluation' results are the same.
+-}
+(<==>) ∷ (Eq a, Show a) ⇒ (IO a, IO a) → (IO a, IO a) → Property
+(<==>) lhs rhs =
+    let check ∷ IO c → PropertyM IO (Either String c)
+        check = liftIO . fmap (first show) . tryEvaluateIO
+
+        checkTuple ∷ (IO c, IO c) → PropertyM IO (Either String c, Either String c)
+        checkTuple (x, y) = do
+            x' ← check x
+            y' ← check y
+            pure (x', y')
+    in  monadicIO $ do
+            x ← checkTuple lhs
+            y ← checkTuple rhs
+            pure $ x === y
+
+
+{- |
+A way to evaluate if two 'Evaluation' results are the same.
+-}
+(=//=) ∷ (Eq a, Show a) ⇒ IO a → IO a → Property
+(=//=) lhs rhs =
+    let check ∷ IO c → PropertyM IO (Either String c)
+        check = liftIO . fmap (first show) . tryEvaluateIO
+    in  monadicIO $ do
+            x ← check lhs
+            y ← check rhs
+            pure $ x =/= y
+
+
+{- |
 Test suite for the 'EvaluationT' data-type.
 -}
 testSuite ∷ IO TestTree
 testSuite = do
-    logs ← initializeLogging Info Info Nothing
+    logs ← initializeLogging None None Nothing
     seed ← initializeRandomSeed
-    let evaluators = (runEvaluation logs seed, runEvaluation logs seed) ∷ RunEvals
+    let evaluators =
+            ( runEvaluation logs seed
+            , runEvaluation logs seed
+            , runEvaluation logs seed
+            , runEvaluation logs seed
+            )
+                ∷ RunEvals
     pure $
         testGroup
             "Computational Evaluation Monad"
@@ -92,18 +132,6 @@ testSuite = do
             , evaluationTLaws evaluators
             ]
 
-
-{-
-notificationLaws :: TestTree
-notificationLaws =
-    testGroup
-        "Notification"
-        [ equalityLaws @Notification
-        , normalFormDataLaws @Notification
-        , orderingLaws @Notification
-        , showProperties @Notification
-        ]
--}
 
 evaluationResultLaws ∷ TestTree
 evaluationResultLaws =
@@ -141,10 +169,9 @@ evaluationTLaws evaluators =
         , monadLaws'
         , -- Extended control structures
           monadFailLaws'
-        , --        , monadLoggerLaws'
-          --        , monadTransLaws'
-          --        , monadZipLaws'
-          -- Refined control structures
+        , -- , monadLoggerLaws'
+          monadZipLaws'
+        , -- Refined control structures
           altLaws'
         , applyLaws'
         , bindLaws'
@@ -180,7 +207,7 @@ functorLaws =
 
 functorLaws'
     ∷ RunEvals → TestTree
-functorLaws' (runEvaluation', _) =
+functorLaws' (runEvaluation', _, _, _) =
     testGroup
         "Functor Laws"
         [ testLaw functorIdentity "Identity" "fmap id === id"
@@ -233,7 +260,7 @@ applicativeLaws =
 
 
 applicativeLaws' ∷ RunEvals → TestTree
-applicativeLaws' (runEvaluation', _) =
+applicativeLaws' (runEvaluation', _, _, _) =
     testGroup
         "Applicative Laws"
         [ testLaw applicativeIdentity "Identity" "pure id <*> v === v"
@@ -290,7 +317,7 @@ monadLaws =
 
 
 monadLaws' ∷ RunEvals → TestTree
-monadLaws' (runEvaluation', _) =
+monadLaws' (runEvaluation', _, _, _) =
     testGroup
         "Monad Laws"
         [ testLaw monadLeftIdentity "Left Identity" "return a >>= k === k a"
@@ -336,7 +363,7 @@ monadFailLaws =
 
 
 monadFailLaws' ∷ RunEvals → TestTree
-monadFailLaws' (runEvaluation', _) =
+monadFailLaws' (runEvaluation', _, _, _) =
     testGroup
         "MonadFail Laws"
         [ testLaw leftNullification "Left Nullification" "fail s >>= f === fail s"
@@ -387,30 +414,6 @@ monadLoggerLaws' =
             runEvaluation' w (let v = e <@> x in v <@> y <@> z) === runEvaluation' w (let v = e <@> x <@> y in v <@> z)
 -}
 
-{-
-monadTransLaws' :: RunEvals -> TestTree
-monadTransLaws' (runEvaluation', runEvaluation'') =
-    testGroup
-        "MonadTrans Laws"
-        [ testLaw
-            liftedPure
-            "Lifted Pure"
-            "lift . pure === pure"
-        , testLaw
-            bindComposition
-            "Bind Composition"
-            "lift (x >>= f) === lift x >>= (lift . f)"
-        ]
-    where
-        liftedPure :: ENV -> W -> Property
-        liftedPure w x =
-            runEvaluation' w (lift $ pure x) === runEvaluation' w (pure x :: Evaluation ENV W)
-
-        bindComposition :: ENV -> M W -> Fun W (M W) -> Property
-        bindComposition w x (apply -> f) =
-            runEvaluation' w (lift (x >>= f)) === runEvaluation' w ((lift x >>= (lift . f)) :: Evaluation ENV W)
--}
-
 monadZipLaws
     ∷ ∀ m
      . ( Arbitrary (m W)
@@ -446,9 +449,8 @@ monadZipLaws =
                 .||. (munzip (mzip x y) === (x, y))
 
 
-{-
-monadZipLaws' :: RunEvals -> TestTree
-monadZipLaws' (runEvaluation', runEvaluation'') =
+monadZipLaws' ∷ RunEvals → TestTree
+monadZipLaws' (runEvaluation', _, runEvaluation''', runEvaluation'''') =
     testGroup
         "MonadZip Laws"
         [ testLaw
@@ -461,21 +463,22 @@ monadZipLaws' (runEvaluation', runEvaluation'') =
             "fmap (const ()) ma === fmap (const ()) mb ==> munzip (mzip ma mb) === (ma, mb)"
         ]
     where
-        naturality :: ENV -> Fun W W -> Fun W W -> Blind (Evaluation ENV W) -> Blind (Evaluation ENV W) -> Property
-        naturality w (apply -> f) (apply -> g) (Blind x) (Blind y) =
-            runEvaluation' w (fmap (f *** g) (mzip x y)) === runEvaluation' w (mzip (fmap f x) (fmap g y))
+        naturality ∷ ENV → Fun W W → Fun W W → Blind (Evaluation ENV W) → Blind (Evaluation ENV W) → Property
+        naturality w (apply → f) (apply → g) (Blind x) (Blind y) =
+            runEvaluation''' w (fmap (f *** g) (mzip x y)) ==== runEvaluation''' w (mzip (fmap f x) (fmap g y))
 
-        infoPreservation :: ENV -> Blind (Evaluation ENV W) -> Blind (Evaluation ENV W) -> Property
+        infoPreservation ∷ ENV → Blind (Evaluation ENV W) → Blind (Evaluation ENV W) → Property
         infoPreservation w (Blind x) (Blind y) =
-            let lhs = runEvaluation' w $ void x
-                rhs = runEvaluation' w $ void y
-            in  lhs =/= rhs
-
-                .||. f (munzip (mzip x y))
-                === f (x, y)
+            let lhs = runEvaluation'''' w $ g x
+                rhs = runEvaluation'''' w $ g y
+            in  lhs =//= rhs
+                    .||. f (munzip (mzip x y))
+                        <==> f (x, y)
             where
+                g ∷ Evaluation ENV W → Evaluation ENV ()
+                g = void
                 f = bimap (runEvaluation' w) (runEvaluation' w)
--}
+
 
 altLaws
     ∷ ∀ f
@@ -511,7 +514,7 @@ altLaws =
 
 
 altLaws' ∷ RunEvals → TestTree
-altLaws' (runEvaluation', _) =
+altLaws' (runEvaluation', _, _, _) =
     testGroup
         "Alternative Laws"
         [ testLaw altAssociativity "Associativity" "x <|> (y <|> z) === (x <|> y) <|> z"
@@ -580,7 +583,7 @@ applyLaws =
 
 
 applyLaws' ∷ RunEvals → TestTree
-applyLaws' (runEvaluation', runEvaluation'') =
+applyLaws' (runEvaluation', runEvaluation'', _, _) =
     testGroup
         "Applicative Laws"
         [ testLaw composition "Composition" "(.) <$> u <*> v <*> w = u <*> (v <*> w)"
@@ -665,7 +668,7 @@ bindLaws =
 
 
 bindLaws' ∷ RunEvals → TestTree
-bindLaws' (runEvaluation', _) =
+bindLaws' (runEvaluation', _, _, _) =
     testGroup
         "Bind Laws"
         [ testLaw defJoin "Definition of join" "join === (>>= id)"
@@ -800,7 +803,7 @@ semigroupLaws =
 
 
 semigroupLaws' ∷ RunEvals → TestTree
-semigroupLaws' (runEvaluation', _) =
+semigroupLaws' (runEvaluation', _, _, _) =
     testGroup
         "Semigroup Laws"
         [ testLaw semigroupAssociativity "Associativity" "x <> (y <> z) === (x <> y) <> z"

@@ -66,6 +66,9 @@ data LogFeed
     | Defined
         {-# UNPACK #-} Bool
         {-# UNPACK #-} LogLevel
+        -- ^ Verbosity level of the logger feed
+        {-# UNPACK #-} LogLevel
+        -- ^ Verbosity of last processed message
         {-# UNPACK #-} Handle
 
 
@@ -90,7 +93,7 @@ instance CoArbitrary LogConfiguration where
 instance CoArbitrary LogFeed where
     coarbitrary = \case
         Quashed → variant 0
-        Defined x y _ → variant 1 . coarbitraryEnum x . coarbitraryEnum y
+        Defined x y z _ → variant 1 . coarbitraryEnum x . coarbitraryEnum y . coarbitraryEnum z
 
 
 {- |
@@ -112,14 +115,14 @@ initializeLogging vOut vErr vFile =
 
                 openLogFileFeed ∷ (LogLevel, FilePath) → IO LogFeed
                 openLogFileFeed (level, path) =
-                    Defined False level
+                    Defined False level maxBound
                         <$> (safelyMoveFile path *> openFile path WriteMode)
             in  maybe (pure Quashed) openLogFileFeed $ fileMay >>= withVerbosity
 
         builderStandard ∷ Verbosity → Handle → IO LogFeed
         builderStandard verb handle = pure $ case verbosityToLogLevel verb of
             Nothing → Quashed
-            Just level → Defined True level handle
+            Just level → Defined True level maxBound handle
     in  LogConfiguration
             <$> builderStandard vErr stderr
             <*> builderStandard vOut stdout
@@ -136,7 +139,7 @@ finalizeLogging config =
     let closeLogFeed ∷ LogFeed → IO ()
         closeLogFeed = \case
             Quashed → pure ()
-            Defined _ _ x → hClose x
+            Defined _ _ _ x → hClose x
     in  flushLogs config *> closeLogFeed (configStream config)
 
 
@@ -148,7 +151,7 @@ flushLogs =
     let flushFeed ∷ LogFeed → IO ()
         flushFeed = \case
             Quashed → pure ()
-            Defined _ _ x → hFlush x
+            Defined _ _ _ x → hFlush x
     in  traverse_ flushFeed . ([configSTDERR, configSTDOUT, configStream] <*>) . pure
 
 
@@ -192,8 +195,8 @@ processMessage config level txt =
         whileOutputingTo ∷ (LogLevel → LogMessage) → LogFeed → IO ()
         whileOutputingTo prefixer = \case
             Quashed → pure ()
-            Defined tinted _ handle →
-                let prefix = prefixer level
+            Defined tinted _ prev handle →
+                let prefix = renderingLevelLine prev level <> prefixer level
                 in  outputMessage handle $
                         if not tinted
                             then prefix <> txt
@@ -229,14 +232,26 @@ setFeedLevel ∷ Verbosity → LogFeed → LogFeed
 setFeedLevel =
     let f v = \case
             Quashed → Quashed
-            Defined x _ z → Defined x v z
+            Defined x _ y z → Defined x v y z
     in  maybe (const Quashed) f . verbosityToLogLevel
 
 
 permissibleVerbosity ∷ LogLevel → LogFeed → Bool
 permissibleVerbosity level = \case
     Quashed → False
-    Defined _ allowed _ → level <= allowed
+    Defined _ allowed _ _ → level <= allowed
+
+
+{- |
+If the 'LogLevel' of the current message is the same as the previous message,
+then do not insert a new line. Rather append the message to the logger feed.
+However, if the levels differ, then insert a newline into the log feed between
+the previous and current log message.
+-}
+renderingLevelLine ∷ LogLevel → LogLevel → LogMessage
+renderingLevelLine prev curr
+    | prev == curr = ""
+    | otherwise = "\n"
 
 
 renderingLevelFull ∷ LogLevel → LogMessage

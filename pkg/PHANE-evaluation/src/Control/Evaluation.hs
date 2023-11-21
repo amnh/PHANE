@@ -185,18 +185,6 @@ instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitEnvironment env) where
         in  coarbitrary z . coarbitrary y . variant x
 
 
-{-
-instance CoArbitrary LogConfig where
-    coarbitrary config =
-        let x = configSTDERR config
-            y = configSTDOUT config
-            z = configStream config
-        in  coarbitrary z . coarbitrary y . coarbitrary x
-
-instance CoArbitrary LoggerFeed where
-    coarbitrary (LoggerFeed v _) = coarbitraryEnum v
--}
-
 deriving stock instance Functor ImplicitEnvironment
 
 
@@ -353,44 +341,6 @@ runEvaluation logConfig randomSeed environ eval = do
                 }
     executeEvaluation implicit eval
 
-
-{-
-{- |
-Create configuration for logging output stream to initialize an 'Evaluation'.
--}
-initializeLogging
-    ∷ Verbosity
-    -- ^ Verbosity level for STDOUT
-    → Verbosity
-    -- ^ Verbosity level for STDERR
-    → Maybe (Verbosity, FilePath)
-    -- ^ optional verbosity level for a file stream
-    → IO LogConfiguration
-initializeLogging vOut vErr vFile =
-    let builderFilePath ∷ Maybe (Verbosity, FilePath) → IO (Maybe LogFeed)
-        builderFilePath fileMay =
-            let mkFeed ∷ Maybe (Verbosity, LoggerSet) → Maybe LogFeed
-                mkFeed = fmap (uncurry LogFeed)
-
-                create = traverse (traverse initLoggerSetStream)
-
-                blankFile ∷ (Verbosity, FilePath) → Maybe (Verbosity, FilePath)
-                blankFile = \case
-                    (_, []) → Nothing
-                    x → Just x
-            in  fmap mkFeed . create $ fileMay >>= blankFile
-
-        builderStandard ∷ Verbosity → IO LoggerSet → IO LogFeed
-        builderStandard level = fmap (LogFeed level)
-
-        timeFormat ∷ TimeFormat
-        timeFormat = "%Y-%m-%d %T %z"
-    in  LogConfiguration
-            <$> builderStandard vErr initLoggerSetSTDERR
-            <*> builderStandard vOut initLoggerSetSTDOUT
-            <*> builderFilePath vFile
-            <*> newTimeCache timeFormat
--}
 
 {- |
 Set the verbosity level of logs streamed to @STDERR@ for the sub-'Evaluation'.
