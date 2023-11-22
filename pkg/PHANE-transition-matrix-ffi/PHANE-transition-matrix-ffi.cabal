@@ -40,10 +40,11 @@ Flag Forego-Sanity
 -- FFI code.
 Common ffi-buildinfo
 
---  Cc-Options:
---    -rdynamic --std=c11
+  If !os(darwin)
+    CC-Options:
+      -rdynamic
 
-  Cc-Options:
+  CC-Options:
     --std=c11
 
   C-Sources:
@@ -91,8 +92,6 @@ Common ghc-flags
   Ghc-Prof-Options:
     -fprof-auto
     -fprof-cafs
-    -optc
-    -rdynamic
 
   If !flag(Optimize)
     Ghc-Options:

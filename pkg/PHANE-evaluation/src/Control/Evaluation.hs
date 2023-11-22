@@ -25,6 +25,17 @@ module Control.Evaluation (
     runEvaluation,
 
     -- * Logging operations
+
+    -- ** Type-classes
+    Logger (..),
+    Loggable (..),
+
+    -- ** Data-types
+    LogLevel (..),
+    LogMessage,
+    logTokenStructure,
+
+    -- ** Configuration
     LogConfiguration (),
     initializeLogging,
     setVerbositySTDERR,
@@ -49,6 +60,7 @@ import Control.Applicative (Alternative (..))
 import Control.DeepSeq
 import Control.Evaluation.Logging.Class
 import Control.Evaluation.Logging.Configuration
+import Control.Evaluation.Logging.Message
 import Control.Evaluation.Result
 import Control.Evaluation.Verbosity
 import Control.Exception

@@ -46,9 +46,11 @@ Common ghc-flags
   Ghc-Prof-Options:
     -fprof-auto
     -fprof-cafs
-    -optc
-    -rdynamic
 
+  If !os(darwin)
+    CC-Options:
+      -rdynamic
+    
   If !flag(Optimize)
     Ghc-Options:
       -O0

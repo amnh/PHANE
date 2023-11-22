@@ -83,8 +83,12 @@ Common build-defaults
 -- Global deviations from Haskell98
 Common ffi-build-info
 
+  If !os(darwin)
+    CC-Options:
+      -rdynamic
+
   CC-Options:
-    -rdynamic --std=c11
+    --std=c11
 
   -- Here we list all directories that contain C & C++ header files that the FFI
   -- tools will need to locate when preprocessing the C files. Without listing
@@ -131,8 +135,6 @@ Common ghc-flags
   Ghc-Prof-Options:
     -fprof-auto
     -fprof-cafs
-    -optc
-    -rdynamic
 
   If !flag(Optimize)
     Ghc-Options:
