@@ -1,11 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UnboxedSums #-}
 
 {- |
 Defines the different phases in which an error can occur.
@@ -40,7 +33,24 @@ data ErrorPhase
     | Unifying
     | Computing
     | Outputting
-    deriving stock (Data, Eq, Generic, Ord, Read, Show)
+
+
+deriving stock instance Data ErrorPhase
+
+
+deriving stock instance Eq ErrorPhase
+
+
+deriving stock instance Generic ErrorPhase
+
+
+deriving stock instance Ord ErrorPhase
+
+
+deriving stock instance Read ErrorPhase
+
+
+deriving stock instance Show ErrorPhase
 
 
 instance Arbitrary ErrorPhase where

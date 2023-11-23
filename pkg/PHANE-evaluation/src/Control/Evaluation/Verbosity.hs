@@ -1,4 +1,5 @@
 {-# LANGUAGE Safe #-}
+{-# LANGUAGE UnboxedSums #-}
 
 {- |
 Specification of verbosity for logging within the 'Control.Evaluation'.

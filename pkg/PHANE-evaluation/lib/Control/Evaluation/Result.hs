@@ -1,14 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RoleAnnotations #-}
-{-# LANGUAGE TypeFamilies #-}
 
 {- |
 The core semigroupoid state of an 'Control.Evaluation.Evaluation' monad.
@@ -51,11 +43,30 @@ be quite long, representing the entire list of aggregated failures. We use
 efficient rendering.
 -}
 newtype EvaluationResult a = EU {runEvaluationResult ∷ Either (ErrorPhase, LogMessage) a}
-    deriving stock (Foldable, Generic, Generic1, Traversable)
-    deriving newtype (Applicative, Functor, MonadFix)
 
 
 type role EvaluationResult representational
+
+
+deriving newtype instance Applicative EvaluationResult
+
+
+deriving newtype instance Functor EvaluationResult
+
+
+deriving newtype instance MonadFix EvaluationResult
+
+
+deriving stock instance Foldable EvaluationResult
+
+
+deriving stock instance Generic (EvaluationResult a)
+
+
+deriving stock instance Generic1 EvaluationResult
+
+
+deriving stock instance Traversable EvaluationResult
 
 
 instance (Eq a) ⇒ Eq (EvaluationResult a) where

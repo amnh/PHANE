@@ -1,18 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RoleAnnotations #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedSums #-}
 
 {- |
@@ -97,7 +84,11 @@ instance CoArbitrary LogFeed where
 
 
 {- |
+__Time:__ \[ \mathcal{O}\left( 1 \right) \]
+
 Create configuration for logging output stream to initialize an 'Evaluation'.
+
+Allocates required file handles. Performs basic sanity checking.
 -}
 initializeLogging
     ∷ Verbosity
@@ -130,6 +121,9 @@ initializeLogging vOut vErr vFile =
 
 
 {- |
+__Time:__ \[ \mathcal{O}\left( n \right) \] where \[ n \] is the length of any
+bytes remaining in the log feed buffers.
+
 Release logging resources of the supplied 'LogConfiguration'.
 All log feeds will have thier buffers flushed and subsequently no further logging
 will be possible with the given 'LogConfiguration'.
@@ -144,6 +138,9 @@ finalizeLogging config =
 
 
 {- |
+__Time:__ \[ \mathcal{O}\left( n \right) \] where \[ n \] is the length of any
+bytes remaining in the log feed buffers.
+
 Flush all logging feeds in the 'LogConfiguration' to thier appropriate file handles.
 -}
 flushLogs ∷ LogConfiguration → IO ()
@@ -156,6 +153,8 @@ flushLogs =
 
 
 {- |
+__Time:__ \[ \mathcal{O}\left( n \right) \] where \[ n \] is the 'LogMessage' length.
+
 Perform the I/O logging effect for the supplied 'LogMessage' to each of the approppriate streams.
 The 'LogConfiguration' defines how to log to the STDOUT feed, STDERR feed, and an optional file
 on disk feed.

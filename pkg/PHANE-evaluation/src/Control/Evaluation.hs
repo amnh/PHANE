@@ -1,19 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RoleAnnotations #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UnboxedSums #-}
 
 {- |
 The 'Evaluation' type's monad transformer definition and types.
@@ -137,10 +124,10 @@ type role Evaluation representational nominal
 
 
 data ImplicitEnvironment env = ImplicitEnvironment
-    { implicitBucketNum ∷ {-# UNPACK #-} ParallelBucketCount
-    , implicitLogConfig ∷ {-# UNPACK #-} LogConfiguration
-    , implicitRandomGen ∷ {-# UNPACK #-} (AtomicGenM StdGen)
-    , explicitReader ∷ env
+    { implicitBucketNum ∷ {-# UNPACK #-} !ParallelBucketCount
+    , implicitLogConfig ∷ {-# UNPACK #-} !LogConfiguration
+    , implicitRandomGen ∷ {-# UNPACK #-} !(AtomicGenM StdGen)
+    , explicitReader ∷ !env
     }
 
 

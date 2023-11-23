@@ -1,7 +1,6 @@
 module Main (main) where
 
 import Control.Evaluation
-import Control.Evaluation.Logging.Class
 import Control.Evaluation.Verbosity
 import Control.Monad (replicateM, void, when)
 import Control.Monad.IO.Class
