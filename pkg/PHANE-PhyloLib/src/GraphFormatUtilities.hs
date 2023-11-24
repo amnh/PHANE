@@ -1180,7 +1180,7 @@ relabelGraphLeaves namePairList inGraph
 nedd to add other sanity checks
 does not check for cycles becasue that is done on input
 -}
-checkGraphsAndData ∷ [T.Text] → P.Gr T.Text Double → P.Gr T.Text Double
+checkGraphsAndData ∷ (Foldable f) ⇒ f T.Text → P.Gr T.Text Double → P.Gr T.Text Double
 checkGraphsAndData leafNameList inGraph
     | G.isEmpty inGraph = inGraph
     | null leafNameList = error "Empty leaf name list"
@@ -1188,6 +1188,7 @@ checkGraphsAndData leafNameList inGraph
         let (_, leafList, _) = splitVertexList inGraph
             graphLeafNames = L.sort $ fmap snd leafList
             nameGroupsGT1 = filter ((> 1) . length) $ L.group graphLeafNames
+            lSet = toList leafNameList
         in  -- check for repeated terminals
             if not $ null nameGroupsGT1
                 then
@@ -1197,10 +1198,10 @@ checkGraphsAndData leafNameList inGraph
                         )
                 else -- check for leaf complement identity
 
-                    if leafNameList /= graphLeafNames
+                    if lSet /= graphLeafNames
                         then
-                            let inBoth = L.intersect leafNameList graphLeafNames
-                                onlyInData = leafNameList L.\\ inBoth
+                            let inBoth = L.intersect lSet graphLeafNames
+                                onlyInData = lSet L.\\ inBoth
                                 onlyInGraph = graphLeafNames L.\\ inBoth
                             in  errorWithoutStackTrace
                                     ( "Data leaf list does not match graph leaf list: \n\tOnly in data : "
