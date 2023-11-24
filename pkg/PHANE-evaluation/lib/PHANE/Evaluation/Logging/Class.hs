@@ -3,7 +3,7 @@
 {- |
 Monadic extension classes that enables the support of logging.
 -}
-module Control.Evaluation.Logging.Class (
+module PHANE.Evaluation.Logging.Class (
     -- * Logging Type-classes
     Logger (..),
     Loggable (..),
@@ -15,7 +15,6 @@ module Control.Evaluation.Logging.Class (
     LogLevel (..),
 ) where
 
-import Control.Evaluation.Logging.Message
 import Control.Monad.Trans
 import Data.Foldable (fold, toList)
 import Data.Foldable1 (intercalate1)
@@ -27,6 +26,7 @@ import Data.Text (Text)
 import Data.Word
 import Foreign.C.Types
 import Foreign.Ptr (IntPtr, WordPtr)
+import PHANE.Evaluation.Logging.Message
 import System.Posix.Types
 
 

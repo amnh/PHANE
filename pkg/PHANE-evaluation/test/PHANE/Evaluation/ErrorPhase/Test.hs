@@ -1,28 +1,18 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExplicitForAll #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
+{- HLINT ignore "Use /=" -}
+
 {- |
-Module      :  System.ErrorPhase.Test
-Copyright   :  (c) 2015-2021 Ward Wheeler
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Stability   :  provisional
-Portability :  portable
-
 Tests for the 'ErrorPhase' type.
 -}
-module System.ErrorPhase.Test (
+module PHANE.Evaluation.ErrorPhase.Test (
     testSuite,
 ) where
 
 import Control.DeepSeq
-import System.ErrorPhase
+import PHANE.Evaluation.ErrorPhase
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck hiding ((=/=))
 

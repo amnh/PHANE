@@ -3,9 +3,9 @@
 {-# LANGUAGE UnboxedSums #-}
 
 {- |
-Configuration and initialization for logging within the 'Control.Evaluation' monad.
+Configuration and initialization for logging within the 'PHANE.Evaluation' monad.
 -}
-module Control.Evaluation.Logging.Configuration (
+module PHANE.Evaluation.Logging.Configuration (
     -- * Data-types
     LogConfiguration (..),
     LogFeed (..),
@@ -27,9 +27,6 @@ module Control.Evaluation.Logging.Configuration (
     setFeedLevel,
 ) where
 
-import Control.Evaluation.Logging.Class
-import Control.Evaluation.Logging.Message
-import Control.Evaluation.Verbosity
 import Control.Monad.IO.Class
 import Control.Monad.Random.Strict
 import Data.Foldable (fold, traverse_)
@@ -37,6 +34,9 @@ import Data.List (isPrefixOf)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (mapMaybe)
 import Data.String
+import PHANE.Evaluation.Logging.Class
+import PHANE.Evaluation.Logging.Message
+import PHANE.Evaluation.Verbosity
 import System.Directory
 import System.FilePath.Posix
 import System.IO (Handle, IOMode (WriteMode), hClose, hFlush, openFile, stderr, stdout)
@@ -159,7 +159,7 @@ Perform the I/O logging effect for the supplied 'LogMessage' to each of the appr
 The 'LogConfiguration' defines how to log to the STDOUT feed, STDERR feed, and an optional file
 on disk feed.
 Furthermore, the supplied 'LogLevel' dictates the whether the 'LogMessage' should be emitted or
-supressed based on the 'Control.Evaluation.Verbosity' of each feed.
+supressed based on the 'PHANE.Evaluation.Verbosity' of each feed.
 
 The semantics of @'processMessage' config level txt@
 

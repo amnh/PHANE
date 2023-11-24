@@ -159,16 +159,15 @@ Library
     unliftio-core >= 0.2 && < 1.0,
 
   Exposed-Modules:
-    Control.Evaluation
-    Control.Evaluation.Verbosity
+    PHANE.Evaluation
+    PHANE.Evaluation.Logging
+    PHANE.Evaluation.Verbosity
 
   Other-Modules:
-    Control.Evaluation.Logging.Configuration
+    PHANE.Evaluation.Logging.Configuration
 
   Reexported-Modules:
-    Control.Evaluation.Logging.Class,
-    Control.Evaluation.Logging.Message,
-    System.ErrorPhase,
+    PHANE.Evaluation.ErrorPhase
 
   Hs-Source-Dirs:
     src
@@ -192,10 +191,10 @@ Library result
     text-builder-linear >= 0.1.2 && < 1.0,
 
   Exposed-Modules:
-    Control.Evaluation.Logging.Class
-    Control.Evaluation.Logging.Message
-    Control.Evaluation.Result
-    System.ErrorPhase
+    PHANE.Evaluation.Logging.Class
+    PHANE.Evaluation.Logging.Message
+    PHANE.Evaluation.Result
+    PHANE.Evaluation.ErrorPhase
 
   Hs-Source-Dirs:
     lib
@@ -230,8 +229,8 @@ Test-Suite test-cases
     TestSuite.hs
 
   Other-Modules:
-    Control.Evaluation.Test
-    System.ErrorPhase.Test
+    PHANE.Evaluation.Test
+    PHANE.Evaluation.ErrorPhase.Test
 
   Type:
     exitcode-stdio-1.0

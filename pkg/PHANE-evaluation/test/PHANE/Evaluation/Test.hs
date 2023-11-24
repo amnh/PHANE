@@ -7,20 +7,23 @@
 
 {- HLINT ignore "Monad law, left identity" -}
 {- HLINT ignore "Monad law, right identity" -}
+{- HLINT ignore "Functor law" -}
+{- HLINT ignore "Use <$>" -}
+{- HLINT ignore "Use >=>" -}
+{- HLINT ignore "Use =<<" -}
+{- HLINT ignore "Use /=" -}
+{- HLINT ignore "Use null" -}
 
 {- |
 Tests for the Evaluation type.
 -}
-module Control.Evaluation.Test (
+module PHANE.Evaluation.Test (
     testSuite,
 ) where
 
 import Control.Applicative (Alternative (..))
 import Control.Arrow ((***))
 import Control.DeepSeq
-import Control.Evaluation
-import Control.Evaluation.Result
-import Control.Evaluation.Verbosity (Verbosity (..))
 import Control.Monad (join, void)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Zip (MonadZip (..))
@@ -29,6 +32,9 @@ import Data.Foldable
 import Data.Functor.Compose
 import Data.Functor.Identity
 import Data.Semigroup
+import PHANE.Evaluation
+import PHANE.Evaluation.Result
+import PHANE.Evaluation.Verbosity (Verbosity (..))
 import Test.QuickCheck.Exception (tryEvaluateIO)
 import Test.QuickCheck.Function
 import Test.QuickCheck.Monadic (PropertyM, monadicIO)

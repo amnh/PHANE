@@ -1,13 +1,14 @@
 module Main (main) where
 
-import Control.Evaluation
-import Control.Evaluation.Verbosity
 import Control.Monad (replicateM, void, when)
 import Control.Monad.IO.Class
 import Control.Monad.Random.Class (MonadRandom (..))
 import Data.Functor (($>))
 import Data.Ratio
 import Numeric.Natural
+import PHANE.Evaluation
+import PHANE.Evaluation.Logging
+import PHANE.Evaluation.Verbosity
 import System.IO
 
 

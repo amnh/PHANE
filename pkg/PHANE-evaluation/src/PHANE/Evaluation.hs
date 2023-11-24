@@ -5,51 +5,37 @@
 {- |
 The 'Evaluation' type's monad transformer definition and types.
 -}
-module Control.Evaluation (
+module PHANE.Evaluation (
     Evaluation (),
 
     -- * Run computation
     runEvaluation,
 
-    -- * Logging operations
+    -- * Specialized functions
+    failWithPhase,
+    mapEvaluation,
 
-    -- ** Type-classes
-    Logger (..),
-    Loggable (..),
+    -- * Operations
 
-    -- ** Data-types
-    LogLevel (..),
-    LogMessage,
-    logTokenStructure,
-
-    -- ** Configuration
+    -- ** Logging
     LogConfiguration (),
     initializeLogging,
     setVerbositySTDERR,
     setVerbositySTDOUT,
     setVerbosityFileLog,
 
-    -- * Parallel operations
+    -- ** Parallelism
     getParallelChunkMap,
     getParallelChunkTraverse,
 
-    -- * Randomness operations
+    -- ** Randomness
     RandomSeed (),
     initializeRandomSeed,
     setRandomSeed,
-
-    -- * Other
-    failWithPhase,
-    mapEvaluation,
 ) where
 
 import Control.Applicative (Alternative (..))
 import Control.DeepSeq
-import Control.Evaluation.Logging.Class
-import Control.Evaluation.Logging.Configuration
-import Control.Evaluation.Logging.Message
-import Control.Evaluation.Result
-import Control.Evaluation.Verbosity
 import Control.Exception
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
@@ -67,8 +53,12 @@ import Data.Semigroup (sconcat)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import GHC.Conc (getNumCapabilities)
 import GHC.Generics
+import PHANE.Evaluation.ErrorPhase
+import PHANE.Evaluation.Logging
+import PHANE.Evaluation.Logging.Configuration
+import PHANE.Evaluation.Result
+import PHANE.Evaluation.Verbosity
 import System.CPUTime (cpuTimePrecision, getCPUTime)
-import System.ErrorPhase
 import System.Exit
 import System.Random.Stateful
 import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
@@ -117,7 +107,6 @@ newtype Evaluation env a = Evaluation
     { unwrapEvaluation ∷ ReaderT (ImplicitEnvironment env) IO (EvaluationResult a)
     -- ^ Run the 'Evaluation' monad transformer
     }
-    deriving stock (Generic)
 
 
 type role Evaluation representational nominal
@@ -135,14 +124,12 @@ type role ImplicitEnvironment representational
 
 
 newtype ParallelBucketCount = MaxPar Word
-    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
 
 
 {- |
 A seed from which a /(practically infinite)/ stream of pseudorandomness can be generated.
 -}
 newtype RandomSeed = RandomSeed Int
-    deriving newtype (Eq, Enum, Integral, Num, Ord, Real, Show)
 
 
 instance Alternative (Evaluation env) where
@@ -184,12 +171,27 @@ instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitEnvironment env) where
         in  coarbitrary z . coarbitrary y . variant x
 
 
+deriving newtype instance Eq ParallelBucketCount
+
+
+deriving newtype instance Eq RandomSeed
+
+
+deriving newtype instance Enum ParallelBucketCount
+
+
+deriving newtype instance Enum RandomSeed
+
+
 deriving stock instance Functor ImplicitEnvironment
 
 
 instance Functor (Evaluation env) where
     {-# INLINEABLE fmap #-}
     fmap f x = Evaluation . fmap (fmap f) $ unwrapEvaluation x
+
+
+deriving stock instance Generic (Evaluation env a)
 
 
 instance Logger (Evaluation env) where
@@ -200,9 +202,21 @@ instance Logger (Evaluation env) where
         liftIO . fmap pure . processMessage logConfig level $ logToken str
 
 
+deriving newtype instance Integral ParallelBucketCount
+
+
+deriving newtype instance Integral RandomSeed
+
+
 instance (NFData a) ⇒ NFData (Evaluation env a) where
     {-# INLINE rnf #-}
     rnf (Evaluation x) = (rnf <$> x) `seq` ()
+
+
+deriving newtype instance Num ParallelBucketCount
+
+
+deriving newtype instance Num RandomSeed
 
 
 instance Monad (Evaluation env) where
@@ -308,9 +322,21 @@ instance MonadZip (Evaluation env) where
     munzip !x = (fst <$> x, snd <$> x)
 
 
+deriving newtype instance Ord ParallelBucketCount
+
+
+deriving newtype instance Ord RandomSeed
+
+
 instance PrimMonad (Evaluation env) where
     type PrimState (Evaluation env) = PrimState IO
     primitive = Evaluation . ReaderT . const . fmap pure . primitive
+
+
+deriving newtype instance Real ParallelBucketCount
+
+
+deriving newtype instance Real RandomSeed
 
 
 instance Semigroup (Evaluation env a) where
@@ -320,6 +346,12 @@ instance Semigroup (Evaluation env a) where
         case runEvaluationResult x of
             Left s → pure . EU $ Left s
             _ → runReaderT (unwrapEvaluation rhs) store
+
+
+deriving newtype instance Show ParallelBucketCount
+
+
+deriving newtype instance Show RandomSeed
 
 
 {- |

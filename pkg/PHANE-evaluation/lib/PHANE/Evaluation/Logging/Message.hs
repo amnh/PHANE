@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 {- |
-A 'LogMessage' represents the atomic logging component for the 'Control.Evaluation' monad.
+A 'LogMessage' represents the atomic logging component for the 'PHANE.Evaluation' monad.
 
 They constructed by using the 'IsString' type-class method 'fromString'
 as well as with the following functions:
@@ -17,7 +17,7 @@ Outputting of a component 'LogMessage' can be performed by'outputMessage'.
 The 'LogMessage' data-type internally uses the linearized 'Builder' for 'Text' values to
 improve efficiency.
 -}
-module Control.Evaluation.Logging.Message (
+module PHANE.Evaluation.Logging.Message (
     -- * Data-type
     LogMessage (),
 

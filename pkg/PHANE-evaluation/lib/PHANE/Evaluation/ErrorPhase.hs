@@ -5,7 +5,7 @@ Defines the different phases in which an error can occur.
 
 Each 'ErrorPhase' can be uniquely translated to an 'ExitCode'.
 -}
-module System.ErrorPhase (
+module PHANE.Evaluation.ErrorPhase (
     ErrorPhase (..),
     errorPhaseToExitCode,
     exitCodeToInt,

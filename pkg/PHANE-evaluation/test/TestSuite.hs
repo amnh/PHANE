@@ -3,8 +3,8 @@ Tests for the evaluation sub-library of the PHANE Project.
 -}
 module Main (main) where
 
-import Control.Evaluation.Test qualified as Evaluation
-import System.ErrorPhase.Test qualified as ErrorPhase
+import PHANE.Evaluation.ErrorPhase.Test qualified as ErrorPhase
+import PHANE.Evaluation.Test qualified as Evaluation
 import Test.Tasty
 import Test.Tasty.Ingredients.Rerun (rerunningTests)
 

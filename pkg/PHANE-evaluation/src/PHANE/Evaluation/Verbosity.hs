@@ -2,9 +2,9 @@
 {-# LANGUAGE UnboxedSums #-}
 
 {- |
-Specification of verbosity for logging within the 'Control.Evaluation'.
+Specification of verbosity for logging within the 'PHANE.Evaluation'.
 -}
-module Control.Evaluation.Verbosity (
+module PHANE.Evaluation.Verbosity (
     -- * Verbosity Specification
     Verbosity (..),
 ) where

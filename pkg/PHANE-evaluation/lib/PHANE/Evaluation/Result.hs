@@ -3,17 +3,15 @@
 {-# LANGUAGE RoleAnnotations #-}
 
 {- |
-The core semigroupoid state of an 'Control.Evaluation.Evaluation' monad.
+The core semigroupoid state of an 'PHANE.Evaluation.Evaluation' monad.
 -}
-module Control.Evaluation.Result (
+module PHANE.Evaluation.Result (
     EvaluationResult (..),
     evalUnitWithPhase,
 ) where
 
 import Control.Applicative (Alternative (..))
 import Control.DeepSeq
-import Control.Evaluation.Logging.Class (Loggable (logToken))
-import Control.Evaluation.Logging.Message
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Zip (MonadZip (..))
 import Data.Functor.Classes (Eq1 (..), Ord1 (..))
@@ -21,7 +19,9 @@ import Data.Semigroup (Semigroup (..))
 import Data.String (IsString (..))
 import Data.Text (unpack)
 import GHC.Generics
-import System.ErrorPhase
+import PHANE.Evaluation.ErrorPhase
+import PHANE.Evaluation.Logging.Class (Loggable (logToken))
+import PHANE.Evaluation.Logging.Message
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 
@@ -37,7 +37,7 @@ In the case that an error occurred, an 'ErrorPhase' is stored along with a
 Note that multiple errors can be aggregated before calling 'fail' or
 'evalUnitWithPhase' using another 'Applicative' or 'Monad' locally. We will
 use the @Validation@ type to collect many error of the same "phase" before
-failing in the 'Control.Evaluation' monad. Consequently, the textual error message can
+failing in the 'PHANE.Evaluation' monad. Consequently, the textual error message can
 be quite long, representing the entire list of aggregated failures. We use
 'LogMessage' instead of 'String' to store the error message to save space and
 efficient rendering.
