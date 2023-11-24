@@ -6,37 +6,8 @@ ToDo:
 -}
 
 {- |
-Description :  module witb interconversion functions for commonly used phylogentic graph formats (newick. dot, fgl)
-                graphs parsed to fgl types.
-Copyright   :  (c) 2021 Ward C. Wheeler, Division of Invertebrate Zoology, AMNH. All rights reserved.
-License     :
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies,
-either expressed or implied, of the FreeBSD Project.
-
-Maintainer  :  Ward Wheeler <wheeler@amnh.org>
-Stability   :  unstable
+Description :  module witb interconversion functions for commonly used
+phylogentic graph formats (newick. dot, fgl) graphs parsed to fgl types.
 
 
 Forest Extended Newick defined here as a series of ENewick representations
@@ -114,7 +85,6 @@ Example:
      |    +--+ Four
      +
      +------+ Five
--
 -}
 module GraphFormatUtilities (
     forestEnhancedNewickStringList2FGLList,
@@ -141,6 +111,7 @@ module GraphFormatUtilities (
 import Control.Parallel.Strategies
 import Cyclic qualified as C
 import Data.Char (isSpace)
+import Data.Foldable (toList)
 import Data.Graph.Inductive.Graph qualified as G
 import Data.Graph.Inductive.PatriciaTree qualified as P
 import Data.GraphViz qualified as GV
@@ -156,9 +127,6 @@ import GeneralUtilities
 import ParallelUtilities
 import Text.Read
 
-
--- import qualified Data.Graph.Analysis  as GAC  currently doesn't compile (wanted to use for cycles)
--- import           Debug.Trace
 
 -- | showGraph a semi-formatted show for Graphs
 showGraph ∷ (Show a, Show b) ⇒ P.Gr a b → String -- BV.BV (BV.BV, BV.BV) -> String
@@ -1271,45 +1239,29 @@ getLeafLabelMatches localLeafList totNode =
 {- | reIndexLeavesEdges Leaves takes input fgl graph and total input leaf sets and reindexes node, and edges
 such that leaves are nodes 0-n-1, then roots and then other htus and edges are reindexed based on that via a map
 -}
-reIndexLeavesEdges ∷ [T.Text] → P.Gr T.Text Double → P.Gr T.Text Double
-reIndexLeavesEdges leafList inGraph =
-    if G.isEmpty inGraph
-        then G.empty
-        else -- trace ("In Graph :" <> (show $ G.order inGraph) <> " " <> (show $ G.size inGraph) <> "\n" <> (showGraph inGraph)) (
-        -- trace ("LL:" <> (show $ length leafList) <> " " <> (show $ length $ G.nodes inGraph)) (
+reIndexLeavesEdges ∷ (Foldable f) ⇒ f T.Text → P.Gr T.Text Double → P.Gr T.Text Double
+reIndexLeavesEdges leafList inGraph
+    | G.isEmpty inGraph = G.empty
+    | otherwise =
         -- reindex nodes and edges and add in new nodes (total leaf set + local HTUs)
         -- create a map between inputLeafSet and graphLeafSet which is the canonical enumeration
         -- then add in local HTU nodes and for map as well
-        -- trace ("Original graph: " <> (showGraph inGraph)) (
+        let numLeaves = length leafList
+            canonicalLeafOrder = zip [0 ..] $ toList leafList
+            (rootList, leafVertexList, nonRootHTUList) = splitVertexList inGraph
+            correspondanceList = fmap (getLeafLabelMatches leafVertexList) canonicalLeafOrder
+            matchList = filter ((/= (-1)) . fst) correspondanceList
+            htuList = fmap fst $ rootList <> nonRootHTUList
+            htuNumber = length htuList
+            newHTUNumbers = [numLeaves .. (numLeaves + htuNumber - 1)]
+            newHTULabels = fmap makeHTULabel newHTUNumbers
+            htuMatchList = zip htuList newHTUNumbers
+            -- remove order dependancey
+            vertexMap = Map.fromList (matchList <> htuMatchList)
+            reIndexedEdgeList = fmap (reIndexLEdge vertexMap) (G.labEdges inGraph)
+            newNodeList = canonicalLeafOrder <> zip newHTUNumbers newHTULabels
+        in  G.mkGraph newNodeList reIndexedEdgeList
 
-            let canonicalLeafOrder = zip [0 .. (length leafList - 1)] leafList
-                (rootList, leafVertexList, nonRootHTUList) = splitVertexList inGraph
-                -- correspondanceList = parmap rdeepseq (getLeafLabelMatches canonicalLeafOrder) leafVertexList
-                correspondanceList = fmap (getLeafLabelMatches leafVertexList) canonicalLeafOrder
-                matchList = filter ((/= (-1)) . fst) correspondanceList
-                htuList = fmap fst $ rootList <> nonRootHTUList
-                -- htuList = fmap fst (G.labNodes inGraph) \\ fmap fst leafVertexList
-                htuNumber = length htuList
-                newHTUNumbers = [(length leafList) .. (length leafList + htuNumber - 1)]
-                newHTULabels = fmap makeHTULabel newHTUNumbers
-                htuMatchList = zip htuList newHTUNumbers
-            in  -- trace (show canonicalLeafOrder <> "\n" <> show leafVertexList <> "\n" <> show matchList <> "\n" <> show htuMatchList) (
-                let -- remove order dependancey
-                    -- htuList = [(length inputLeafList)..(length inputLeafList + htuNumber - 1)]
-                    vertexMap = Map.fromList (matchList <> htuMatchList)
-                    reIndexedEdgeList = fmap (reIndexLEdge vertexMap) (G.labEdges inGraph)
-
-                    -- newNodeNumbers = [0..(length leafList + htuNumber - 1)]
-                    -- attributeList = replicate (length leafList + htuNumber) (T.pack "") -- origAttribute
-                    -- newNodeList = zip newNodeNumbers attributeList
-                    newNodeList = canonicalLeafOrder <> zip newHTUNumbers newHTULabels
-                    newGraph = G.mkGraph newNodeList reIndexedEdgeList
-                in  -- trace ("Out Graph :" <> (show $ G.order newGraph) <> " " <> (show $ G.size newGraph) <> "\n" <> (showGraph newGraph))
-                    -- trace ("Orig graph: " <> (G.prettify inGraph) <> "\nNew graph: " <> (G.prettify newGraph))
-                    newGraph
-
-
--- ))
 
 -- | reIndexEdge takes an (Int, Int) map, labelled edge, and returns a new labelled edge with new e,u vertices
 reIndexLEdge ∷ Map.Map Int Int → G.LEdge Double → G.LEdge Double
