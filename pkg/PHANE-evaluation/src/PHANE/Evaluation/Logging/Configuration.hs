@@ -196,19 +196,19 @@ processMessage config level txt =
             Quashed → pure ()
             Defined tinted _ prev handle →
                 let prefix = renderingLevelLine prev level <> prefixer level
-                in  outputMessage handle $
-                        if not tinted
-                            then prefix <> txt
-                            else
-                                let (setColorPrefix, setColorSuffix) = renderedColorVals level
-                                    resetColor = "\o33[0;0m"
-                                in  fold
-                                        [ setColorPrefix
-                                        , prefix
-                                        , setColorSuffix
-                                        , txt
-                                        , resetColor
-                                        ]
+                    payload
+                        | not tinted = prefix <> txt
+                        | otherwise =
+                            let (setColorPrefix, setColorSuffix) = renderedColorVals level
+                                resetColor = "\o33[0;0m"
+                            in  fold
+                                    [ setColorPrefix
+                                    , prefix
+                                    , setColorSuffix
+                                    , txt
+                                    , resetColor
+                                    ]
+                in  outputMessage handle payload
     in  liftIO $ do
             when emitSTDERR $ renderingLevelNice `whileOutputingTo` feedForSTDERR
             when emitSTDOUT $ renderingLevelNice `whileOutputingTo` feedForSTDOUT
@@ -249,8 +249,12 @@ the previous and current log message.
 -}
 renderingLevelLine ∷ LogLevel → LogLevel → LogMessage
 renderingLevelLine prev curr
-    | prev == curr = ""
+    | not renderingContextSensitivity || prev == curr = ""
     | otherwise = "\n"
+
+
+renderingContextSensitivity ∷ Bool
+renderingContextSensitivity = False
 
 
 renderingLevelFull ∷ LogLevel → LogMessage
