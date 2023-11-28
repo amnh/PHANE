@@ -50,6 +50,7 @@ import Data.Bits (xor)
 import Data.Foldable (toList)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (sconcat)
+import Data.String
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import GHC.Conc (getNumCapabilities)
 import GHC.Generics
@@ -477,7 +478,7 @@ Fail and indicate the phase in which the failure occurred.
 -}
 failWithPhase ∷ (Loggable s) ⇒ ErrorPhase → s → Evaluation env a
 failWithPhase p message = do
-    logWith LogFail message
+    logWith LogFail $ fromString "\n" <> logToken message
     Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
 
 
