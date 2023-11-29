@@ -13,7 +13,6 @@ module PHANE.Evaluation (
 
     -- * Specialized functions
     failWithPhase,
-    mapEvaluation,
 
     -- * Operations
 
@@ -35,12 +34,15 @@ module PHANE.Evaluation (
 ) where
 
 import Control.Applicative (Alternative (..))
+import Control.Concurrent.Async (mapConcurrently)
 import Control.DeepSeq
 import Control.Exception
+import Control.Monad ((<=<))
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (PrimMonad (..))
+import Control.Monad.RWS.Strict
 import Control.Monad.Random.Strict
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
 import Control.Monad.Zip (MonadZip (..))
@@ -104,24 +106,33 @@ The following should hold:
      Use the 'getParallelChunkTraverse' to compute an effectful function in parallel, equal sized-chunks of the list.
 -}
 newtype Evaluation env a = Evaluation
-    --    { unwrapEvaluation ∷ RWST env Void (ImplicitEnvironment) IO (EvaluationResult a)
-    { unwrapEvaluation ∷ ReaderT (ImplicitEnvironment env) IO (EvaluationResult a)
+    { unwrapEvaluation ∷ RWST ImplicitEnvironment () () IO (EvaluationResult a)
     -- ^ Run the 'Evaluation' monad transformer
     }
 
 
-type role Evaluation representational nominal
+--    { unwrapEvaluation ∷ ReaderT (ImplicitEnvironment env) IO (EvaluationResult a)
+
+type role Evaluation nominal nominal
 
 
-data ImplicitEnvironment env = ImplicitEnvironment
-    { implicitBucketNum ∷ {-# UNPACK #-} !ParallelBucketCount
-    , implicitLogConfig ∷ {-# UNPACK #-} !LogConfiguration
-    , implicitRandomGen ∷ {-# UNPACK #-} !(AtomicGenM StdGen)
-    , explicitReader ∷ !env
+type role ImplicitVariables representational
+
+
+-- type ImplicitVariables = ()
+
+data ImplicitVariables var = ImplicitVariables
+    { implicitLogging ∷ {-# UNPACK #-} !LogConfiguration
+    , explicitStorage ∷ !var
     }
 
 
-type role ImplicitEnvironment representational
+data ImplicitEnvironment = ImplicitEnvironment
+    { implicitBucketNum ∷ {-# UNPACK #-} !ParallelBucketCount
+    , implicitLogConfig ∷ {-# UNPACK #-} !LogConfiguration
+    , implicitRandomGen ∷ {-# UNPACK #-} !(AtomicGenM StdGen)
+    --    , explicitReader ∷ !env
+    }
 
 
 newtype ParallelBucketCount = MaxPar Word
@@ -135,11 +146,11 @@ newtype RandomSeed = RandomSeed Int
 
 instance Alternative (Evaluation env) where
     {-# INLINEABLE (<|>) #-}
-    (<|>) x y = Evaluation . ReaderT $ \store → do
-        res ← runReaderT (unwrapEvaluation x) store
+    (<|>) (Evaluation x) (Evaluation y) = Evaluation . RWST $ \vals vars → do
+        tup@(res, vals', _) ← runRWST x vals vars
         case runEvaluationResult res of
-            Left _ → runReaderT (unwrapEvaluation y) store
-            Right _ → pure res
+            Left _ → runRWST y vals vars
+            Right _ → pure tup
 
 
     empty = fail "Alternative identity"
@@ -158,18 +169,28 @@ instance Applicative (Evaluation env) where
     (*>) = propagate
 
 
-instance (Arbitrary a, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
+instance (Arbitrary a, Arbitrary env, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
     arbitrary = do
-        fun ← (arbitrary ∷ Gen (ImplicitEnvironment env → EvaluationResult a))
-        pure . Evaluation . ReaderT $ pure . fun
+        fun ← (arbitrary ∷ Gen (ImplicitEnvironment → ImplicitVariables env → (EvaluationResult a, ImplicitVariables env, ())))
+        pure . Evaluation . RWST $ \vals vars → pure (fun vals vars)
 
 
-instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitEnvironment env) where
+instance (Arbitrary env) ⇒ Arbitrary (ImplicitVariables env) where
+    arbitrary = ImplicitVariables <$> arbitrary <*> arbitrary
+
+
+instance CoArbitrary ImplicitEnvironment where
     coarbitrary store =
         let x = implicitBucketNum store
             y = implicitLogConfig store
-            z = explicitReader store
-        in  coarbitrary z . coarbitrary y . variant x
+        in  coarbitrary y . variant x
+
+
+instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitVariables env) where
+    coarbitrary store =
+        let x = implicitLogging store
+            y = explicitStorage store
+        in  coarbitrary y . coarbitrary x
 
 
 deriving newtype instance Eq ParallelBucketCount
@@ -184,7 +205,7 @@ deriving newtype instance Enum ParallelBucketCount
 deriving newtype instance Enum RandomSeed
 
 
-deriving stock instance Functor ImplicitEnvironment
+deriving stock instance Functor ImplicitVariables
 
 
 instance Functor (Evaluation env) where
@@ -245,11 +266,11 @@ instance MonadFix (Evaluation env) where
 
 
 instance MonadInterleave (Evaluation env) where
-    interleave action = Evaluation . ReaderT $ \store → do
-        let gen = implicitRandomGen store
+    interleave action = Evaluation . RWST $ \vals vars → do
+        let gen = implicitRandomGen vals
         gen' ← applyAtomicGen split gen >>= newAtomicGenM
-        let store' = store{implicitRandomGen = gen'}
-        pure <$> executeEvaluation store' action
+        let vals' = vals{implicitRandomGen = gen'}
+        executeEvaluation vals' vars action >>= include vars . pure
 
 
 instance MonadIO (Evaluation env) where
@@ -280,6 +301,7 @@ instance MonadRandom (Evaluation env) where
         pure . pure $ randoms gen
 
 
+{-
 instance MonadReader env (Evaluation env) where
     {-# INLINEABLE local #-}
     {-# INLINE ask #-}
@@ -287,26 +309,26 @@ instance MonadReader env (Evaluation env) where
         store ← ask
         pure . pure $ explicitReader store
 
-
     local f = Evaluation . local (fmap f) . unwrapEvaluation
-
+-}
 
 instance MonadThrow (Evaluation env) where
     throwM e = Evaluation $ throwM e
 
 
+{-
 instance MonadUnliftIO (Evaluation env) where
     {-# INLINE withRunInIO #-}
     -- f :: (forall a. Evaluation env a -> IO a) -> IO b
     withRunInIO f =
         {-# SCC withRunInIO_Evaluation #-}
-        Evaluation . ReaderT $ \env →
-            {-# SCC withRunInIO_ReaderT_f #-}
-            withRunInIO $
+        Evaluation . RWST $ \vals vars →
+            {-# SCC withRunInIO_RWST_inner #-}
+            withRunInIO $ -- ((forall a. IO a -> IO a) -> IO b) -> IO b
                 {-# SCC withRunInIO_WITH_run #-}
-                \run →
-                    pure <$> f (run . executeEvaluation env)
-
+                \run → -- (forall a. IO a -> IO a) -> IO b
+                    pure <$> f (run . executeEvaluation vals vars)
+-}
 
 instance MonadZip (Evaluation env) where
     {-# INLINEABLE mzip #-}
@@ -331,7 +353,8 @@ deriving newtype instance Ord RandomSeed
 
 instance PrimMonad (Evaluation env) where
     type PrimState (Evaluation env) = PrimState IO
-    primitive = Evaluation . ReaderT . const . fmap pure . primitive
+    primitive token = Evaluation . RWST $ \vals vars →
+        primitive token >>= include vars . pure
 
 
 deriving newtype instance Real ParallelBucketCount
@@ -342,11 +365,11 @@ deriving newtype instance Real RandomSeed
 
 instance Semigroup (Evaluation env a) where
     {-# INLINE (<>) #-}
-    lhs <> rhs = Evaluation . ReaderT $ \store → do
-        x ← runReaderT (unwrapEvaluation lhs) store
+    lhs <> rhs = Evaluation . RWST $ \vals vars → do
+        (x, vars', _) ← runRWST (unwrapEvaluation lhs) vals vars
         case runEvaluationResult x of
-            Left s → pure . EU $ Left s
-            _ → runReaderT (unwrapEvaluation rhs) store
+            Left s → include vars . EU $ Left s
+            _ → runRWST (unwrapEvaluation rhs) vals vars
 
 
 deriving newtype instance Show ParallelBucketCount
@@ -360,18 +383,25 @@ Run the 'Evaluation' computation.
 
 Initial randomness seed and configuration for logging outputs required to initiate the computation.
 -}
-runEvaluation ∷ (MonadIO m) ⇒ LogConfiguration → RandomSeed → env → Evaluation env a → m a
-runEvaluation logConfig randomSeed environ eval = do
+runEvaluation ∷ (MonadIO m) ⇒ LogConfiguration → RandomSeed → env → x → Evaluation env a → m a
+runEvaluation logConfig randomSeed environ x eval = do
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
     maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
-    let implicit =
+    let staticValues =
             ImplicitEnvironment
                 { implicitBucketNum = maxBuckets
                 , implicitLogConfig = logConfig
                 , implicitRandomGen = randomRef
-                , explicitReader = environ
+                --                , explicitReader = environ
                 }
-    executeEvaluation implicit eval
+
+    let implicitState =
+            ImplicitVariables
+                { implicitLogging = logConfig
+                , explicitStorage = environ
+                }
+
+    executeEvaluation staticValues implicitState eval
 
 
 {- |
@@ -400,7 +430,7 @@ setVerbosityFileLog =
             → Evaluation env a
         setVerbosityOf' f v =
             let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
-            in  Evaluation . withReaderT transformation . unwrapEvaluation
+            in  Evaluation . withRWST transformation . unwrapEvaluation
     in  setVerbosityOf' modConfigStream
 
 
@@ -442,7 +472,7 @@ getParallelChunkTraverse
     ∷ ∀ a b env t
      . (NFData b, Traversable t)
     ⇒ Evaluation env ((a → Evaluation env b) → t a → Evaluation env (t b))
-getParallelChunkTraverse = pure parallelTraverseEvaluation
+getParallelChunkTraverse = Evaluation . RWST $ \vals vars → include vars . pure $ parallelTraverseEvaluation vals vars
 
 
 {- |
@@ -467,26 +497,31 @@ setRandomSeed seed eval =
 
 
 {- |
-Lift one 'Evaluation' environment to another.
--}
-mapEvaluation ∷ (outer → inner) → Evaluation inner a → Evaluation outer a
-mapEvaluation f = Evaluation . withReaderT (fmap f) . unwrapEvaluation
-
-
-{- |
 Fail and indicate the phase in which the failure occurred.
 -}
 failWithPhase ∷ (Loggable s) ⇒ ErrorPhase → s → Evaluation env a
 failWithPhase p message = do
     logWith LogFail $ fromString "\n" <> logToken message
-    Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
+    Evaluation . RWST $ \vals vars →
+        include vars (evalUnitWithPhase p message)
 
 
-executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
-executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
+discard ∷ (a, b, c) → a
+discard (a, _, _) = a
+
+
+include
+    ∷ ImplicitVariables env
+    → a
+    → IO (a, ImplicitVariables env, ())
+include a b = pure (b, a, mempty)
+
+
+executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment → ImplicitVariables env → Evaluation env a → m a
+executeEvaluation implicitEnv implicitVars eval =
     let logConfig = implicitLogConfig implicitEnv
-    in  liftIO . flip finally (flushLogs logConfig) $ do
-            res ← f implicitEnv
+    in  liftIO $ do
+            (res, _, _) ← encapsulatedEvaluation implicitEnv implicitVars eval
             case runEvaluationResult res of
                 Right value → pure value
                 Left (phase, txt) →
@@ -494,13 +529,42 @@ executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
                     in  processMessage logConfig LogFail txt *> exitWith exitCode
 
 
+encapsulatedEvaluation
+    ∷ (MonadIO m)
+    ⇒ ImplicitEnvironment
+    → ImplicitVariables env
+    → Evaluation env a
+    → m (EvaluationResult a, ImplicitVariables env, ())
+encapsulatedEvaluation implicitEnv implicitVars (Evaluation (RWST f)) =
+    let logConfig = implicitLogConfig implicitEnv
+    in  liftIO . flip finally (flushLogs logConfig) $ f implicitEnv implicitVars
+
+
 parallelTraverseEvaluation
     ∷ ∀ a b env t
      . (NFData b, Traversable t)
-    ⇒ (a → Evaluation env b)
+    ⇒ ImplicitEnvironment
+    → ImplicitVariables env
+    → (a → Evaluation env b)
     → t a
     → Evaluation env (t b)
-parallelTraverseEvaluation f = pooledMapConcurrently (interleave . fmap force . f)
+parallelTraverseEvaluation vals vars f =
+    let transform = executeEvaluation vals vars . interleave . fmap force
+    in  liftIO . mapConcurrently (transform . f)
+
+
+mkUnliftIO
+    ∷ ImplicitEnvironment
+    → ImplicitVariables env
+    → UnliftIO (RWST ImplicitEnvironment () (ImplicitVariables env) IO)
+mkUnliftIO vals vars = UnliftIO $ \x → fst <$> evalRWST x vals vars
+
+
+unliftEvaluation
+    ∷ ImplicitEnvironment
+    → ImplicitVariables env
+    → UnliftIO (Evaluation env)
+unliftEvaluation vals vars = UnliftIO $ executeEvaluation vals vars
 
 
 setVerbosityOf
@@ -510,50 +574,51 @@ setVerbosityOf
     → Evaluation env a
 setVerbosityOf f v =
     let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
-    in  Evaluation . withReaderT transformation . unwrapEvaluation
+    in  Evaluation . withRWST transformation . unwrapEvaluation
 
 
 modImplicitLogConfiguration
     ∷ (LogConfiguration → LogConfiguration)
-    → ImplicitEnvironment env
-    → ImplicitEnvironment env
-modImplicitLogConfiguration f x = x{implicitLogConfig = f $ implicitLogConfig x}
+    → ImplicitEnvironment
+    → ImplicitVariables env
+    → (ImplicitEnvironment, ImplicitVariables env)
+modImplicitLogConfiguration f x y = (x{implicitLogConfig = f $ implicitLogConfig x}, y)
 
 
 withRandomGenerator ∷ StdGen → Evaluation env a → Evaluation env a
 withRandomGenerator gen eval =
-    let transformation ∷ AtomicGenM StdGen → ImplicitEnvironment env → ImplicitEnvironment env
+    let transformation ∷ AtomicGenM StdGen → ImplicitEnvironment → ImplicitEnvironment
         transformation val store = store{implicitRandomGen = val}
     in  liftIO (newAtomicGenM gen) >>= \ref →
             Evaluation . local (transformation ref) $ unwrapEvaluation eval
 
 
 bind ∷ Evaluation env a → (a → Evaluation env b) → Evaluation env b
-bind x f = Evaluation . ReaderT $ \store → do
-    y ← runReaderT (unwrapEvaluation x) store
+bind (Evaluation x) f = Evaluation . RWST $ \vals vars → do
+    tup@(y, vars', _) ← runRWST x vals vars
     case runEvaluationResult y of
-        Left s → pure . EU $ Left s
-        Right v → runReaderT (unwrapEvaluation (f v)) store
+        Left s → include vars' . EU $ Left s
+        Right v → runRWST (unwrapEvaluation (f v)) vals vars'
 
 
 apply ∷ Evaluation env (t → a) → Evaluation env t → Evaluation env a
-apply lhs rhs = Evaluation . ReaderT $ \store → do
-    x ← runReaderT (unwrapEvaluation lhs) store
+apply (Evaluation lhs) rhs = Evaluation . RWST $ \vals vars → do
+    (x, vars', _) ← runRWST lhs vals vars
     case runEvaluationResult x of
-        Left s → pure . EU $ Left s
+        Left s → include vars' . EU $ Left s
         Right f → do
-            y ← runReaderT (unwrapEvaluation rhs) store
-            pure . EU $ case runEvaluationResult y of
+            (y, vars'', _) ← runRWST (unwrapEvaluation rhs) vals vars'
+            include vars'' . EU $ case runEvaluationResult y of
                 Left s → Left s
                 Right v → Right $ f v
 
 
 propagate ∷ Evaluation env a → Evaluation env b → Evaluation env b
-propagate lhs rhs = Evaluation . ReaderT $ \store → do
-    x ← runReaderT (unwrapEvaluation lhs) store
+propagate (Evaluation lhs) rhs = Evaluation . RWST $ \vals vars → do
+    (x, vars', _) ← runRWST lhs vals vars
     case runEvaluationResult x of
-        Left s → pure . EU $ Left s
-        _ → runReaderT (unwrapEvaluation rhs) store
+        Left s → include vars' . EU $ Left s
+        _ → runRWST (unwrapEvaluation rhs) vals vars'
 
 
 {- |

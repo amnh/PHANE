@@ -125,10 +125,10 @@ testSuite = do
     logs ← initializeLogging None None Nothing
     seed ← initializeRandomSeed
     let evaluators =
-            ( runEvaluation logs seed
-            , runEvaluation logs seed
-            , runEvaluation logs seed
-            , runEvaluation logs seed
+            ( runEvaluation logs seed ()
+            , runEvaluation logs seed ()
+            , runEvaluation logs seed ()
+            , runEvaluation logs seed ()
             )
                 ∷ RunEvals
     pure $

@@ -24,15 +24,15 @@ main = do
 
     when True $ do
         print "Test harness: Randomness (isolated)"
-        runEvaluation logConfig firstSeed () harnessRanomness
+        runEvaluation logConfig firstSeed () () harnessRanomness
 
     when False $ do
         print "Test harness: Paralelism (isolated)"
-        void . runEvaluation logConfig firstSeed () $ runningInParallel True
+        void . runEvaluation logConfig firstSeed () () $ runningInParallel True
 
     when True $ do
         print "Test harness: Randomness (parallel)"
-        void $ runEvaluation logConfig firstSeed () runningInParallelRandom
+        void $ runEvaluation logConfig firstSeed () () runningInParallelRandom
 
 
 runningInParallel ∷ Bool → Evaluation () [Natural]
