@@ -153,6 +153,7 @@ Library
     parallel >= 3.2 && < 4.0,
     primitive >= 0.8 && < 1.0,
     QuickCheck >= 2.14 && < 3.0,
+    QuickCheck-GenT >= 0.2.2 && < 1.0,
     random >= 1.2 && < 2.0,
     time >= 1.12 && < 2.0,
     unliftio >= 0.2 && < 1.0,

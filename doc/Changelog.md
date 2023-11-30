@@ -43,9 +43,13 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added initial library version
 
+  * Added initial test-suite
+
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
   * Corrected defect where calls to `failWithPhase` might not begin on a new line.
+
+  * Enhanced `Evaluation` Monad to include a mutable state reference.
 
 
 ### [`PHANE-measure-class`][GitHub-Lib-05]

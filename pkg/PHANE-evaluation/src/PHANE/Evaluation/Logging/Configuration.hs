@@ -40,8 +40,8 @@ import PHANE.Evaluation.Verbosity
 import System.Directory
 import System.FilePath.Posix
 import System.IO (Handle, IOMode (WriteMode), hClose, hFlush, openFile, stderr, stdout)
-import Test.QuickCheck.Arbitrary (CoArbitrary (..), coarbitraryEnum)
-import Test.QuickCheck.Gen (variant)
+import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..), coarbitraryEnum)
+import Test.QuickCheck.Gen (Gen (..), variant)
 import Text.Read (readMaybe)
 
 
@@ -67,6 +67,32 @@ data LogConfiguration = LogConfiguration
     , configSTDOUT ∷ {-# UNPACK #-} LogFeed
     , configStream ∷ {-# UNPACK #-} LogFeed
     }
+
+
+instance Arbitrary LogConfiguration where
+    arbitrary =
+        let gen h = do
+                level ← (arbitrary ∷ Gen Word)
+                occur ← (arbitrary ∷ Gen Word)
+                let prev = case occur `mod` 7 of
+                        0 → LogFail
+                        1 → LogWarn
+                        2 → LogDone
+                        3 → LogInfo
+                        4 → LogMore
+                        5 → LogTech
+                        _ → LogDump
+
+                case level `mod` 8 of
+                    0 → (\x → Defined x LogFail prev h) <$> arbitrary
+                    1 → (\x → Defined x LogWarn prev h) <$> arbitrary
+                    2 → (\x → Defined x LogDone prev h) <$> arbitrary
+                    3 → (\x → Defined x LogInfo prev h) <$> arbitrary
+                    4 → (\x → Defined x LogMore prev h) <$> arbitrary
+                    5 → (\x → Defined x LogTech prev h) <$> arbitrary
+                    6 → (\x → Defined x LogDump prev h) <$> arbitrary
+                    _ → pure Quashed
+        in  LogConfiguration <$> gen stderr <*> gen stdout <*> pure Quashed
 
 
 instance CoArbitrary LogConfiguration where

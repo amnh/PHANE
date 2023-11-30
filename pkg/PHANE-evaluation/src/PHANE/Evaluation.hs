@@ -37,17 +37,19 @@ module PHANE.Evaluation (
 import Control.Applicative (Alternative (..))
 import Control.DeepSeq
 import Control.Exception
+import Control.Monad ((>=>))
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (PrimMonad (..))
 import Control.Monad.Random.Strict
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), withReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Zip (MonadZip (..))
 import Control.Parallel.Strategies
 import Data.Bimap qualified as BM
 import Data.Bits (xor)
 import Data.Foldable (toList)
+import Data.IORef
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (sconcat)
 import Data.String
@@ -59,11 +61,12 @@ import PHANE.Evaluation.Logging
 import PHANE.Evaluation.Logging.Configuration
 import PHANE.Evaluation.Result
 import PHANE.Evaluation.Verbosity
+import QuickCheck.GenT (GenT, arbitrary', runGenT)
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.Exit
 import System.Random.Stateful
 import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
-import Test.QuickCheck.Gen (Gen (..), variant)
+import Test.QuickCheck.Gen (variant)
 import UnliftIO.Async (pooledMapConcurrently)
 
 
@@ -115,9 +118,9 @@ type role Evaluation representational nominal
 
 data ImplicitEnvironment env = ImplicitEnvironment
     { implicitBucketNum ∷ {-# UNPACK #-} !ParallelBucketCount
-    , implicitLogConfig ∷ {-# UNPACK #-} !LogConfiguration
+    , implicitLogConfig ∷ {-# UNPACK #-} !(IORef LogConfiguration)
     , implicitRandomGen ∷ {-# UNPACK #-} !(AtomicGenM StdGen)
-    , explicitReader ∷ !env
+    , explicitVariables ∷ {-# UNPACK #-} !(IORef env)
     }
 
 
@@ -158,18 +161,25 @@ instance Applicative (Evaluation env) where
     (*>) = propagate
 
 
-instance (Arbitrary a, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
+instance (Arbitrary a, Arbitrary env, CoArbitrary env) ⇒ Arbitrary (Evaluation env a) where
     arbitrary = do
-        fun ← (arbitrary ∷ Gen (ImplicitEnvironment env → EvaluationResult a))
-        pure . Evaluation . ReaderT $ pure . fun
+        getEnv ←
+            runGenT $
+                ImplicitEnvironment
+                    <$> (MaxPar <$> arbitrary')
+                    <*> (arbitrary' >>= liftIO . newIORef)
+                    <*> (arbitrary' >>= liftIO . newAtomicGenM . mkStdGen)
+                    <*> (arbitrary' >>= liftIO . newIORef)
+        getRun ← runGenT (arbitrary' ∷ GenT IO (ImplicitEnvironment env → EvaluationResult a))
+
+        pure . Evaluation . ReaderT $ \_ → do
+            env ← getEnv
+            run ← getRun
+            pure $ run env
 
 
-instance (CoArbitrary env) ⇒ CoArbitrary (ImplicitEnvironment env) where
-    coarbitrary store =
-        let x = implicitBucketNum store
-            y = implicitLogConfig store
-            z = explicitReader store
-        in  coarbitrary z . coarbitrary y . variant x
+instance CoArbitrary (ImplicitEnvironment env) where
+    coarbitrary = variant . implicitBucketNum
 
 
 deriving newtype instance Eq ParallelBucketCount
@@ -184,9 +194,6 @@ deriving newtype instance Enum ParallelBucketCount
 deriving newtype instance Enum RandomSeed
 
 
-deriving stock instance Functor ImplicitEnvironment
-
-
 instance Functor (Evaluation env) where
     {-# INLINEABLE fmap #-}
     fmap f x = Evaluation . fmap (fmap f) $ unwrapEvaluation x
@@ -198,8 +205,7 @@ deriving stock instance Generic (Evaluation env a)
 instance Logger (Evaluation env) where
     {-# INLINEABLE logWith #-}
     logWith level str = Evaluation $ do
-        impEnv ← ask
-        let logConfig = implicitLogConfig impEnv
+        logConfig ← liftIO . readIORef =<< reader implicitLogConfig
         liftIO . fmap pure . processMessage logConfig level $ logToken str
 
 
@@ -283,12 +289,13 @@ instance MonadRandom (Evaluation env) where
 instance MonadReader env (Evaluation env) where
     {-# INLINEABLE local #-}
     {-# INLINE ask #-}
-    ask = Evaluation $ do
-        store ← ask
-        pure . pure $ explicitReader store
+    ask =
+        Evaluation . ReaderT $
+            fmap pure . readIORef . explicitVariables
 
 
-    local f = Evaluation . local (fmap f) . unwrapEvaluation
+    local f (Evaluation (ReaderT inner)) = Evaluation . ReaderT $ \store →
+        adjustVariables f store *> inner store
 
 
 instance MonadThrow (Evaluation env) where
@@ -362,46 +369,39 @@ Initial randomness seed and configuration for logging outputs required to initia
 -}
 runEvaluation ∷ (MonadIO m) ⇒ LogConfiguration → RandomSeed → env → Evaluation env a → m a
 runEvaluation logConfig randomSeed environ eval = do
+    maxChunks ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
+    loggerRef ← liftIO $ newIORef logConfig
     randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
-    maxBuckets ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
+    valuesRef ← liftIO $ newIORef environ
     let implicit =
             ImplicitEnvironment
-                { implicitBucketNum = maxBuckets
-                , implicitLogConfig = logConfig
+                { implicitBucketNum = maxChunks
+                , implicitLogConfig = loggerRef
                 , implicitRandomGen = randomRef
-                , explicitReader = environ
+                , explicitVariables = valuesRef
                 }
     executeEvaluation implicit eval
 
 
 {- |
-Set the verbosity level of logs streamed to @STDERR@ for the sub-'Evaluation'.
+Set the verbosity level of logs streamed to @STDERR@.
 -}
-setVerbositySTDERR ∷ Verbosity → Evaluation env () → Evaluation env ()
+setVerbositySTDERR ∷ Verbosity → Evaluation env ()
 setVerbositySTDERR = setVerbosityOf modConfigSTDERR
 
 
 {- |
-Set the verbosity level of logs streamed to @STDOUT@ for the sub-'Evaluation'.
+Set the verbosity level of logs streamed to @STDOUT@.
 -}
-setVerbositySTDOUT ∷ Verbosity → Evaluation env () → Evaluation env ()
+setVerbositySTDOUT ∷ Verbosity → Evaluation env ()
 setVerbositySTDOUT = setVerbosityOf modConfigSTDOUT
 
 
 {- |
 Set the verbosity level of log data streamed to the log file (if any) for the sub-'Evaluation'.
 -}
-setVerbosityFileLog ∷ Verbosity → Evaluation env () → Evaluation env ()
-setVerbosityFileLog =
-    let setVerbosityOf'
-            ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)
-            → Verbosity
-            → Evaluation env a
-            → Evaluation env a
-        setVerbosityOf' f v =
-            let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
-            in  Evaluation . withReaderT transformation . unwrapEvaluation
-    in  setVerbosityOf' modConfigStream
+setVerbosityFileLog ∷ Verbosity → Evaluation env ()
+setVerbosityFileLog = setVerbosityOf modConfigStream
 
 
 {- |
@@ -470,8 +470,20 @@ setRandomSeed seed eval =
 Lift one 'Evaluation' environment to another.
 -}
 mapEvaluation ∷ (outer → inner) → Evaluation inner a → Evaluation outer a
-mapEvaluation f = Evaluation . withReaderT (fmap f) . unwrapEvaluation
+mapEvaluation f eval =
+    Evaluation . ReaderT $
+        changeVariables f >=> advanceEvaluation eval
 
+
+{-
+mapEvaluation f (Evaluation (ReaderT inner)) = Evaluation . ReaderT $ \store -> do
+    old <- readIORef $ explicitVariables store
+    inner <- store
+    ref <- newIORef $ f old
+    inner
+    let new = store{ explicitVariables = f old }
+    adjustVariables f store *> inner store
+-}
 
 {- |
 Fail and indicate the phase in which the failure occurred.
@@ -482,16 +494,34 @@ failWithPhase p message = do
     Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
 
 
+adjustVariables ∷ (env → env) → ImplicitEnvironment env → IO ()
+adjustVariables f = flip modifyIORef' f . explicitVariables
+
+
+changeVariables ∷ ∀ env env'. (env → env') → ImplicitEnvironment env → IO (ImplicitEnvironment env')
+changeVariables f store = do
+    old ← readIORef $ explicitVariables store
+    ref ← newIORef $ f old
+    let new = store{explicitVariables = ref}
+    pure new
+
+
+advanceEvaluation ∷ Evaluation env a → ImplicitEnvironment env → IO (EvaluationResult a)
+advanceEvaluation (Evaluation (ReaderT f)) implicitEnv = do
+    logConfig ← readIORef $ implicitLogConfig implicitEnv
+    flip finally (flushLogs logConfig) $ f implicitEnv
+
+
 executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
-executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
-    let logConfig = implicitLogConfig implicitEnv
-    in  liftIO . flip finally (flushLogs logConfig) $ do
-            res ← f implicitEnv
-            case runEvaluationResult res of
-                Right value → pure value
-                Left (phase, txt) →
-                    let exitCode = errorPhaseToExitCode BM.! phase
-                    in  processMessage logConfig LogFail txt *> exitWith exitCode
+executeEvaluation implicitEnv (Evaluation (ReaderT f)) = liftIO $ do
+    logConfig ← readIORef $ implicitLogConfig implicitEnv
+    flip finally (flushLogs logConfig) $ do
+        res ← f implicitEnv
+        case runEvaluationResult res of
+            Right value → pure value
+            Left (phase, txt) →
+                let exitCode = errorPhaseToExitCode BM.! phase
+                in  processMessage logConfig LogFail txt *> exitWith exitCode
 
 
 parallelTraverseEvaluation
@@ -506,18 +536,18 @@ parallelTraverseEvaluation f = pooledMapConcurrently (interleave . fmap force . 
 setVerbosityOf
     ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)
     → Verbosity
-    → Evaluation env a
-    → Evaluation env a
+    → Evaluation env ()
 setVerbosityOf f v =
-    let transformation = modImplicitLogConfiguration (f (setFeedLevel v))
-    in  Evaluation . withReaderT transformation . unwrapEvaluation
+    Evaluation . ReaderT $
+        fmap pure . modImplicitLogConfiguration (f (setFeedLevel v))
 
 
 modImplicitLogConfiguration
     ∷ (LogConfiguration → LogConfiguration)
     → ImplicitEnvironment env
-    → ImplicitEnvironment env
-modImplicitLogConfiguration f x = x{implicitLogConfig = f $ implicitLogConfig x}
+    → IO ()
+modImplicitLogConfiguration f x = do
+    modifyIORef' (implicitLogConfig x) f
 
 
 withRandomGenerator ∷ StdGen → Evaluation env a → Evaluation env a
