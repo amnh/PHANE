@@ -37,12 +37,14 @@ import Control.Applicative (Alternative (..))
 import Data.Bits (FiniteBits)
 import Data.Coerce (coerce)
 import Data.Foldable (fold, foldl', toList)
+import Data.Functor (($>))
 import Data.List (intersperse)
 import Data.Ratio
 import Data.Sequence (Seq (..), (|>))
 import Data.Sequence qualified as Seq
 import Data.String (IsString (..))
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Builder.Linear
 import Data.Text.IO.Utf8 (hPutStr)
 import System.IO (Handle)
@@ -125,8 +127,11 @@ Output the 'LogMessage' to the file 'Handle'.
 Only at the time of invoking 'outputMessage' does the the 'LogMessage' finalize
 the 'Text' value to be output to the handle's buffer.
 -}
-outputMessage ∷ Handle → LogMessage → IO ()
-outputMessage handle = hPutStr handle . finalizedText
+outputMessage ∷ Handle → LogMessage → IO Bool
+outputMessage handle message =
+    let txt = finalizedText message
+        trailingNewline = not (T.null txt) && T.last txt == '\n'
+    in  hPutStr handle txt $> trailingNewline
 
 
 type SeqTwoInts = Seq (Integer, Integer)
