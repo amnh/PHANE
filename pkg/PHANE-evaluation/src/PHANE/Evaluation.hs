@@ -37,7 +37,6 @@ module PHANE.Evaluation (
 import Control.Applicative (Alternative (..))
 import Control.DeepSeq
 import Control.Exception
-import Control.Monad ((>=>))
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
@@ -205,8 +204,8 @@ deriving stock instance Generic (Evaluation env a)
 instance Logger (Evaluation env) where
     {-# INLINEABLE logWith #-}
     logWith level str = Evaluation $ do
-        logConfig ← liftIO . readIORef =<< reader implicitLogConfig
-        liftIO . fmap pure . processMessage logConfig level $ logToken str
+        logRef ← reader implicitLogConfig
+        liftIO . fmap pure . processMessage logRef level $ logToken str
 
 
 deriving newtype instance Integral ParallelBucketCount
@@ -490,7 +489,7 @@ Fail and indicate the phase in which the failure occurred.
 -}
 failWithPhase ∷ (Loggable s) ⇒ ErrorPhase → s → Evaluation env a
 failWithPhase p message = do
-    logWith LogFail $ fromString "\n" <> logToken message
+    logWith LogFail $ logToken message
     Evaluation . ReaderT . const . pure $ evalUnitWithPhase p message
 
 
@@ -513,15 +512,15 @@ advanceEvaluation (Evaluation (ReaderT f)) implicitEnv = do
 
 
 executeEvaluation ∷ (MonadIO m) ⇒ ImplicitEnvironment env → Evaluation env a → m a
-executeEvaluation implicitEnv (Evaluation (ReaderT f)) = liftIO $ do
-    logConfig ← readIORef $ implicitLogConfig implicitEnv
-    flip finally (flushLogs logConfig) $ do
-        res ← f implicitEnv
-        case runEvaluationResult res of
-            Right value → pure value
-            Left (phase, txt) →
-                let exitCode = errorPhaseToExitCode BM.! phase
-                in  processMessage logConfig LogFail txt *> exitWith exitCode
+executeEvaluation implicitEnv (Evaluation (ReaderT f)) =
+    let logRef = implicitLogConfig implicitEnv
+    in  liftIO . flip finally (readIORef logRef >>= flushLogs) $ do
+            res ← f implicitEnv
+            case runEvaluationResult res of
+                Right value → pure value
+                Left (phase, txt) →
+                    let exitCode = errorPhaseToExitCode BM.! phase
+                    in  processMessage logRef LogFail txt *> exitWith exitCode
 
 
 parallelTraverseEvaluation
@@ -539,7 +538,7 @@ setVerbosityOf
     → Evaluation env ()
 setVerbosityOf f v =
     Evaluation . ReaderT $
-        fmap pure . modImplicitLogConfiguration (f (setFeedLevel v))
+        fmap pure . modImplicitLogConfiguration (f (setFromVerbosity v))
 
 
 modImplicitLogConfiguration

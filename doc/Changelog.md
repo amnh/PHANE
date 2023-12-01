@@ -49,6 +49,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Corrected defect where calls to `failWithPhase` might not begin on a new line.
 
+  * Enhanced `Evaluation` Monad `Logger` instance with context sensitive rendering.
+
   * Enhanced `Evaluation` Monad to include a mutable state reference.
 
 

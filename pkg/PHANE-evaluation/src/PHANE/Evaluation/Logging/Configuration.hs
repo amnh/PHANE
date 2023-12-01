@@ -24,12 +24,13 @@ module PHANE.Evaluation.Logging.Configuration (
     modConfigSTDERR,
     modConfigSTDOUT,
     modConfigStream,
-    setFeedLevel,
+    setFromVerbosity,
 ) where
 
 import Control.Monad.IO.Class
 import Control.Monad.Random.Strict
 import Data.Foldable (fold, traverse_)
+import Data.IORef
 import Data.List (isPrefixOf)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (mapMaybe)
@@ -43,6 +44,7 @@ import System.IO (Handle, IOMode (WriteMode), hClose, hFlush, openFile, stderr, 
 import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..), coarbitraryEnum)
 import Test.QuickCheck.Gen (Gen (..), variant)
 import Text.Read (readMaybe)
+import Prelude hiding (log)
 
 
 {- |
@@ -204,18 +206,40 @@ Emits on Stream feed:
 
   */If and only if/ @level ≤ feedLevel (configStream config)@
 -}
-processMessage ∷ (MonadIO m) ⇒ LogConfiguration → LogLevel → LogMessage → m ()
-processMessage config level txt =
+processMessage ∷ (MonadIO m) ⇒ IORef LogConfiguration → LogLevel → LogMessage → m ()
+processMessage ref level txt =
+    let compose ∷ (Foldable f) ⇒ f (a → a) → (a → a)
+        compose = foldr (.) id
+    in  liftIO $ do
+            config ← readIORef ref
+            (err, out, log) ← logMessageToFeeds config level txt
+            modifyIORef ref $
+                compose
+                    [ modConfigSTDERR err
+                    , modConfigSTDOUT out
+                    , modConfigStream log
+                    ]
+
+
+type EmissionUpdates = (LogFeed → LogFeed, LogFeed → LogFeed, LogFeed → LogFeed)
+
+
+logMessageToFeeds ∷ LogConfiguration → LogLevel → LogMessage → IO EmissionUpdates
+logMessageToFeeds config level txt =
     let admissible ∷ LogFeed → Bool
         admissible = permissibleVerbosity level
 
-        emitStream = admissible feedForStream
         emitSTDERR = admissible feedForSTDERR
         emitSTDOUT = not emitSTDERR && admissible feedForSTDOUT
+        emitStream = admissible feedForStream
 
         feedForSTDERR = configSTDERR config
         feedForSTDOUT = configSTDOUT config
         feedForStream = configStream config
+
+        updater outputted
+            | outputted = setPrevLevel level
+            | otherwise = id
 
         whileOutputingTo ∷ (LogLevel → LogMessage) → LogFeed → IO ()
         whileOutputingTo prefixer = \case
@@ -235,10 +259,11 @@ processMessage config level txt =
                                     , resetColor
                                     ]
                 in  outputMessage handle payload
-    in  liftIO $ do
+    in  do
             when emitSTDERR $ renderingLevelNice `whileOutputingTo` feedForSTDERR
             when emitSTDOUT $ renderingLevelNice `whileOutputingTo` feedForSTDOUT
             when emitStream $ renderingLevelFull `whileOutputingTo` feedForStream
+            pure (updater emitSTDERR, updater emitSTDOUT, updater emitStream)
 
 
 modConfigSTDERR ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfiguration
@@ -253,12 +278,20 @@ modConfigStream ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfigurat
 modConfigStream f x = x{configStream = f $ configStream x}
 
 
-setFeedLevel ∷ Verbosity → LogFeed → LogFeed
-setFeedLevel =
-    let f v = \case
-            Quashed → Quashed
-            Defined x _ y z → Defined x v y z
-    in  maybe (const Quashed) f . verbosityToLogLevel
+setPrevLevel ∷ LogLevel → LogFeed → LogFeed
+setPrevLevel v = \case
+    Quashed → Quashed
+    Defined x y _ z → Defined x y v z
+
+
+setFeedLevel ∷ LogLevel → LogFeed → LogFeed
+setFeedLevel v = \case
+    Quashed → Quashed
+    Defined x _ y z → Defined x v y z
+
+
+setFromVerbosity ∷ Verbosity → LogFeed → LogFeed
+setFromVerbosity = maybe (const Quashed) setFeedLevel . verbosityToLogLevel
 
 
 permissibleVerbosity ∷ LogLevel → LogFeed → Bool
@@ -275,12 +308,12 @@ the previous and current log message.
 -}
 renderingLevelLine ∷ LogLevel → LogLevel → LogMessage
 renderingLevelLine prev curr
-    | not renderingContextSensitivity || prev == curr = ""
+    | not renderingContextSensitivity || prev == curr = mempty
     | otherwise = "\n"
 
 
 renderingContextSensitivity ∷ Bool
-renderingContextSensitivity = False
+renderingContextSensitivity = True
 
 
 renderingLevelFull ∷ LogLevel → LogMessage
@@ -296,10 +329,10 @@ renderingLevelFull = \case
 
 renderingLevelNice ∷ LogLevel → LogMessage
 renderingLevelNice = \case
-    level@LogFail → renderingLevelFull level
-    level@LogWarn → renderingLevelFull level
-    level@LogTech → renderingLevelFull level
-    level@LogDump → renderingLevelFull level
+    level@LogFail → "\n" <> renderingLevelFull level
+    level@LogWarn → "\n" <> renderingLevelFull level
+    level@LogTech → "\n" <> renderingLevelFull level
+    level@LogDump → "\n" <> renderingLevelFull level
     _ → mempty
 
 
