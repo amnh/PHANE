@@ -625,6 +625,7 @@ stringToInt fileName inStr = case readMaybe inStr of
         errorWithoutStackTrace $
             "\n\n'Read' 'tcm' format error non-Integer value " <> inStr <> " in " <> fileName
 
+
 -- | stringToDouble converts a String to a Double
 stringToDouble ∷ String → String → Double
 stringToDouble fileName inStr = case readMaybe inStr of
@@ -632,6 +633,7 @@ stringToDouble fileName inStr = case readMaybe inStr of
     Nothing →
         errorWithoutStackTrace $
             "\n\n'Read' 'tcm' format error non-Double value " <> inStr <> " in " <> fileName
+
 
 -- | makeIndexPairs takes n and creates upper triangular matrix pairs (0,m)
 makeIndexPairs ∷ Bool → Int → Int → Int → Int → [(Int, Int)]

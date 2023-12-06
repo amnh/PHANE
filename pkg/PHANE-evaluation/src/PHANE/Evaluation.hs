@@ -456,12 +456,14 @@ initializeRandomSeed = do
 
 
 {- |
-Set the random seed for the sub-'Evaluation'.
+Set the random seed for the 'Evaluation'.
 -}
-setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env () → Evaluation env ()
-setRandomSeed seed eval =
-    let gen = mkStdGen $ fromEnum seed
-    in  withRandomGenerator gen eval
+setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env ()
+setRandomSeed seed = Evaluation . ReaderT $ \store →
+    let genRef = implicitRandomGen store
+        genNew = mkStdGen $ fromEnum seed
+        update = const (pure (), genNew)
+    in  liftIO $ applyAtomicGen update genRef
 
 
 {- |
@@ -546,14 +548,6 @@ modImplicitLogConfiguration
     → IO ()
 modImplicitLogConfiguration f x = do
     modifyIORef' (implicitLogConfig x) f
-
-
-withRandomGenerator ∷ StdGen → Evaluation env a → Evaluation env a
-withRandomGenerator gen eval =
-    let transformation ∷ AtomicGenM StdGen → ImplicitEnvironment env → ImplicitEnvironment env
-        transformation val store = store{implicitRandomGen = val}
-    in  liftIO (newAtomicGenM gen) >>= \ref →
-            Evaluation . local (transformation ref) $ unwrapEvaluation eval
 
 
 bind ∷ Evaluation env a → (a → Evaluation env b) → Evaluation env b

@@ -53,6 +53,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Enhanced `Evaluation` Monad to include a mutable state reference.
 
+  * Enhanced `setRandomSeed` to perform a mutable update.
+
 
 ### [`PHANE-measure-class`][GitHub-Lib-05]
 
