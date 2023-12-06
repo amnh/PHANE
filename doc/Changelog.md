@@ -45,6 +45,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added initial test-suite
 
+  * Added `alterEnvironment`
+
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
   * Corrected defect where calls to `failWithPhase` might not begin on a new line.

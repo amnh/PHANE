@@ -17,6 +17,9 @@ module PHANE.Evaluation (
 
     -- * Operations
 
+    -- ** Environment
+    alterEnvironment,
+
     -- ** Logging
     LogConfiguration (),
     initializeLogging,
@@ -379,6 +382,16 @@ runEvaluation logConfig randomSeed environ eval = do
                 , explicitVariables = valuesRef
                 }
     executeEvaluation implicit eval
+
+
+{- |
+Change the polymorphic environment of the 'Evaluation'.
+-}
+alterEnvironment ∷ (env → env) → Evaluation env ()
+alterEnvironment f = Evaluation . ReaderT $ \store →
+    let envRef = explicitVariables store
+        make x = (f x, pure ())
+    in  atomicModifyIORef' envRef make
 
 
 {- |
