@@ -116,7 +116,7 @@ instance CoArbitrary LogFeed where
 
 
 {- |
-__Time:__ \[ \mathcal{O}\left( 1 \right) \]
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 Create configuration for logging output stream to initialize an 'Evaluation'.
 

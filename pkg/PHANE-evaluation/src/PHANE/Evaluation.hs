@@ -364,6 +364,8 @@ deriving newtype instance Show RandomSeed
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( \mathord{?} \right) \)
+
 Run the 'Evaluation' computation.
 
 Initial randomness seed and configuration for logging outputs required to initiate the computation.
@@ -385,7 +387,11 @@ runEvaluation logConfig randomSeed environ eval = do
 
 
 {- |
-Change the polymorphic environment of the 'Evaluation'.
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
+Change the polymorphic environment of the 'Evaluation' /in place/ as a "mutable" global update.
+
+If this is undeisreable, consider 'Control.Monad.Reader.Class.local' for a localized change to the environemnt.
 -}
 alterEnvironment ∷ (env → env) → Evaluation env ()
 alterEnvironment f = Evaluation . ReaderT $ \store →
@@ -395,6 +401,8 @@ alterEnvironment f = Evaluation . ReaderT $ \store →
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Set the verbosity level of logs streamed to @STDERR@.
 -}
 setVerbositySTDERR ∷ Verbosity → Evaluation env ()
@@ -402,6 +410,8 @@ setVerbositySTDERR = setVerbosityOf modConfigSTDERR
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Set the verbosity level of logs streamed to @STDOUT@.
 -}
 setVerbositySTDOUT ∷ Verbosity → Evaluation env ()
@@ -409,6 +419,8 @@ setVerbositySTDOUT = setVerbosityOf modConfigSTDOUT
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Set the verbosity level of log data streamed to the log file (if any) for the sub-'Evaluation'.
 -}
 setVerbosityFileLog ∷ Verbosity → Evaluation env ()
@@ -416,6 +428,8 @@ setVerbosityFileLog = setVerbosityOf modConfigStream
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 /Note:/ Does not work on infinite lists!
 
 Get a parallel mapping function which evenly distributes elements of the list
@@ -444,6 +458,8 @@ getParallelChunkMap =
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 /Note:/ Does not work on infinite lists!
 
 Like getParallelChunkMap, but performs monadic actions over the list in parallel.
@@ -457,6 +473,8 @@ getParallelChunkTraverse = pure parallelTraverseEvaluation
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Generate a 'RandomSeed' to initialize an 'Evaluation' by using system entropy.
 -}
 initializeRandomSeed ∷ IO RandomSeed
@@ -469,6 +487,8 @@ initializeRandomSeed = do
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Set the random seed for the 'Evaluation'.
 -}
 setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env ()
@@ -480,6 +500,8 @@ setRandomSeed seed = Evaluation . ReaderT $ \store →
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( \mathord{?} \right) \)
+
 Lift one 'Evaluation' environment to another.
 -}
 mapEvaluation ∷ (outer → inner) → Evaluation inner a → Evaluation outer a
@@ -499,6 +521,8 @@ mapEvaluation f (Evaluation (ReaderT inner)) = Evaluation . ReaderT $ \store -> 
 -}
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Fail and indicate the phase in which the failure occurred.
 -}
 failWithPhase ∷ (Loggable s) ⇒ ErrorPhase → s → Evaluation env a
