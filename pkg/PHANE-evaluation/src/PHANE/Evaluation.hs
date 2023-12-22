@@ -569,7 +569,8 @@ parallelTraverseEvaluation
     → t a
     → Evaluation env (t b)
 -- parallelTraverseEvaluation f = pooledMapConcurrently (fmap force . f)
-parallelTraverseEvaluation f = mapConcurrently (fmap force . f)
+parallelTraverseEvaluation f xs = withRunInIO $ \runner →
+    mapConcurrently (runner . fmap force . f) xs
 
 
 setVerbosityOf
