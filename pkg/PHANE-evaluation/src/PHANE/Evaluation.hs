@@ -38,6 +38,7 @@ module PHANE.Evaluation (
 ) where
 
 import Control.Applicative (Alternative (..))
+import Control.Concurrent.Async (mapConcurrently)
 import Control.DeepSeq
 import Control.Exception
 import Control.Monad.Catch (MonadThrow (..))
@@ -567,7 +568,8 @@ parallelTraverseEvaluation
     ⇒ (a → Evaluation env b)
     → t a
     → Evaluation env (t b)
-parallelTraverseEvaluation f = pooledMapConcurrently (fmap force . f)
+-- parallelTraverseEvaluation f = pooledMapConcurrently (fmap force . f)
+parallelTraverseEvaluation f = mapConcurrently (fmap force . f)
 
 
 setVerbosityOf
