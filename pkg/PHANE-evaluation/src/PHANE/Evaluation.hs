@@ -567,7 +567,7 @@ parallelTraverseEvaluation
     ⇒ (a → Evaluation env b)
     → t a
     → Evaluation env (t b)
-parallelTraverseEvaluation f = pooledMapConcurrently (interleave . fmap force . f)
+parallelTraverseEvaluation f = pooledMapConcurrently (fmap force . f)
 
 
 setVerbosityOf
