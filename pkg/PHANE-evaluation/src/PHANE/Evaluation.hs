@@ -120,7 +120,7 @@ type role Evaluation representational nominal
 data ImplicitEnvironment env = ImplicitEnvironment
     { implicitBucketNum ∷ {-# UNPACK #-} !ParallelBucketCount
     , implicitLogConfig ∷ {-# UNPACK #-} !(IORef LogConfiguration)
-    , implicitRandomGen ∷ {-# UNPACK #-} !(AtomicGenM StdGen)
+    , implicitRandomGen ∷ {-# UNPACK #-} !(IOGenM StdGen)
     , explicitVariables ∷ {-# UNPACK #-} !(IORef env)
     }
 
@@ -169,7 +169,7 @@ instance (Arbitrary a, Arbitrary env, CoArbitrary env) ⇒ Arbitrary (Evaluation
                 ImplicitEnvironment
                     <$> (MaxPar <$> arbitrary')
                     <*> (arbitrary' >>= liftIO . newIORef)
-                    <*> (arbitrary' >>= liftIO . newAtomicGenM . mkStdGen)
+                    <*> (arbitrary' >>= liftIO . newIOGenM . mkStdGen)
                     <*> (arbitrary' >>= liftIO . newIORef)
         getRun ← runGenT (arbitrary' ∷ GenT IO (ImplicitEnvironment env → EvaluationResult a))
 
@@ -254,7 +254,7 @@ instance MonadFix (Evaluation env) where
 instance MonadInterleave (Evaluation env) where
     interleave action = Evaluation . ReaderT $ \store → do
         let gen = implicitRandomGen store
-        gen' ← applyAtomicGen split gen >>= newAtomicGenM
+        gen' ← applyIOGen split gen >>= newIOGenM
         let store' = store{implicitRandomGen = gen'}
         pure <$> executeEvaluation store' action
 
@@ -374,7 +374,7 @@ runEvaluation ∷ (MonadIO m) ⇒ LogConfiguration → RandomSeed → env → Ev
 runEvaluation logConfig randomSeed environ eval = do
     maxChunks ← liftIO $ toEnum . max 1 . pred <$> getNumCapabilities
     loggerRef ← liftIO $ newIORef logConfig
-    randomRef ← newAtomicGenM . mkStdGen $ fromEnum randomSeed
+    randomRef ← newIOGenM . mkStdGen $ fromEnum randomSeed
     valuesRef ← liftIO $ newIORef environ
     let implicit =
             ImplicitEnvironment
@@ -496,7 +496,7 @@ setRandomSeed seed = Evaluation . ReaderT $ \store →
     let genRef = implicitRandomGen store
         genNew = mkStdGen $ fromEnum seed
         update = const (pure (), genNew)
-    in  liftIO $ applyAtomicGen update genRef
+    in  liftIO $ applyIOGen update genRef
 
 
 {- |
@@ -649,6 +649,6 @@ chunkInto ∷ [Int] → [a] → [[a]]
 chunkInto (n : ns) jobs@(_ : _) = as : chunkInto ns bs where (as, bs) = splitAt n jobs
 chunkInto _ _ = []
 
-splitGenInto ∷ (RandomGenM (AtomicGenM StdGen) StdGen m) ⇒ Word → AtomicGenM StdGen → m [StdGen]
+splitGenInto ∷ (RandomGenM (IOGenM StdGen) StdGen m) ⇒ Word → IOGenM StdGen → m [StdGen]
 splitGenInto n = fmap force . replicateM (fromEnum n) . splitGenM
 -}
