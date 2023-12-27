@@ -156,6 +156,7 @@ Library
     QuickCheck >= 2.14 && < 3.0,
     QuickCheck-GenT >= 0.2.2 && < 1.0,
     random >= 1.2 && < 2.0,
+    random-shuffle >= 0.0.4 && < 1.0,                
     time >= 1.12 && < 2.0,
     unliftio >= 0.2 && < 1.0,
     unliftio-core >= 0.2 && < 1.0,

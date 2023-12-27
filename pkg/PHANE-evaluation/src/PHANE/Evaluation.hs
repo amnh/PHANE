@@ -35,6 +35,7 @@ module PHANE.Evaluation (
     RandomSeed (),
     initializeRandomSeed,
     setRandomSeed,
+    shuffleList,
 ) where
 
 import Control.Applicative (Alternative (..))
@@ -57,6 +58,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (sconcat)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import GHC.Conc (getNumCapabilities)
+import GHC.Exts (IsList (Item))
+import GHC.Exts qualified as List
 import GHC.Generics
 import PHANE.Evaluation.ErrorPhase
 import PHANE.Evaluation.Logging
@@ -66,6 +69,7 @@ import PHANE.Evaluation.Verbosity
 import QuickCheck.GenT (GenT, arbitrary', runGenT)
 import System.CPUTime (cpuTimePrecision, getCPUTime)
 import System.Exit
+import System.Random.Shuffle (shuffleM)
 import System.Random.Stateful
 import Test.QuickCheck.Arbitrary (Arbitrary (..), CoArbitrary (..))
 import Test.QuickCheck.Gen (variant)
@@ -498,6 +502,15 @@ setRandomSeed seed = Evaluation . ReaderT $ \store →
         genNew = mkStdGen $ fromEnum seed
         update = const (pure (), genNew)
     in  liftIO $ applyIOGen update genRef
+
+
+{- |
+__Time:__ \( \mathcal{O}\left( n \right) \)
+
+Randomly permute the elements of the abstract list.
+-}
+shuffleList ∷ (IsList (f a), Item (f a) ~ a) ⇒ f a → Evaluation env (f a)
+shuffleList = fmap List.fromList . shuffleM . List.toList
 
 
 {- |
