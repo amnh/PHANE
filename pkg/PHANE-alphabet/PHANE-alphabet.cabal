@@ -102,6 +102,7 @@ Common language-specs
     DerivingStrategies
     LambdaCase
     NoGeneralizedNewtypeDeriving
+    RoleAnnotations
     UnicodeSyntax
 
   Default-Language:

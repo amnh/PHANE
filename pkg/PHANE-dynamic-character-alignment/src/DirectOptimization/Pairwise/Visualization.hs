@@ -27,6 +27,8 @@ import Bio.DynamicCharacter
 import Bio.DynamicCharacter.Measure
 import Data.Bits
 import Data.Foldable (fold)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Matrix.Class (Matrix, dim, toLists, unsafeIndex)
 import Data.Set (Set, fromDistinctAscList, member)
 import Data.Vector.Generic (Vector, basicLength, toList)
@@ -332,7 +334,7 @@ getTracebackIndices mtx = fromDistinctAscList $ go (# m - 1, n - 1 #)
 
 characterVectorToIndices ∷ (Vector v e) ⇒ v e → [String]
 characterVectorToIndices =
-    let numbers = tail $ pure <$> cycle ['0' .. '9']
+    let numbers = NE.tail . fmap pure . NE.cycle $ '0' :| ['1' .. '9']
     in  zipWith const numbers . toList
 
 

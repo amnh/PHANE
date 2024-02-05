@@ -77,6 +77,7 @@ import Data.Alphabet.Codec
 import Data.BitVector.LittleEndian
 import Data.Bits
 import Data.Foldable
+import Data.Kind (Type)
 import Data.Ord
 import Data.STRef
 import Data.Set (Set)
@@ -115,6 +116,7 @@ All triples are arranged thusly:
   * 3: "Right" character. When normalized, this will be the longer character.
        Insert events leave a void in this character.
 -}
+type OpenDynamicCharacter ∷ (k → Type) → k → Type
 type OpenDynamicCharacter v e = (v e, v e, v e)
 
 

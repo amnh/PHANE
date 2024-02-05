@@ -44,6 +44,9 @@ data Sparse a = Sparse
     deriving anyclass (NFData)
 
 
+type role Sparse representational
+
+
 instance Eq (Sparse a) where
     (==) lhs rhs =
         and

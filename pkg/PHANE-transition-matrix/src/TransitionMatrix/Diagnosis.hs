@@ -85,6 +85,9 @@ data TransitionMeasureDiagnosis a = TransitionMeasureDiagnosis
     deriving anyclass (NFData)
 
 
+type role TransitionMeasureDiagnosis representational
+
+
 instance Show (TransitionMeasureDiagnosis a) where
     show d =
         let display ∷ Int → Rational → String
@@ -99,7 +102,7 @@ instance Show (TransitionMeasureDiagnosis a) where
 
 
 {- |
-\( \mathcal{O} \left( 1 \) where \( n \) is the number of symbols for the transition measure.
+\( \mathcal{O} \left( 1 \right) \) where \( n \) is the number of symbols for the transition measure.
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Discrete_space discrete metric>.
 -}
@@ -121,7 +124,7 @@ discreteMetric dim@(SymbolCount n) =
 
 
 {- |
-\( \mathcal{O} \left( 1 \) where \( n \) is the number of symbols for the transition measure.
+\( \mathcal{O} \left( 1 \right) \) where \( n \) is the number of symbols for the transition measure.
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Discrete_space discrete metric>.
 -}
@@ -148,7 +151,7 @@ discreteCrossGap n sub gap =
 
 
 {- |
-\( \mathcal{O} \left( 1 \) where \( n \) is the number of symbols for the transition measure.
+\( \mathcal{O} \left( 1 \right) \) where \( n \) is the number of symbols for the transition measure.
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Lp_space 1st linear norm>.
 -}

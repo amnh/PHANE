@@ -31,6 +31,9 @@ data Bounds b i = Bounds
     }
 
 
+type role Bounds representational representational
+
+
 {- |
 Takes one or more elements of 'FiniteBits' and a symbol change cost function
 and returns a tuple of a new character, along with the cost of obtaining that

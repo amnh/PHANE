@@ -52,9 +52,15 @@ data DiagnosisError a
     deriving anyclass (NFData)
 
 
+type role DiagnosisError nominal
+
+
 newtype DiagnosisFailure a = DiagnosisFailure (NonEmpty (DiagnosisError a))
     deriving newtype (NFData, Eq)
     deriving stock (Data, Generic)
+
+
+type role DiagnosisFailure nominal
 
 
 instance (Ord a) ⇒ Semigroup (DiagnosisFailure a) where

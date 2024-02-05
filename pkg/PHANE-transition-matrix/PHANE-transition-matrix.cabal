@@ -101,6 +101,7 @@ Common language-specs
     ImportQualifiedPost
     LambdaCase
     NoGeneralizedNewtypeDeriving
+    RoleAnnotations
     UnicodeSyntax
 
   Default-Language:

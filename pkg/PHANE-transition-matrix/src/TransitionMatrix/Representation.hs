@@ -73,6 +73,9 @@ data TransitionMatrix a
     deriving anyclass (NFData)
 
 
+type role TransitionMatrix representational
+
+
 instance Eq (TransitionMatrix a) where
     {-# SPECIALIZE instance Eq (TransitionMatrix BitVector) #-}
     {-# SPECIALIZE instance Eq (TransitionMatrix SlimState) #-}

@@ -76,11 +76,6 @@ import Data.Vector.Generic qualified as G
 type Matrix a = V.Vector (V.Vector a)
 
 
--- | functions for triples
-fst3 ∷ (a, b, c) → a
-fst3 (d, _, _) = d
-
-
 -- | empty matrix value from Vector
 empty ∷ Matrix a
 empty = G.empty
@@ -131,39 +126,34 @@ toRows = V.toList
 matrix as Matrix (Vector of Vectors)
 -}
 fromLists ∷ (Eq a, Show a) ⇒ [[a]] → Matrix a
-fromLists inListList =
-    if L.null inListList
-        then empty
-        else
-            let initialSquare = V.map V.fromList $ V.fromList inListList
-                colsH = V.length $ V.head initialSquare
-                rowsH = V.length initialSquare
-            in  if colsH /= rowsH
-                    then error ("Input matrix is not square " <> (show (colsH, rowsH) <> (" " <> show inListList)))
-                    else
-                        let indexPairs = cartProd [0 .. (rowsH - 1)] [0 .. (rowsH - 1)]
-                            sym = checkSymmetry initialSquare indexPairs
-                        in  if not sym
-                                then error "Input matrix not symmetrical"
-                                else makeLowerDiag initialSquare 0 rowsH
+fromLists [] = mempty
+fromLists inListList@(firstRow : _) =
+    let initialSquare = V.fromList $ V.fromList <$> inListList
+        colsH = length firstRow
+        rowsH = V.length initialSquare
+    in  case colsH `compare` rowsH of
+            EQ →
+                let indexRange = [0 .. rowsH - 1]
+                    indexPairs = cartProd indexRange indexRange
+                    result
+                        | checkSymmetry initialSquare indexPairs = makeLowerDiag initialSquare 0 rowsH
+                        | otherwise = error "Input matrix not symmetrical"
+                in  result
+            _ → error $ unwords ["Input matrix is not square", show (colsH, rowsH), show inListList]
 
 
 -- | toLists takes a Matrix and returns a list of lists (not all same length)
 toLists ∷ (Eq a) ⇒ Matrix a → [[a]]
-toLists inM =
-    if SymMatrix.null inM
-        then []
-        else V.toList $ V.map V.toList inM
+toLists inM = V.toList <$> V.toList inM
 
 
 {- | toFullLists takes a Matrix and returns a list of lists of full length
 square matrix
 -}
 toFullLists ∷ (Eq a) ⇒ Matrix a → [[a]]
-toFullLists inM =
-    if SymMatrix.null inM
-        then []
-        else fmap (getFullRow inM) [0 .. (rows inM - 1)]
+toFullLists inM
+    | SymMatrix.null inM = []
+    | otherwise = getFullRow inM <$> [0 .. rows inM - 1]
 
 
 {- | getFullRow returns a specific full row (is if matrix were square)
@@ -253,19 +243,25 @@ cartProd xs ys = [(x, y) | x ← xs, y ← ys]
 and checks for symmetry
 -}
 checkSymmetry ∷ (Eq a, Show a) ⇒ Matrix a → [(Int, Int)] → Bool
-checkSymmetry inVV pairList
-    | SymMatrix.null inVV = error "Input matrix is empty"
-    | L.null pairList = True
-    | otherwise =
-        let (iIndex, jIndex) = head pairList
-            firstCheck = ((inVV V.! iIndex) V.! jIndex) == ((inVV V.! jIndex) V.! iIndex)
-        in  if firstCheck
-                then checkSymmetry inVV (tail pairList)
-                else
-                    error
-                        ( "Matrix is not symmetrical:"
-                            <> (show (iIndex, jIndex) <> ("=>" <> show ((inVV V.! iIndex) V.! jIndex) <> " /= " <> show ((inVV V.! jIndex) V.! iIndex)))
-                        )
+checkSymmetry inVV
+    | SymMatrix.null inVV = const True -- Holds vacuously
+    | otherwise = \case
+        [] → True
+        (iIndex, jIndex) : otherIndices →
+            let original = (inVV V.! iIndex) V.! jIndex
+                reversed = (inVV V.! jIndex) V.! iIndex
+            in  if original == reversed
+                    then checkSymmetry inVV otherIndices
+                    else
+                        error $
+                            unwords
+                                [ "Matrix is not symmetrical:"
+                                , show (iIndex, jIndex)
+                                , "=>"
+                                , show original
+                                , "/="
+                                , show reversed
+                                ]
 
 
 {- | addMatrixRow add a row to existing matrix to extend Matrix dimension
@@ -299,56 +295,53 @@ update all at once checking for bounds
 could naively do each triple in turn, but would be alot of copying
 -}
 updateMatrix ∷ (Show a, Ord a) ⇒ Matrix a → [(Int, Int, a)] → Matrix a
-updateMatrix inM modList =
-    if L.null modList
-        then inM
-        else
-            let orderedTripleList = S.uniqueSort $ fmap reIndexTriple modList
-                minRow = fst3 $ head orderedTripleList
-                maxRow = fst3 $ last orderedTripleList
-            in  if minRow < 0
-                    then error ("Update matrix out of bounds: " <> show orderedTripleList)
-                    else
-                        if maxRow >= rows inM
-                            then error ("Update matrix out of bounds, row = " <> (show (rows inM) <> (" and trying to update row " <> show maxRow)))
-                            else
-                                let firstPart = V.unsafeTake minRow inM
-                                    restPart = V.unsafeDrop minRow inM
-                                    modifiedRemainder = updateRows restPart orderedTripleList minRow
-                                in  addMatrices firstPart modifiedRemainder
+updateMatrix inM modList = case S.uniqueSort $ reIndexTriple <$> modList of
+    [] → inM
+    orderedTriples@((minRow, _, _) : others) → case minRow `compare` 0 of
+        LT → error $ "Update matrix out of bounds: " <> show orderedTriples
+        _ → case L.unsnoc others of
+            Nothing → error $ "Update matrix missing index " <> show orderedTriples
+            Just (_, (maxRow, _, _)) → case maxRow `compare` rows inM of
+                LT →
+                    let firstPart = V.unsafeTake minRow inM
+                        otherPart = V.unsafeDrop minRow inM
+                        modifiedRemainder = updateRows otherPart orderedTriples minRow
+                    in  addMatrices firstPart modifiedRemainder
+                _ →
+                    error $
+                        unwords
+                            [ "Update matrix out of bounds, row ="
+                            , show $ rows inM
+                            , "and trying to update row"
+                            , show maxRow
+                            ]
 
 
 -- | unsafeUpdateMatrix unsafe version of updateMatrix
 unsafeUpdateMatrix ∷ (Show a, Ord a) ⇒ Matrix a → [(Int, Int, a)] → Matrix a
-unsafeUpdateMatrix inM modList =
-    if L.null modList
-        then inM
-        else
-            let orderedTripleList = S.uniqueSort $ fmap reIndexTriple modList
-                minRow = fst3 $ head orderedTripleList
-                firstPart = V.unsafeTake minRow inM
-                restPart = V.unsafeDrop minRow inM
-                modifiedRemainder = updateRows restPart orderedTripleList minRow
-            in  addMatrices firstPart modifiedRemainder
+unsafeUpdateMatrix inM inTriples = case S.uniqueSort $ reIndexTriple <$> inTriples of
+    [] → inM
+    orderedTriples@((minRow, _, _) : _) →
+        let firstPart = V.unsafeTake minRow inM
+            otherPart = V.unsafeDrop minRow inM
+            modifiedRemainder = updateRows otherPart orderedTriples minRow
+        in  addMatrices firstPart modifiedRemainder
 
 
 {- | updateRows takes the section of the matrix containing rows that wil be modified
 (some not) and modifes or copies rows and rerns a Matrix (vector of roow vectors)
 -}
 updateRows ∷ (Show a, Eq a) ⇒ Matrix a → [(Int, Int, a)] → Int → Matrix a
-updateRows inM tripList currentRow
-    | L.null tripList = inM
-    | SymMatrix.null inM = error ("Matrix is empty and there are modifications that remain: " <> show tripList)
-    | otherwise =
-        let (rowIndex, columnIndex, value) = L.head tripList
-            firstOrigRow = V.head inM
-        in  if currentRow /= rowIndex
-                then firstOrigRow `V.cons` updateRows (V.tail inM) tripList (currentRow + 1)
-                else -- account for multiple modifications to same row
-
-                    let (newRow, newTripList) = modifyRow firstOrigRow columnIndex value currentRow (L.tail tripList)
-                    in  -- This for debug--remove after test
-                        newRow `V.cons` updateRows (V.tail inM) newTripList (currentRow + 1)
+updateRows inM tripList currentRow = case tripList of
+    [] → inM
+    (rowIndex, columnIndex, value) : otherTriples → case V.uncons inM of
+        Nothing → error $ "Matrix is empty and there are modifications that remain: " <> show tripList
+        -- account for multiple modifications to same row
+        Just (firstOrigRow, otherRows) →
+            let (selectedRow, selectedList)
+                    | currentRow /= rowIndex = (firstOrigRow, tripList)
+                    | otherwise = modifyRow firstOrigRow columnIndex value currentRow otherTriples
+            in  selectedRow `V.cons` updateRows otherRows selectedList (currentRow + 1)
 
 
 {- | modifyRow takes an initial modification (column and value) and then checks to see if there are more modifications in that
@@ -374,15 +367,14 @@ assumes that sorted triples sorted by first, second, then third elements
 continueRow ∷ V.Vector a → V.Vector a → Int → Int → [(Int, Int, a)] → (V.Vector a, [(Int, Int, a)])
 continueRow partRow origRow colIndex rowNumber modList
     | colIndex == V.length origRow = (partRow, modList)
-    | L.null modList = (partRow <> V.unsafeDrop colIndex origRow, modList)
-    | otherwise =
-        let (nextRowNumber, nextColIndex, nextValue) = L.head modList
-        in  if nextRowNumber /= rowNumber
-                then (partRow <> V.unsafeDrop colIndex origRow, modList)
-                else
-                    if nextColIndex /= colIndex
-                        then continueRow (partRow `V.snoc` (origRow V.! colIndex)) origRow (colIndex + 1) rowNumber modList
-                        else continueRow (partRow `V.snoc` nextValue) origRow (colIndex + 1) rowNumber (L.tail modList)
+    | otherwise = case modList of
+        [] → (partRow <> V.unsafeDrop colIndex origRow, modList)
+        (nextRowNumber, _, _) : _ | nextRowNumber /= rowNumber → (partRow <> V.unsafeDrop colIndex origRow, modList)
+        (_, nextColIndex, nextValue) : otherMods →
+            let (endValue, nextList)
+                    | nextColIndex /= colIndex = (origRow V.! colIndex, modList)
+                    | otherwise = (nextValue, otherMods)
+            in  continueRow (partRow `V.snoc` endValue) origRow (colIndex + 1) rowNumber nextList
 
 
 -- | makeNiceRow pretty preints a list

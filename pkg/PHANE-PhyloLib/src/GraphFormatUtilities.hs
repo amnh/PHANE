@@ -111,7 +111,7 @@ module GraphFormatUtilities (
 import Control.Parallel.Strategies
 import Cyclic qualified as C
 import Data.Char (isSpace)
-import Data.Foldable (toList)
+import Data.Foldable (fold, toList)
 import Data.Graph.Inductive.Graph qualified as G
 import Data.Graph.Inductive.PatriciaTree qualified as P
 import Data.GraphViz qualified as GV
@@ -156,23 +156,27 @@ forestEnhancedNewickStringList2FGLList fileText =
 and returns a list of Text graph descriptions
 -}
 divideGraphText ∷ T.Text → [T.Text]
-divideGraphText inText =
-    if T.null inText
-        then []
-        else
-            let firstChar = T.head inText
-            in  if firstChar == '<'
-                    then
-                        let firstPart = T.snoc (T.takeWhile (/= '>') inText) '>'
-                            restPart = T.tail $ T.dropWhile (/= '>') inText
-                        in  firstPart : divideGraphText restPart
-                    else
-                        if firstChar == '('
-                            then
-                                let firstPart = T.snoc (T.takeWhile (/= ';') inText) ';'
-                                    restPart = T.tail $ T.dropWhile (/= ';') inText
-                                in  firstPart : divideGraphText restPart
-                            else error ("First character in graph representation " <> T.unpack inText <> " : " <> show firstChar <> " is not either '<' or '('")
+divideGraphText inText = case fst <$> T.uncons inText of
+    Nothing → []
+    Just '<' →
+        let (firstPart, restPart) = T.span (/= '>') inText
+        in  case T.uncons restPart of
+                Nothing → [firstPart]
+                Just (c, rest) → T.snoc firstPart c : divideGraphText rest
+    Just '(' →
+        let (firstPart, restPart) = T.span (/= ';') inText
+        in  case T.uncons restPart of
+                Nothing → [firstPart]
+                Just (c, rest) → T.snoc firstPart c : divideGraphText rest
+    Just firstChar →
+        error $
+            unwords
+                [ "First character in graph representation"
+                , T.unpack inText
+                , ":"
+                , show firstChar
+                , "is not either '<' or '('"
+                ]
 
 
 -- | removeNewickComments take text and removes all "[...]"
@@ -203,34 +207,24 @@ convertQuotedText inText =
 with spaces to unquoted strings with underscores replacing spaces: ' blah bleh ' => blah_bleh
 -}
 removeNewickSpaces ∷ T.Text → T.Text
-removeNewickSpaces inText =
-    if T.null inText
-        then T.empty
-        else
-            let firstChar = T.head inText
-            in  if firstChar == '\''
-                    then
-                        let (newText, restText) = convertQuotedText inText
-                        in  T.concat [newText, removeNewickSpaces restText]
-                    else
-                        if isSpace firstChar
-                            then removeNewickSpaces $ T.tail inText
-                            else T.cons firstChar (removeNewickSpaces $ T.tail inText)
+removeNewickSpaces inText = case T.uncons inText of
+    Nothing → mempty
+    Just ('\'', _) →
+        let (newText, restText) = convertQuotedText inText
+        in  fold [newText, removeNewickSpaces restText]
+    Just (firstChar, otherText) | isSpace firstChar → removeNewickSpaces otherText
+    Just (firstChar, otherText) → T.cons firstChar $ removeNewickSpaces otherText
 
 
 {- | text2FGLGraph takes Text of newick (forest or enhanced or OG) and
 retns fgl graph representation
 -}
 text2FGLGraph ∷ T.Text → P.Gr T.Text Double
-text2FGLGraph inGraphText
-    | T.null inGraphText = error "Empty graph text in text2FGLGraph"
-    | firstChar == '<' && lastChar == '>' = fENewick2FGL inGraphText -- getFENewick inGraphText
-    | firstChar == '(' && lastChar == ';' =
-        mergeNetNodesAndEdges . makeGraphFromPairList $ eNewick2FGL [] [] [(inGraphText, (-1, T.empty))]
-    | otherwise = error "Graph text not in ForestEnhancedNewick or (Enhanced)Newick format"
-    where
-        firstChar = T.head inGraphText
-        lastChar = T.last inGraphText
+text2FGLGraph inGraphText = case T.uncons inGraphText >>= traverse T.unsnoc of
+    Nothing → error "Empty graph text in text2FGLGraph"
+    Just ('<', (_, '>')) → fENewick2FGL inGraphText
+    Just ('(', (_, ')')) → mergeNetNodesAndEdges . makeGraphFromPairList $ eNewick2FGL [] [] [(inGraphText, (-1, mempty))]
+    _ → error "Graph text not in ForestEnhancedNewick or (Enhanced)Newick format"
 
 
 {- | fENewick2FGL takes a Forest Extended Newick (Text) string and returns FGL graph
@@ -238,22 +232,18 @@ breaks up forest and parses seprate eNewicks then modifes for any
 common network nodes in the sub-graphs
 -}
 fENewick2FGL ∷ T.Text → P.Gr T.Text Double
-fENewick2FGL inText =
-    if T.null inText
-        then error "Empty graph text in fENewick2FGL"
-        else -- split eNewicks
-
-            let eNewickTextList = splitForest inText
-                startNodeList = replicate (length eNewickTextList) (-1, T.empty)
-                textNodeList = zip eNewickTextList startNodeList
-                -- init to remove trailing ';' from eNewick
-                eNewickGraphList = fmap ((mergeNetNodesAndEdges . makeGraphFromPairList) . (eNewick2FGL [] [] . (: []))) textNodeList
-            in  if length eNewickGraphList == 1
-                    then head eNewickGraphList
-                    else -- merge graphs then merge network nodes and edges edges
-
-                        let fENewickGraph = mergeNetNodesAndEdges $ mergeFGLGraphs G.empty eNewickGraphList
-                        in  fENewickGraph
+fENewick2FGL inText
+    | T.null inText = error "Empty graph text in fENewick2FGL"
+    | otherwise -- split eNewicks
+        =
+        let eNewickTextList = splitForest inText
+            startNodeList = replicate (length eNewickTextList) (-1, T.empty)
+            textNodeList = zip eNewickTextList startNodeList
+            -- init to remove trailing ';' from eNewick
+            eNewickGraphList = fmap ((mergeNetNodesAndEdges . makeGraphFromPairList) . (eNewick2FGL [] [] . (: []))) textNodeList
+        in  case eNewickGraphList of
+                [x] → x
+                _ → mergeNetNodesAndEdges $ mergeFGLGraphs G.empty eNewickGraphList
 
 
 {- | splitForest takes a Text (string) Forest Enhanced Newick representation and splits into

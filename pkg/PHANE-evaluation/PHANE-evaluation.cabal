@@ -142,7 +142,7 @@ Library
 
   Build-Depends:
     PHANE-evaluation:result,
-    async,
+--    async,
     base >= 4.11 && < 5.0,
     bimap >= 0.3 && < 1.0,
     deepseq >= 1.4 && < 2.0,

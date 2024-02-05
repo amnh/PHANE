@@ -8,7 +8,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -81,15 +80,24 @@ data Alphabet a = Alphabet
     deriving stock (Data, Functor, Generic)
 
 
+type role Alphabet representational
+
+
 -- Newtypes for corecing and consolidation of alphabet input processing logic
 newtype AlphabetInputSingle a = ASI {toSingle ∷ a}
     deriving anyclass (NFData)
     deriving stock (Data, Eq, Generic, Ord)
 
 
+type role AlphabetInputSingle representational
+
+
 newtype AlphabetInputTuple a = ASNI {toTuple ∷ (a, a)}
     deriving anyclass (NFData)
     deriving stock (Data, Eq, Generic, Ord)
+
+
+type role AlphabetInputTuple representational
 
 
 {-
@@ -104,10 +112,16 @@ newtype UnnamedSymbol a
     deriving stock (Generic)
 
 
+type role UnnamedSymbol representational
+
+
 newtype NamedSymbol a
     = Named (a, a)
     deriving anyclass (NFData)
     deriving stock (Generic)
+
+
+type role NamedSymbol representational
 
 
 class InternalClass a where
@@ -444,15 +458,15 @@ alphabetPreprocessing inputSymbols =
         prependGapSymbol = (gapSymbol' <|)
 
         removeSpecialSymbolsAndDuplicates =
-            let f ∷ (InternalClass a, MonadState (Set a) f, Ord a) ⇒ a → f Bool
-                f x
+            let p ∷ (InternalClass a, MonadState (Set a) f, Ord a) ⇒ a → f Bool
+                p x
                     | isGapSymboled x = pure False
                     | isMissingSymboled x = pure False
                     | otherwise = do
                         seenSet ← get
                         put $ x `Set.insert` seenSet
                         pure $ x `notElem` seenSet
-            in  (`evalState` initialSeenSet) . filterM f
+            in  (`evalState` initialSeenSet) . filterM p
 
         -- Zip each element with the next element,
         -- and assert that all pairs are less-then-equal

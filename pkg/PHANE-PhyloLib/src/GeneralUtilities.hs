@@ -304,25 +304,21 @@ editDistance xs ys = table ! (m, n)
 
 -- | checkCommandArgs takes comamnd and args and verifies that they are in list
 checkCommandArgs ∷ String → [String] → [String] → Bool
-checkCommandArgs commandString commandList permittedList =
-    null commandList
-        || ( let firstCommand = head commandList
-                 foundCommand = firstCommand `elem` permittedList
-             in  if foundCommand
-                    then checkCommandArgs commandString (tail commandList) permittedList
-                    else
-                        let errorMatch = snd $ getBestMatch (maxBound ∷ Int, "no suggestion") permittedList firstCommand
-                        in  errorWithoutStackTrace $
-                                fold
-                                    [ "\nError: Unrecognized '"
-                                    , commandString
-                                    , "' option. By '"
-                                    , firstCommand
-                                    , "' did you mean '"
-                                    , errorMatch
-                                    , "'?\n"
-                                    ]
-           )
+checkCommandArgs commandString commandList permittedList = case commandList of
+    [] → True
+    firstCommand : otherCommands | firstCommand `elem` permittedList → checkCommandArgs commandString otherCommands permittedList
+    firstCommand : _ →
+        let errorMatch = snd $ getBestMatch (maxBound ∷ Int, "no suggestion") permittedList firstCommand
+        in  errorWithoutStackTrace $
+                fold
+                    [ "\nError: Unrecognized '"
+                    , commandString
+                    , "' option. By '"
+                    , firstCommand
+                    , "' did you mean '"
+                    , errorMatch
+                    , "'?\n"
+                    ]
 
 
 {- | getBestMatch compares input to allowable commands and checks if in list and if not outputs
@@ -330,29 +326,24 @@ closest match
 call with (maxBound :: Int ,"no suggestion") commandList inString
 -}
 getBestMatch ∷ (Int, String) → [String] → String → (Int, String)
-getBestMatch curBest@(minDist, _) allowedStrings inString =
-    if null allowedStrings
-        then curBest
-        else
-            let candidate = head allowedStrings
-                candidateEditCost = editDistance candidate inString
-            in  if candidateEditCost == 0
-                    then (0, candidate)
-                    else
-                        if candidateEditCost < minDist
-                            then getBestMatch (candidateEditCost, candidate) (tail allowedStrings) inString
-                            else getBestMatch curBest (tail allowedStrings) inString
+getBestMatch currBest@(minDist, _) allowedStrings inString = case allowedStrings of
+    [] → currBest
+    candidate : cs → case editDistance candidate inString of
+        0 → (0, candidate)
+        candidateEditCost →
+            let nextBest = case candidateEditCost `compare` minDist of
+                    LT → (candidateEditCost, candidate)
+                    _ → currBest
+            in  getBestMatch nextBest cs inString
 
 
 -- | getCommandErrorString takes list of non zero edits to allowed commands and reurns meaningful error string
 getCommandErrorString ∷ [(Int, String, String)] → String
-getCommandErrorString noMatchList =
-    if null noMatchList
-        then ""
-        else
-            let (_, firstCommand, firstMatch) = head noMatchList
-                firstError = "\tBy \'" <> firstCommand <> "\' did you mean \'" <> firstMatch <> "\'?\n"
-            in  firstError <> getCommandErrorString (tail noMatchList)
+getCommandErrorString = \case
+    [] → ""
+    (_, firstCommand, firstMatch) : rest →
+        let firstError = fold ["\tBy \'", firstCommand, "\' did you mean \'", firstMatch, "\'?\n"]
+        in  firstError <> getCommandErrorString rest
 
 
 {- | isSequentialSubsequence takes two lists and determines if the first List is
@@ -449,19 +440,20 @@ takeRandom rSeed number inList
 
 -- | takeNth takes n elments (each nth) of a list of length m
 takeNth ∷ Int → [a] → [a]
-takeNth number inList
-    | null inList = []
-    | number == 0 = []
-    | number == 1 = [head inList]
-    | number >= length inList = inList
-    | otherwise =
-        let (value, _) = divMod (length inList) number
-            indexList = [0 .. (length inList - 1)]
-            (_, remList) =
-                unzip $
-                    zipWith divMod indexList (L.replicate (length inList) value)
-            (outList, _) = unzip . filter ((== 1) . snd) $ zip inList remList
-        in  take number outList
+takeNth 0 = const []
+takeNth n = \case
+    [] → []
+    x : _ | n == 1 → [x]
+    inList →
+        let len = length inList
+        in  case n `compare` len of
+                LT →
+                    let (value, _) = divMod len n
+                        indexList = [0 .. len - 1]
+                        (_, remList) = unzip . zipWith divMod indexList $ L.replicate len value
+                        (outList, _) = unzip . filter ((== 1) . snd) $ zip inList remList
+                    in  take n outList
+                _ → inList
 
 
 {-# NOINLINE getRandomElement #-}
@@ -471,12 +463,14 @@ takeNth number inList
 at random
 -}
 getRandomElement ∷ Int → [a] → a
-getRandomElement rVal inList
-    | null inList = error "Null list in getRandomElement"
-    | length inList == 1 = head inList
-    | otherwise =
-        let idx = snd $ divMod (abs rVal) (length inList)
-        in  inList !! idx
+getRandomElement rVal = \case
+    [] → error "Null list in getRandomElement"
+    inList@(x : xs) → case xs of
+        [] → x
+        _ →
+            let len = length inList
+                idx = abs rVal `mod` len
+            in  inList !! idx
 
 
 {- | chooseElementAtRandomPair like chooseElementAtRandomWithDistribution
@@ -492,18 +486,17 @@ chooseElementAtRandomPair randVal elemDistList
 
 -- | getElementIntervalPair recursively checks if teh double input is in the current interval if not recurses
 getElementIntervalPair ∷ Double → Double → [(a, Double)] → a
-getElementIntervalPair doubleVal minVal elemDistList
-    | null elemDistList = error "Null list in getElementIntervalPair"
-    | otherwise =
-        let (fstElem, fstDouble) = head elemDistList
-            maxVal = minVal + fstDouble
-        in  -- in interval
-            if (doubleVal >= minVal && doubleVal < maxVal)
+getElementIntervalPair doubleVal minVal = \case
+    [] → error "Null list in getElementIntervalPair"
+    (fstElem, fstDouble) : xs →
+        let maxVal = minVal + fstDouble
+        in  case xs of
                 -- case where == 1.0
-                || (length elemDistList == 1)
-                then fstElem
-                else -- not in interval
-                    getElementIntervalPair doubleVal maxVal (tail elemDistList)
+                [] → fstElem
+                -- in interval
+                _ | doubleVal >= minVal && doubleVal < maxVal → fstElem
+                -- not in interval
+                _ → getElementIntervalPair doubleVal maxVal xs
 
 
 {-# NOINLINE chooseElementAtRandomWithDistribution #-}
