@@ -27,7 +27,7 @@ import Measure.Unit.SymbolIndex
 
 
 {- |
-/ϴ(a⁵)/ where /a ≤ 8/ is the size of the character alphabet.
+__Time:__ \( \Theta\left( a^{5} \right) \) where \( a \le 8 \) is the size of the character alphabet.
 
 Generate the 2D and 3D compact state transiton cost matricies from the supplied
 symbol distance matrix with linear dimensions of the alphabet symbol count.

@@ -121,6 +121,11 @@ instance Show SymbolDistanceMatrixTriangular where
                     pad = (padSpacing - length shown) `replicate` ' '
 
 
+{- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
+Reconstructs the lower triangle of a square matrix.
+-}
 lowerTriangleOfSquare ∷ SymbolDistanceMatrixSquare → SymbolDistanceMatrixTriangular
 lowerTriangleOfSquare square =
     let (SymbolDistanceMatrix sc@(SymbolCount w) vec) = coerce square
@@ -134,7 +139,7 @@ lowerTriangleOfSquare square =
 
 
 {- |
-/O(1)/
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 Indexing without bounds checking.
 -}
@@ -150,7 +155,7 @@ symbolIndexing sdmt i j =
 
 
 {- |
-/O(1)/
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 Computes the number of bytes used to store the 'SymbolDistanceMatrixTriangular'.
 -}
@@ -160,6 +165,8 @@ bytesSizeMatrixTriangular = SDM.bytesSizeSymbolMatrix . sdm
 
 
 {- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
 Deconstructs the 'SymbolDistanceMatrixTriangular' to expose the underlying unboxed 'Vector'.
 -}
 {-# INLINE rowMajorVector #-}

@@ -102,7 +102,7 @@ instance Show (TransitionMeasureDiagnosis a) where
 
 
 {- |
-\( \mathcal{O} \left( 1 \right) \) where \( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( 1 \right) \)
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Discrete_space discrete metric>.
 -}
@@ -124,7 +124,7 @@ discreteMetric dim@(SymbolCount n) =
 
 
 {- |
-\( \mathcal{O} \left( 1 \right) \) where \( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( 1 \right) \)
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Discrete_space discrete metric>.
 -}
@@ -151,7 +151,7 @@ discreteCrossGap n sub gap =
 
 
 {- |
-\( \mathcal{O} \left( 1 \right) \) where \( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( 1 \right) \)
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Lp_space 1st linear norm>.
 -}
@@ -173,8 +173,8 @@ linearNorm dim@(SymbolCount n) =
 
 
 {- |
-\( \mathcal{O} \left( n^2 \right) \) & \( \Omega \left( n^2 \right) \) where
-\( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( n^3 \right) \) & \( \Omega \left( n^2 \right) \)
+where \( n \) is the number of symbols for the transition measure.
 
 Construct a 'TransitionMatrix' from a list of elements in row major order.
 
@@ -292,8 +292,8 @@ fromList xs =
 
 
 {- |
-\( \mathcal{O} \left( n^2 \right) \) & \( \Omega \left( n^2 \right) \) where
-\( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( n^3 \right) \) & \( \Omega \left( n^2 \right) \)
+where \( n \) is the number of symbols for the transition measure.
 
 Construct a 'TransitionMatrix' from an ordered collection of columns.
 
@@ -398,8 +398,8 @@ fromColumns xs =
 
 
 {- |
-\( \mathcal{O} \left( n^2 \right) \) & \( \Omega \left( n^2 \right) \) where
-\( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( n^3 \right) \) & \( \Omega \left( n^2 \right) \)
+where \( n \) is the number of symbols for the transition measure.
 
 Construct a 'TransitionMatrix' from an ordered collection of rows.
 
@@ -503,8 +503,8 @@ fromRows xs =
 
 
 {- |
-\( \mathcal{O} \left( n^2 \right) \) & \( \Omega \left( n^2 \right) \) where
-\( n \) is the number of symbols for the transition measure.
+__Time:__ \( \mathcal{O} \left( n^3 \right) \) & \( \Omega \left( n^2 \right) \)
+where \( n \) is the number of symbols for the transition measure.
 
 A generating function for a 'TransitionMatrix'. Efficiently constructs a
 'TransitionMatrix' of the specified size with each value defined by the result

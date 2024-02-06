@@ -60,6 +60,7 @@ It is important to use this type in the metadata decorations rather than store
 a function because a function cannot be contained in a compact region.
 
 Use the following accessor to the retrieve the desired functionality:
+
   * 'symbolDistances'
   * 'stateTransitionPairwiseDispersion'
   * 'getStateTransitionCubeλ'

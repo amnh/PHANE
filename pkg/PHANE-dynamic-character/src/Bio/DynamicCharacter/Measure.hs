@@ -1,10 +1,7 @@
 {-# LANGUAGE Strict #-}
 
 {- |
-
-
-Direct optimization pairwise alignment using the Needleman-Wunsch algorithm.
-These functions will allocate an M * N matrix.
+Pre-processing functions used to compare which of the two characters is "longer" prior to beginning direct optimization pairwise alignment.
 -}
 module Bio.DynamicCharacter.Measure (
     measureCharacters,
@@ -19,10 +16,10 @@ import Data.Vector.Generic (Vector, basicLength)
 
 
 {- |
-\( \mathcal{O}\left(\, 1 \,\right) \) for input characters of differing lengths.
+__Time:__ \( \Theta \left(\, 1 \,\right) \) for input characters of differing lengths.
 
-\( \mathcal{O}\left(\, k \,\right) \) for input characters of equal length, where \( k \) is the shared prefix of
-both characters.
+__Time:__ \( \mathcal{O}\left(\, k \,\right) \) for input characters of equal length,
+where \( k \) is the shared prefix of both characters.
 
 Returns the dynamic character that is shorter first, longer second, and notes
 whether or not the inputs were swapped to place the characters in this ordering.
@@ -73,7 +70,8 @@ measureCharacters lhs rhs
 
 
 {- |
-\( \mathcal{O}\left(\, n \,\right) \)
+__Time:__ \( \mathcal{O}\left(\, k \,\right) \)
+where \( k \) is the length of the longest character.
 
 Considers the median values of the characters, ignores the left/right tagging.
 

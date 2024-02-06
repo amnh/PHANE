@@ -118,7 +118,7 @@ instance Show SymbolDistanceMatrixSquare where
 
 
 {- |
-/O(1)/
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 Indexing without bounds checking.
 -}
@@ -134,7 +134,7 @@ symbolIndexing sdms i j =
 
 
 {- |
-/O(1)/
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 Computes the number of bytes used to store the 'SymbolDistanceMatrixSquare'.
 -}

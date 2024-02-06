@@ -99,6 +99,12 @@ data Metricity
     deriving anyclass (NFData)
 
 
+{- |
+__Time:__ \( \mathcal{O} \left( n^3 \right) \) & \( \Omega \left( n^2 \right) \)
+where \( n \) is the magnitude of the supplied interval.
+
+Computes the metricity of ther supplied 'Distance' measure over the specified (inclusive) interval.
+-}
 {-# INLINEABLE metricityOfDistance #-}
 metricityOfDistance
     ∷ ( Integral d
