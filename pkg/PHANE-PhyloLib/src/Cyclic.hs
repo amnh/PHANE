@@ -59,12 +59,13 @@ hasLeaf gr = checkNodes . nodes $ gr
     leaf node are deleted as well.
 -}
 delLeaf ∷ (DynGraph g) ⇒ g a b → g a b
-delLeaf gr = delNode leaf gr'
-    where
-        leaf = head [x | x ← nodes gr, leafNode gr x]
-        gr' = delEdges newEdges gr
-        newLedges = inn gr leaf
-        newEdges = [(x, y) | (x, y, _) ← newLedges]
+delLeaf gr = case [x | x ← nodes gr, leafNode gr x] of
+    [] → gr
+    leaf : _ →
+        let gr' = delEdges newEdges gr
+            newEdges = [(x, y) | (x, y, _) ← newLedges]
+            newLedges = inn gr leaf
+        in  delNode leaf gr'
 
 
 {-  This method indicates whether a given graph has a cycle or not. If it does
