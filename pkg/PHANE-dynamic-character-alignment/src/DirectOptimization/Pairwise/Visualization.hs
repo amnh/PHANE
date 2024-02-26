@@ -213,7 +213,7 @@ renderDirectionMatrix lesser longer mtx =
                 renderCell i j = fmap f . pad maxColumnWidth
                     where
                         f
-                            | (i, j) `elem` tracebackCells = boldDirection
+                            | (i, j) `member` tracebackCells = boldDirection
                             | otherwise = id
 
         pad ∷ Int → String → String
