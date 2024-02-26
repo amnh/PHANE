@@ -17,7 +17,7 @@ module DirectOptimization.Pairwise.Swapping (
 ) where
 
 import Bio.DynamicCharacter
-import Bio.DynamicCharacter.Element (WideState)
+import Bio.DynamicCharacter.Element (HugeState, WideState)
 import Control.Monad.ST
 import Data.Bits
 import Data.Foldable

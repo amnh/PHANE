@@ -122,7 +122,6 @@ Library
     PHANE-dynamic-character-element,
     PHANE-measure-units,
     base >= 4.11 && < 5.0,
-    bv-little,
     containers >= 0.6.2 && < 1.0,
     monad-loops >= 0.4 && < 1.0,
     primitive >= 0.7.1 && < 1.0,

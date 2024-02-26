@@ -21,7 +21,7 @@ module Bio.DynamicCharacter.HandleGaps (
 ) where
 
 import Bio.DynamicCharacter
-import Bio.DynamicCharacter.Element (SlimState, WideState)
+import Bio.DynamicCharacter.Element (HugeState, SlimState, WideState)
 import Control.Monad (unless, when)
 import Control.Monad.Loops (whileM_)
 import Control.Monad.ST

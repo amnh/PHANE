@@ -17,8 +17,10 @@ module Bio.DynamicCharacter.Element (
     -- * Element Varieties of a Dynamic Character
     SlimState (..),
     WideState (..),
+    HugeState (..),
 ) where
 
+import Bio.DynamicCharacter.Element.HugeState
 import Bio.DynamicCharacter.Element.SlimState
 import Bio.DynamicCharacter.Element.WideState
 

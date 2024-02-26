@@ -5,6 +5,7 @@ module DirectOptimization.Pairwise.Huge (
 ) where
 
 import Bio.DynamicCharacter
+import Bio.DynamicCharacter.Element (HugeState)
 import DirectOptimization.Pairwise.Internal (AlignmentCost, SymbolChangeCost, TCM2Dλ)
 import DirectOptimization.Pairwise.Ukkonen
 

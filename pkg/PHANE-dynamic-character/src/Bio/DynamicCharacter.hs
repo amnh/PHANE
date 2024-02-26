@@ -6,9 +6,6 @@
 {-# LANGUAGE UnboxedTuples #-}
 
 module Bio.DynamicCharacter (
-    -- * Element Varieties of a Dynamic Character
-    HugeState,
-
     -- * Generic Dynamic Character Constructions
     OpenDynamicCharacter,
     TempOpenDynamicCharacter,
@@ -74,7 +71,6 @@ import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Alphabet
 import Data.Alphabet.Codec
-import Data.BitVector.LittleEndian
 import Data.Bits
 import Data.Foldable
 import Data.Kind (Type)
@@ -89,12 +85,6 @@ import Data.Vector.Generic.Mutable qualified as GMV (length)
 import Data.Vector.Storable qualified as SV
 import Data.Vector.Unboxed qualified as UV
 import Measure.Unit.SymbolIndex
-
-
-{- |
-Encoding for a dynamic character element with an alphabet size of /65/ or greater.
--}
-type HugeState = BitVector
 
 
 {- |
