@@ -28,6 +28,12 @@ module PHANE.Evaluation (
     setVerbosityFileLog,
 
     -- ** Parallelism
+
+    -- *** With Laziness
+    getParallelChunkMapBy,
+    getParallelChunkTraverseBy,
+
+    -- *** Full Strictness
     getParallelChunkMap,
     getParallelChunkTraverse,
 
@@ -437,11 +443,14 @@ __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 /Note:/ Does not work on infinite lists!
 
-Get a parallel mapping function which evenly distributes elements of the list
-across available threads. The number of threads available on they system is
-queried and memoized at the start of the 'Evaluation'. The length of the supplied
-list is calculated, and the list is split into sub-lists of equal length (± 1).
-Each sub list is given to a thread and fully evaluated.
+Get a parallel mapping function which produces results evaluated to /normal form/.
+
+This is a specialization of 'getParallelChunkMapBy'.
+The following equivalence holds:
+
+> getParallelChunkMap ≡ getParallelChunkMapBy id
+
+See the documentation of 'getParallelChunkMapBy' for more details on operational semantics.
 -}
 getParallelChunkMap ∷ ∀ a b env. (NFData b) ⇒ Evaluation env ((a → b) → [a] → [b])
 getParallelChunkMap =
@@ -467,6 +476,56 @@ __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
 /Note:/ Does not work on infinite lists!
 
+Get a parallel mapping function, with customizable laziness.
+
+Laziness is customizable via the "selector" argument @(b -> c)@.
+The parallel map evaluates each @b@ value to /weak head normal form/.
+Additionally, by applying the "selector" @(b -> c)@, the sub-structure @c@ will
+be fully evaluated to /normal form/, along with "the spine" connecting @b@ to @c@.
+
+The parallel map will evenly distributes elements of the list across available
+threads. The number of threads available on they system is queried and memoized
+at the start of the 'Evaluation'. The length of the supplied list is calculated,
+and the list is split into sub-lists of equal length (± 1).
+
+__Examples__
+
+This example shows the semantic of the selected laziness.
+The "selector" 'snd' specifies the second argument of the tuple to be fully evaluated.
+The first argument of the tuple is not evaluated due to laziness.
+
+> xs <- getParallelChunkMapBy snd >>= \parMap ->
+>     (\x -> (undefined, x * x)) `parMap` [ 1 .. 10 ]
+> liftIO . print $ snd <$> xs
+> >>> [1,4,9,16,25,36,49,64,81,100]
+-}
+getParallelChunkMapBy ∷ ∀ a b c env. (NFData c) ⇒ (b → c) → Evaluation env ((a → b) → [a] → [b])
+getParallelChunkMapBy g =
+    let h ∷ (a → b) → a → b
+        h f x = let v = f x in force (g v) `seq` v
+
+        construct ∷ Word → (a → b) → [a] → [b]
+        construct = \case
+            0 → fmap
+            1 → fmap
+            n → \f → \case
+                [] → []
+                x : xs →
+                    let !maxBuckets = fromIntegral n
+                        len = length xs
+                        num = case len `quotRem` maxBuckets of
+                            (q, 0) → q
+                            (q, _) → q + 1
+                        y :| ys = withStrategy (parListChunk' num rseq) $ h f <$> x :| xs
+                    in  y : ys
+    in  Evaluation $ reader (pure . construct . fromIntegral . implicitBucketNum)
+
+
+{- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
+/Note:/ Does not work on infinite lists!
+
 Like getParallelChunkMap, but performs monadic actions over the list in parallel.
 Each thread will have a different, /uncorrelated/ random number generator.
 -}
@@ -475,6 +534,26 @@ getParallelChunkTraverse
      . (NFData b, Traversable t)
     ⇒ Evaluation env ((a → Evaluation env b) → t a → Evaluation env (t b))
 getParallelChunkTraverse = pure parallelTraverseEvaluation
+
+
+{- |
+__Time:__ \( \mathcal{O}\left( 1 \right) \)
+
+/Note:/ Does not work on infinite lists!
+
+Like getParallelChunkMapBy, but performs monadic actions over the list in parallel,
+with customizable laziness.
+Each thread will have a different, /uncorrelated/ random number generator.
+
+See the documentation of 'getParallelChunkMapBy' for more details on laziness semantics.
+-}
+getParallelChunkTraverseBy
+    ∷ ∀ a b c env t
+     . (NFData c, Traversable t)
+    ⇒ (b → c)
+    -- ^ The sub-structure of the element to be forced.
+    → Evaluation env ((a → Evaluation env b) → t a → Evaluation env (t b))
+getParallelChunkTraverseBy selector = pure (parallelTraverseEvaluationBy selector)
 
 
 {- |
@@ -588,6 +667,18 @@ parallelTraverseEvaluation f = pooledMapConcurrently (fmap force . f)
 parallelTraverseEvaluation f xs = withRunInIO $ \runner →
     mapConcurrently (runner . fmap force . f) xs
 -}
+
+parallelTraverseEvaluationBy
+    ∷ ∀ a b c env t
+     . (NFData c, Traversable t)
+    ⇒ (b → c)
+    → (a → Evaluation env b)
+    → t a
+    → Evaluation env (t b)
+parallelTraverseEvaluationBy g f =
+    let h x = f x >>= \v → force (g v) `seq` pure v
+    in  pooledMapConcurrently h
+
 
 setVerbosityOf
     ∷ ((LogFeed → LogFeed) → LogConfiguration → LogConfiguration)

@@ -47,6 +47,10 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added `alterEnvironment`
 
+  * Added `getParallelChunkMapBy`
+
+  * Added `getParallelChunkTraverseBy`
+
   * Added `shuffleList`
 
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
