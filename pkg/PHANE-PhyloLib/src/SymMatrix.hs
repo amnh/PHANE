@@ -143,8 +143,8 @@ fromLists inListList@(firstRow : _) =
 
 
 -- | toLists takes a Matrix and returns a list of lists (not all same length)
-toLists ∷ (Eq a) ⇒ Matrix a → [[a]]
-toLists inM = V.toList <$> V.toList inM
+toLists ∷ Matrix a → [[a]]
+toLists = fmap V.toList . V.toList
 
 
 {- | toFullLists takes a Matrix and returns a list of lists of full length
