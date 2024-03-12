@@ -110,14 +110,32 @@ Common language-specs
 
 Library
 
-  import:
+  Import:
     ghc-flags,
     language-specs
 
-  hs-source-dirs:
+  Hs-Source-Dirs:
     src
 
-  build-depends:
+  Build-Depends:
+    PHANE-dynamic-character:core,
+    base >= 4.11 && < 5.0,
+
+
+  Reexported-Modules:
+    Bio.DynamicCharacter,
+    Bio.DynamicCharacter.Measure,
+    Bio.DynamicCharacter.HandleGaps,
+
+
+-- Exposes internal modules
+Library core
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Build-Depends:
     PHANE-alphabet,
     PHANE-dynamic-character-element,
     PHANE-measure-units,
@@ -127,7 +145,36 @@ Library
     primitive >= 0.7.1 && < 1.0,
     vector >= 0.12.0.3 && < 1.0,
 
-  exposed-modules:
+  Exposed-Modules:
     Bio.DynamicCharacter
     Bio.DynamicCharacter.Measure
     Bio.DynamicCharacter.HandleGaps
+
+  Hs-Source-Dirs:
+    src/core
+
+  Visibility:
+    private
+
+
+-- Exposes QuickCheck related instances
+Library quickcheck
+
+  Import:
+    ghc-flags,
+    language-specs,
+
+  Build-Depends:
+    PHANE-dynamic-character:core,
+    base >= 4.11 && < 5.0,
+    QuickCheck >= 2.14 && < 3.0,
+    vector >= 0.12.0.3 && < 1.0,
+    
+  Exposed-Modules:
+    Bio.DynamicCharacter.QuickCheck
+
+  Hs-Source-Dirs:
+    src/quickcheck
+
+  Visibility:
+    public
