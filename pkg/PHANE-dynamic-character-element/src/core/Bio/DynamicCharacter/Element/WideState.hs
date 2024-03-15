@@ -10,10 +10,12 @@ module Bio.DynamicCharacter.Element.WideState (
     WideState (..),
 ) where
 
+import Bio.DynamicCharacter.Element.Class (StateOfAmbiguity (..))
 import Control.DeepSeq (NFData)
 import Data.Alphabet (Alphabet, fromSymbols)
 import Data.Alphabet.Codec (decodeState)
-import Data.Bits (Bits, FiniteBits)
+import Data.Bits (Bits (..), FiniteBits (..))
+import Data.Coerce (coerce)
 import Data.Data ()
 import Data.Foldable (fold)
 import Data.Hashable (Hashable (..))
@@ -25,6 +27,7 @@ import Data.Vector.Primitive qualified as PV
 import Data.Vector.Unboxed qualified as UV
 import Data.Word (Word64)
 import Foreign.Storable (Storable)
+import GHC.IsList qualified as List (IsList (..))
 
 
 {- |
@@ -97,6 +100,28 @@ instance Show WideState where
                 [] → x
                 _ → '[' : fold input <> "]"
         in  render $ decodeState symbolsBase64 v
+
+
+instance StateOfAmbiguity WideState where
+    toBits state =
+        let n = finiteBitSize state
+        in  List.fromList $ foldMap (pure . (state `testBit`)) [0 .. n - 1]
+
+
+    fromBits =
+        let f ∷ Bool → (Word64, Int) → (Word64, Int)
+            f b
+                | b = \(a, i) → (a `setBit` i, i + 1)
+                | otherwise = fmap succ
+        in  coerce . fst . foldr f (0, 0) . List.toList
+
+
+    fromNumber !dimValue !intValue =
+        let size = min (fromEnum dimValue) $ finiteBitSize (undefined ∷ WideState)
+            mask = 1 `shiftL` size
+            bits ∷ Word64
+            bits = fromIntegral $ toInteger intValue `mod` mask
+        in  coerce bits
 
 
 instance MGV.MVector UV.MVector WideState where

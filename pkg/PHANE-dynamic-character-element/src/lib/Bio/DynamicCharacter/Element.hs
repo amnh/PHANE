@@ -18,8 +18,12 @@ module Bio.DynamicCharacter.Element (
     SlimState (..),
     WideState (..),
     HugeState (..),
+
+    -- * Type-class abstraction
+    StateOfAmbiguity (..),
 ) where
 
+import Bio.DynamicCharacter.Element.Class
 import Bio.DynamicCharacter.Element.HugeState
 import Bio.DynamicCharacter.Element.SlimState
 import Bio.DynamicCharacter.Element.WideState

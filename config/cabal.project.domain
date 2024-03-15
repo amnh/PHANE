@@ -87,6 +87,7 @@ allow-newer:
     directory,
     exceptions,
     filepath,
+    hashable,
     pretty,
     process,
     time,

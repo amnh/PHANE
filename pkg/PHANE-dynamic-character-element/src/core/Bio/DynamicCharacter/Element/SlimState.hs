@@ -11,6 +11,7 @@ module Bio.DynamicCharacter.Element.SlimState (
     renderSlimStateChar,
 ) where
 
+import Bio.DynamicCharacter.Element.Class (StateOfAmbiguity (..))
 import Control.Arrow ((&&&))
 import Control.DeepSeq (NFData)
 import Data.Alphabet (Alphabet, fromSymbols)
@@ -19,8 +20,9 @@ import Data.Alphabet.Gap (gapIndex)
 import Data.Bifunctor (bimap, second)
 import Data.Bimap (Bimap, (!>))
 import Data.Bimap qualified as BM
-import Data.Bits (Bits (xor), FiniteBits)
+import Data.Bits (Bits (..), FiniteBits (finiteBitSize))
 import Data.Char (toLower)
+import Data.Coerce (coerce)
 import Data.Foldable (toList)
 import Data.Hashable (Hashable (..))
 import Data.Ix (Ix)
@@ -33,6 +35,7 @@ import Data.Vector.Primitive qualified as PV
 import Data.Vector.Unboxed qualified as UV
 import Foreign.C.Types (CUInt)
 import Foreign.Storable (Storable)
+import GHC.IsList qualified as List (IsList (..))
 import Measure.Unit.SymbolIndex (atSymbolIndex)
 
 
@@ -97,6 +100,28 @@ instance Hashable SlimState where
 
 instance Show SlimState where
     show = pure . renderSlimStateChar
+
+
+instance StateOfAmbiguity SlimState where
+    toBits state =
+        let n = finiteBitSize state
+        in  List.fromList $ foldMap (pure . (state `testBit`)) [0 .. n - 1]
+
+
+    fromBits =
+        let f ∷ Bool → (CUInt, Int) → (CUInt, Int)
+            f b
+                | b = \(a, i) → (a `setBit` i, i + 1)
+                | otherwise = fmap succ
+        in  coerce . fst . foldr f (0, 0) . List.toList
+
+
+    fromNumber !dimValue !intValue =
+        let size = min 8 $ fromEnum dimValue
+            mask = 1 `shiftL` size
+            bits ∷ CUInt
+            bits = fromIntegral $ toInteger intValue `mod` mask
+        in  coerce bits
 
 
 instance MGV.MVector UV.MVector SlimState where

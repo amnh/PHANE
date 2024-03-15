@@ -27,6 +27,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added initial library version
 
+  * Added `StateOfAmbiguity` abstracting type-class
+
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 

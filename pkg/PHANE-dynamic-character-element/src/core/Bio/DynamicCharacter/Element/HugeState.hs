@@ -10,12 +10,14 @@ module Bio.DynamicCharacter.Element.HugeState (
     HugeState (..),
 ) where
 
+import Bio.DynamicCharacter.Element.Class (StateOfAmbiguity (..))
 import Control.DeepSeq (NFData)
 import Data.Bit
 import Data.Bits (Bits (..), FiniteBits (..))
-import Data.Data ()
+import Data.Coerce (coerce)
 import Data.Hashable (Hashable (..))
 import Data.Vector.Unboxed qualified as UV
+import GHC.IsList qualified as List (IsList (..))
 import Unsafe.Coerce (unsafeCoerce)
 
 
@@ -53,3 +55,16 @@ instance Show HugeState where
             enclose ∷ String → String
             enclose x = '[' : x <> "]"
         in  enclose . UV.foldMap showBit . fromHugeState
+
+
+instance StateOfAmbiguity HugeState where
+    toBits = List.fromList . fmap coerce . UV.toList . coerce
+
+
+    fromBits = coerce . UV.fromList . fmap Bit . List.toList
+
+
+    fromNumber !dimValue !intValue =
+        let n = fromEnum dimValue
+            v = toInteger intValue
+        in  coerce . UV.generate n $ \i → Bit $ v `testBit` i
