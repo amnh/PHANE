@@ -68,3 +68,12 @@ instance StateOfAmbiguity HugeState where
         let n = fromEnum dimValue
             v = toInteger intValue
         in  coerce . UV.generate n $ \i → Bit $ v `testBit` i
+
+
+    toUnsignedNumber =
+        let gen ∷ Int → Word → Integer → Integer
+            gen i e =
+                let off = i * 64
+                    val = toInteger e
+                in  (+) (val `shiftL` off)
+        in  fromInteger . UV.ifoldr' gen 0 . cloneToWords . coerce

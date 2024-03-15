@@ -124,6 +124,9 @@ instance StateOfAmbiguity SlimState where
         in  coerce bits
 
 
+    toUnsignedNumber = fromIntegral . (coerce ∷ SlimState → CUInt)
+
+
 instance MGV.MVector UV.MVector SlimState where
     {-# INLINE basicLength #-}
     basicLength (MV_SlimState v) = MGV.basicLength v

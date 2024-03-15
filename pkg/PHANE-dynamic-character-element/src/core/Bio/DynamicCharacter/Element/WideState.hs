@@ -124,6 +124,9 @@ instance StateOfAmbiguity WideState where
         in  coerce bits
 
 
+    toUnsignedNumber = fromIntegral . (coerce ∷ WideState → Word64)
+
+
 instance MGV.MVector UV.MVector WideState where
     {-# INLINE basicLength #-}
     basicLength (MV_WideState v) = MGV.basicLength v

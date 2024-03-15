@@ -23,3 +23,6 @@ class StateOfAmbiguity e where
 
 
     fromNumber ∷ (Integral v) ⇒ Word → v → e
+
+
+    toUnsignedNumber ∷ (Integral v) ⇒ e → v
