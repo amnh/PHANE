@@ -227,7 +227,7 @@ text2FGLGraph ∷ Text → P.Gr Text Double
 text2FGLGraph inGraphText = case T.uncons inGraphText >>= traverse T.unsnoc of
     Nothing → error "Empty graph text in text2FGLGraph"
     Just ('<', (_, '>')) → fENewick2FGL inGraphText
-    Just ('(', (_, ')')) → mergeNetNodesAndEdges . makeGraphFromPairList $ eNewick2FGL [] [] [(inGraphText, (-1, mempty))]
+    Just ('(', (_, ';')) → mergeNetNodesAndEdges . makeGraphFromPairList $ eNewick2FGL [] [] [(inGraphText, (-1, mempty))]
     _ → error "Graph text not in ForestEnhancedNewick or (Enhanced)Newick format"
 
 
@@ -481,7 +481,7 @@ eNewick2FGL nodeList edgeList = \case
                         error $
                             unwords
                                 [ "Invalid Extended Newick component,"
-                                , " must begin with \'(\'' and end with \')\' : "
+                                , " must begin with \'(\'' and end with \';\' : "
                                 , T.unpack inTextFirst
                                 ]
                 -- not first call and/or format OK
