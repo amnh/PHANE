@@ -12,16 +12,16 @@ The PHANE project provides a number of Haskell packages, each exposing one or mo
 All packages are located within the `pkg` directory.
 Below are the packages provided:
 
-  - [`PHANE-dynamic-character-alignment`][GitHub-PHANE-Lib-00]
-  - [`PHANE-evaluation`][GitHub-PHANE-Lib-01]
-  - [`PHANE-transition-matrix`][GitHub-PHANE-Lib-02]
-  - [`PHANE-transition-matrix-ffi`][GitHub-PHANE-Lib-03]
-  - [`PHANE-alphabet`][GitHub-PHANE-Lib-04]
-  - [`PHANE-dynamic-character-element`][GitHub-PHANE-Lib-05]
-  - [`PHANE-dynamic-character`][GitHub-PHANE-Lib-06]
-  - [`PHANE-measure-class`][GitHub-PHANE-Lib-07]
-  - [`PHANE-measure-transition`][GitHub-PHANE-Lib-08]
-  - [`PHANE-measure-units`][GitHub-PHANE-Lib-09]
+  - [`PHANE-alphabet`][GitHub-PHANE-Lib-00]
+  - [`PHANE-dynamic-character`][GitHub-PHANE-Lib-01]
+  - [`PHANE-dynamic-character-alignment`][GitHub-PHANE-Lib-02]
+  - [`PHANE-dynamic-character-element`][GitHub-PHANE-Lib-03]
+  - [`PHANE-evaluation`][GitHub-PHANE-Lib-04]
+  - [`PHANE-measure-class`][GitHub-PHANE-Lib-05]
+  - [`PHANE-measure-transition`][GitHub-PHANE-Lib-06]
+  - [`PHANE-measure-units`][GitHub-PHANE-Lib-07]
+  - [`PHANE-transition-matrix`][GitHub-PHANE-Lib-08]
+  - [`PHANE-transition-matrix-ffi`][GitHub-PHANE-Lib-09]
   - [`PHANE-PhyloLib`][GitHub-PHANE-Lib-10]
 
 
@@ -38,12 +38,12 @@ A list of publications resulting from the PHANE project is located at:
 [AMNH-Wheeler]: https://www.amnh.org/research/staff-directory/ward-wheeler
 
 [GitHub-PHANE-Lib-00]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-alphabet#readme
-[GitHub-PHANE-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-element#readme
-[GitHub-PHANE-Lib-02]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character#readme
-[GitHub-PHANE-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-class#readme
-[GitHub-PHANE-Lib-04]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-transition#readme
-[GitHub-PHANE-Lib-05]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
-[GitHub-PHANE-Lib-06]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-alignment#readme
+[GitHub-PHANE-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character#readme
+[GitHub-PHANE-Lib-02]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-alignment#readme
+[GitHub-PHANE-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-element#readme
+[GitHub-PHANE-Lib-04]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-class#readme
+[GitHub-PHANE-Lib-05]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-transition#readme
+[GitHub-PHANE-Lib-06]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
 [GitHub-PHANE-Lib-07]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-evaluation#readme
 [GitHub-PHANE-Lib-08]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix#readme
 [GitHub-PHANE-Lib-09]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme
