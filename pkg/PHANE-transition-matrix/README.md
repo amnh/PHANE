@@ -1,1 +1,1 @@
-../../doc/ReadMe/Transition-Matrix-FFI.hs
+../../doc/ReadMe/Transition-Matrix.md
