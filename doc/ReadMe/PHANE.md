@@ -41,10 +41,10 @@ A list of publications resulting from the PHANE project is located at:
 [GitHub-PHANE-Lib-01]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character#readme
 [GitHub-PHANE-Lib-02]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-alignment#readme
 [GitHub-PHANE-Lib-03]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-dynamic-character-element#readme
-[GitHub-PHANE-Lib-04]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-class#readme
-[GitHub-PHANE-Lib-05]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-transition#readme
-[GitHub-PHANE-Lib-06]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
-[GitHub-PHANE-Lib-07]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-evaluation#readme
+[GitHub-PHANE-Lib-04]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-evaluation#readme
+[GitHub-PHANE-Lib-05]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-class#readme
+[GitHub-PHANE-Lib-06]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-transition#readme
+[GitHub-PHANE-Lib-07]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-measure-units#readme
 [GitHub-PHANE-Lib-08]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix#readme
 [GitHub-PHANE-Lib-09]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme
 [GitHub-PHANE-Lib-10]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
