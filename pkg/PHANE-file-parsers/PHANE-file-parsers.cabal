@@ -1,0 +1,222 @@
+Cabal-Version: 3.8
+Name:          PHANE-file-parsers
+Version:       0.1.0
+Build-Type:    Simple
+Tested-With:
+  GHC == 9.8.2
+  GHC == 9.6.4
+  GHC == 9.4.8
+  GHC == 9.2.8
+
+Author:        Alex Washburn <github@recursion.ninja>
+Copyright:     © 2022 Ward Wheeler and The American Museum of Natural History
+License:       BSD-3-Clause
+License-File:  LICENSE
+
+Maintainer:    Ward Wheeler <wheeler@amnh.org>
+Homepage:      https://github.com/AMNH/PHANE/blob/main/doc/ReadMe/ParserTCM
+Bug-Reports:   https://github.com/AMNH/PHANE/issues
+
+Synopsis:      Parsers for the input file types accepted by PhyG
+
+Description:
+  Please see the [README on GitHub](https://github.com/AMNH/PHANE/tree/main/pkg/PHANE-file-parsers#readme).
+
+Source-Repository head
+  Type:        git
+  Location:    git://github.com/AMNH/PHANE.git
+  Subdir:      pkg/PHANE-parser-TCM
+
+
+Flag Optimize
+  Description: Compile with full optimizations
+  Default:     False
+  Manual:      True
+
+
+Flag Forego-Sanity
+  Description: Compile with full optimizations
+  Default:     False
+  Manual:      True
+
+
+Common ghc-flags
+
+  Ghc-Options:
+    -fdiagnostics-color=always
+    -fhide-source-paths
+    -j
+
+  Ghc-Prof-Options:
+    -fprof-auto
+    -fprof-cafs
+
+  If !os(darwin)
+    CC-Options:
+      -rdynamic
+
+  If !flag(Optimize)
+    Ghc-Options:
+      -O0
+  Else
+    Ghc-Options:
+      -O2
+      -threaded
+      -- Optimization flags
+      -fexcess-precision
+      -fexpose-all-unfoldings
+      -flate-specialise
+      -fmax-simplifier-iterations=16
+      -foptimal-applicative-do
+      -fspec-constr-count=8
+      -fspec-constr-keen
+      -fspecialize-aggressively
+      -fstatic-argument-transformation
+
+  If !flag(Forego-Sanity)
+    Ghc-Options:
+      -- Sanity check warnings
+      --   1. Include all warnings by default
+      -Weverything
+      --   2. Exclude the undesirable warnings
+      -Wno-all-missed-specialisations
+      -Wno-implicit-prelude
+      -Wno-inferred-safe-imports
+      -Wno-missing-import-lists
+      -Wno-missing-safe-haskell-mode
+      -Wno-monomorphism-restriction
+      -Wno-redundant-bang-patterns
+      -Wno-type-defaults
+      -Wno-unsafe
+
+  If !flag(Forego-Sanity) && impl(ghc >=9.2)
+    Ghc-Options:
+      -Wno-missing-kind-signatures
+
+  If !flag(Forego-Sanity) && impl(ghc >=9.4)
+    Ghc-Options:
+      -Wno-redundant-strictness-flags
+
+
+Common language-specs
+
+  Default-Extensions:
+    DerivingStrategies
+    LambdaCase
+    NoGeneralizedNewtypeDeriving
+    RoleAnnotations
+    UnicodeSyntax
+
+  Default-Language:
+    GHC2021
+
+
+library TCM
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Visibility:
+    public
+
+  HS-Source-Dirs:
+    src
+
+  Build-Depends:
+    base >= 4.11 && < 5.0,
+    containers >= 0.6.2 && < 1.0,
+    deepseq >= 1.4 && < 2.0,
+    matrices >= 0.4 && < 5.0,
+    megaparsec >= 9.0 && < 10.0,
+    parser-combinators >= 1.0 && < 2.0,
+    text >= 1.2.4 && < 2.0,
+    text-short >= 0.1.3 && < 1.0,
+
+  Exposed-Modules:
+    File.Format.TransitionCostMatrix
+
+  Other-Modules:
+    File.Format.TransitionCostMatrix.Parser
+
+
+benchmark bench-file-parsers-space
+
+  import:
+    ghc-flags,
+    language-specs
+
+  main-is:
+    Space.hs
+
+  type:
+    exitcode-stdio-1.0
+
+  ghc-options:
+    -threaded
+
+  hs-source-dirs:
+    bench
+
+  build-depends:
+    base                     >= 4.11      && < 5.0,
+    case-insensitive         >= 1.2.0     && < 1.3,
+    criterion                >= 1.5       && < 2.0,
+    deepseq                  >= 1.4       && < 2.0,
+    filepath                 >= 1.4.2     && < 2.0,
+    megaparsec               >= 9.0       && < 10.0,
+    text                     >= 1.2.4     && < 2.0,
+    weigh                    >= 0.0.16    && < 1.0,
+    PHANE-file-parsers:TCM,
+
+  other-modules:
+--    Benchmark.FASTA.Files
+--    Benchmark.FASTA.Space
+--    Benchmark.FASTC.Files
+--    Benchmark.FASTC.Space
+    Benchmark.Internal
+--    Benchmark.Newick.Files
+--    Benchmark.Newick.Space
+    Benchmark.TCM.Files
+    Benchmark.TCM.Space
+
+
+benchmark bench-file-parsers-time
+
+  import:
+    ghc-flags,
+    language-specs
+
+  main-is:
+    Time.hs
+
+  type:
+    exitcode-stdio-1.0
+
+  ghc-options:
+    -threaded
+
+  hs-source-dirs:
+    bench
+
+  build-depends:
+    base                     >= 4.11      && < 5.0,
+    case-insensitive         >= 1.2.0     && < 1.3,
+    criterion                >= 1.5       && < 2.0,
+    deepseq                  >= 1.4       && < 2.0,
+    filepath                 >= 1.4.2     && < 2.0,
+    megaparsec               >= 9.0       && < 10.0,
+    text                     >= 1.2.4     && < 2.0,
+    weigh                    >= 0.0.16    && < 1.0,
+    PHANE-file-parsers:TCM,
+
+  other-modules:
+--    Benchmark.FASTA.Files
+--    Benchmark.FASTA.Time
+--    Benchmark.FASTC.Files
+--    Benchmark.FASTC.Time
+    Benchmark.Internal
+--    Benchmark.Newick.Files
+--    Benchmark.Newick.Time
+    Benchmark.TCM.Files
+    Benchmark.TCM.Time
