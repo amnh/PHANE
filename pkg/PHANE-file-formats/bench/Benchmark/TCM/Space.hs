@@ -1,16 +1,8 @@
-------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
 {- |
-Module      :  Benchmark.TCM.Space
-Copyright   :  (c) 2015-2021 Ward Wheeler
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Stability   :  provisional
-Portability :  portable
+Space benchmarks for TCM file parser
 -}
 module Benchmark.TCM.Space (
     benchSpace,
@@ -21,7 +13,7 @@ import Benchmark.TCM.Files
 import Data.Foldable
 -- import qualified Data.Text.IO          as T
 import Data.Text.Lazy.IO qualified as TL
-import File.Format.TransitionCostMatrix
+import File.Format.TransitionCostMatrix.Reader
 import Text.Megaparsec
 import Weigh
 
@@ -45,4 +37,4 @@ parserBenchmark
     ⇒ (String, FilePath → IO s)
     → FilePath
     → Weigh ()
-parserBenchmark (prefix, reader) filePath = measureParserSpace prefix filePath reader tcmStreamParser
+parserBenchmark (prefix, reader) filePath = measureParserSpace prefix filePath reader tcmStreamReader

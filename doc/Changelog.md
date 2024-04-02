@@ -68,6 +68,13 @@ The changelog is available [on GitHub][GitHub-Changelog].
   * Enhanced `setRandomSeed` to perform a mutable update.
 
 
+### [`PHANE-file-formats`][GitHub-Lib-11]
+
+  * Added initial library version
+
+  * Added initial benchmarks
+
+
 ### [`PHANE-measure-class`][GitHub-Lib-05]
 
   * Added initial library version
@@ -128,6 +135,7 @@ The changelog is available [on GitHub][GitHub-Changelog].
 [GitHub-Lib-08]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix#readme
 [GitHub-Lib-09]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme
 [GitHub-Lib-10]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-evaluation#readme
+[GitHub-Lib-11]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-file-formats#readme
 [GitHub-Changelog]: https://github.com/amnh/PHANE/blob/main/doc/Changelog.md
 [Hackage-fourmolu]: https://hackage.haskell.org/package/fourmolu#fourmolu
 [SemVer-URI]: https://semver.org/spec/v2.0.0.html

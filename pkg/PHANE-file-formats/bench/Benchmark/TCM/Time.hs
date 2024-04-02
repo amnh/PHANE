@@ -1,16 +1,8 @@
-------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
 {- |
-Module      :  Benchmark.TCM.Time
-Copyright   :  (c) 2015-2021 Ward Wheeler
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Stability   :  provisional
-Portability :  portable
+Timing benchmarks for TCM file parser
 -}
 module Benchmark.TCM.Time (
     benchTime,
@@ -23,7 +15,7 @@ import Criterion.Main
 import Data.Foldable
 -- import qualified Data.Text.IO          as T
 import Data.Text.Lazy.IO qualified as TL
-import File.Format.TransitionCostMatrix
+import File.Format.TransitionCostMatrix.Reader
 import Text.Megaparsec
 
 
@@ -47,4 +39,4 @@ parserBenchmark
     ⇒ (String, FilePath → IO s)
     → FilePath
     → Benchmark
-parserBenchmark (prefix, reader) filePath = measureParserTime prefix filePath reader tcmStreamParser
+parserBenchmark (prefix, reader) filePath = measureParserTime prefix filePath reader tcmStreamReader

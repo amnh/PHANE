@@ -17,6 +17,7 @@ Below are the packages provided:
   - [`PHANE-dynamic-character-alignment`][GitHub-PHANE-Lib-02]
   - [`PHANE-dynamic-character-element`][GitHub-PHANE-Lib-03]
   - [`PHANE-evaluation`][GitHub-PHANE-Lib-04]
+  - [`PHANE-file-formats`][GitHub-PHANE-Lib-11]
   - [`PHANE-measure-class`][GitHub-PHANE-Lib-05]
   - [`PHANE-measure-transition`][GitHub-PHANE-Lib-06]
   - [`PHANE-measure-units`][GitHub-PHANE-Lib-07]
@@ -48,4 +49,5 @@ A list of publications resulting from the PHANE project is located at:
 [GitHub-PHANE-Lib-08]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix#readme
 [GitHub-PHANE-Lib-09]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-transition-matrix-ffi#readme
 [GitHub-PHANE-Lib-10]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-PhyloLib#phane-phylolib
+[GitHub-PHANE-Lib-11]: https://github.com/amnh/PHANE/tree/main/pkg/PHANE-file-formats#readme
 [GitHub-PHANE-Papers]: https://github.com/AMNH/PHANE/blob/master/doc/Publications.md

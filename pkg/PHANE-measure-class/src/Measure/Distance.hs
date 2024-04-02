@@ -1,8 +1,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Safe #-}
 
+{- |
+Defines the data-type and type-class for measuring the distance between two objects in a metric space.
+-}
 module Measure.Distance (
+    -- * Data-type
     Distance,
+
+    -- * Type-class
     MeasurableDistance (..),
 ) where
 

@@ -2,10 +2,16 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Safe #-}
 
+{- |
+Defines the data-types and type-classes for measuring the dispersion between multiple objects in a metric space.
+-}
 module Measure.Dispersion (
+    -- * Data-types
     Dispersion,
     DispersionPairwise,
     DispersionThreeway,
+
+    -- * Type-classes
     MeasurableDispersion (..),
     MeasurableDispersionPairwise (..),
     MeasurableDispersionThreeway (..),

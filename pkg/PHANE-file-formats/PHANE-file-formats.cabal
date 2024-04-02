@@ -1,5 +1,5 @@
 Cabal-Version: 3.8
-Name:          PHANE-file-parsers
+Name:          PHANE-file-formats
 Version:       0.1.0
 Build-Type:    Simple
 Tested-With:
@@ -20,7 +20,7 @@ Bug-Reports:   https://github.com/AMNH/PHANE/issues
 Synopsis:      Parsers for the input file types accepted by PhyG
 
 Description:
-  Please see the [README on GitHub](https://github.com/AMNH/PHANE/tree/main/pkg/PHANE-file-parsers#readme).
+  Please see the [README on GitHub](https://github.com/AMNH/PHANE/tree/main/pkg/PHANE-file-formats#readme).
 
 Source-Repository head
   Type:        git
@@ -111,7 +111,29 @@ Common language-specs
     GHC2021
 
 
-library TCM
+Library data-types-TCM
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Visibility:
+    private
+
+  HS-Source-Dirs:
+    src/data-types
+
+  Build-Depends:
+    base >= 4.11 && < 5.0,
+    deepseq >= 1.4 && < 2.0,
+    matrices >= 0.4 && < 5.0,
+    text-short >= 0.1.3 && < 1.0,
+
+  Exposed-Modules:
+    File.Format.TransitionCostMatrix.Types
+
+
+library codecs-TCM
 
   Import:
     ghc-flags,
@@ -121,7 +143,32 @@ library TCM
     public
 
   HS-Source-Dirs:
-    src
+    src/codecs
+
+  Build-Depends:
+    base >= 4.11 && < 5.0,
+    deepseq >= 1.4 && < 2.0,
+    matrices >= 0.4 && < 5.0,
+    text-short >= 0.1.3 && < 1.0,
+    PHANE-alphabet,
+    PHANE-file-formats:data-types-TCM,
+    PHANE-measure-units,
+
+  Exposed-Modules:
+    File.Format.TransitionCostMatrix.Codec
+
+
+Library reader-TCM
+
+  Import:
+    ghc-flags,
+    language-specs
+
+  Visibility:
+    public
+
+  HS-Source-Dirs:
+    src/reader
 
   Build-Depends:
     base >= 4.11 && < 5.0,
@@ -132,12 +179,42 @@ library TCM
     parser-combinators >= 1.0 && < 2.0,
     text >= 1.2.4 && < 2.0,
     text-short >= 0.1.3 && < 1.0,
+    PHANE-file-formats:data-types-TCM,
 
   Exposed-Modules:
-    File.Format.TransitionCostMatrix
+    File.Format.TransitionCostMatrix.Reader
 
   Other-Modules:
     File.Format.TransitionCostMatrix.Parser
+
+
+-- library writer-TCM
+-- 
+--   Import:
+--     ghc-flags,
+--     language-specs
+-- 
+--   Visibility:
+--     public
+-- 
+--   HS-Source-Dirs:
+--     src
+-- 
+--   Build-Depends:
+--     base >= 4.11 && < 5.0,
+--     containers >= 0.6.2 && < 1.0,
+--     deepseq >= 1.4 && < 2.0,
+--     matrices >= 0.4 && < 5.0,
+--     megaparsec >= 9.0 && < 10.0,
+--     parser-combinators >= 1.0 && < 2.0,
+--     text >= 1.2.4 && < 2.0,
+--     text-short >= 0.1.3 && < 1.0,
+-- 
+--   Exposed-Modules:
+--     File.Format.TransitionCostMatrix.Writer
+-- 
+--   Other-Modules:
+--     File.Format.TransitionCostMatrix.Parser
 
 
 benchmark bench-file-parsers-space
@@ -160,14 +237,14 @@ benchmark bench-file-parsers-space
 
   build-depends:
     base                     >= 4.11      && < 5.0,
-    case-insensitive         >= 1.2.0     && < 1.3,
+--    case-insensitive         >= 1.2.0     && < 1.3,
     criterion                >= 1.5       && < 2.0,
     deepseq                  >= 1.4       && < 2.0,
     filepath                 >= 1.4.2     && < 2.0,
     megaparsec               >= 9.0       && < 10.0,
     text                     >= 1.2.4     && < 2.0,
     weigh                    >= 0.0.16    && < 1.0,
-    PHANE-file-parsers:TCM,
+    PHANE-file-formats:reader-TCM,
 
   other-modules:
 --    Benchmark.FASTA.Files
@@ -201,14 +278,14 @@ benchmark bench-file-parsers-time
 
   build-depends:
     base                     >= 4.11      && < 5.0,
-    case-insensitive         >= 1.2.0     && < 1.3,
+--    case-insensitive         >= 1.2.0     && < 1.3,
     criterion                >= 1.5       && < 2.0,
     deepseq                  >= 1.4       && < 2.0,
     filepath                 >= 1.4.2     && < 2.0,
     megaparsec               >= 9.0       && < 10.0,
     text                     >= 1.2.4     && < 2.0,
     weigh                    >= 0.0.16    && < 1.0,
-    PHANE-file-parsers:TCM,
+    PHANE-file-formats:reader-TCM,
 
   other-modules:
 --    Benchmark.FASTA.Files

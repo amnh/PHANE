@@ -1,7 +1,7 @@
-PHANE File Parsers
+PHANE File Formats
 =======================
 
-Interface for parsing file formats exposed by the [PHANE project][GitHub-PHANE].
+Interface for parsing and serializing file formats exposed by the [PHANE project][GitHub-PHANE].
 
 Defines file parsers for:
 

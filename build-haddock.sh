@@ -3,7 +3,7 @@
 # Configurable Constants:
 
 DOC_DIR='doc/html'
-GHC_VER='9.8.1'
+GHC_VER='9.8.2'
 PKG_VER='0.1.0'
 
 LIB_NAMES=(
@@ -11,6 +11,7 @@ LIB_NAMES=(
 	'dynamic-character'
 	'dynamic-character-alignment'
 	'dynamic-character-element'
+        'file-formats'
         'evaluation'
 	'measure-class'
 	'measure-transition'

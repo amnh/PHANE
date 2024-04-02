@@ -2,10 +2,16 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Safe #-}
 
+{- |
+Defines the data-types and type-classes for measuring the centroid between multiple objects in a metric space.
+-}
 module Measure.Centroid (
+    -- * Data-types
     Centroid,
     CentroidPairwise,
     CentroidThreeway,
+
+    -- * Type-classes
     MeasurableCentroid (..),
     MeasurableCentroidPairwise (..),
     MeasurableCentroidThreeway (..),

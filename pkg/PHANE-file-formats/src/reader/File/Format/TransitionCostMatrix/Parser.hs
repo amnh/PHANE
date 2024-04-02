@@ -1,8 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Strict #-}
@@ -12,11 +8,10 @@
 Functions for for parsing TCM files into an alphabet and square matrix.
 -}
 module File.Format.TransitionCostMatrix.Parser (
-    FileFormatTCM (..),
     alphabetLine,
     tcmAlphabet,
     tcmMatrix,
-    tcmStreamParser,
+    tcmStreamReader,
     matrixBlock,
 ) where
 
@@ -39,6 +34,7 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as LT
 import Data.Text.Short (ShortText)
 import Data.Void
+import File.Format.TransitionCostMatrix.Types
 import GHC.Generics
 import Text.Megaparsec hiding (someTill)
 import Text.Megaparsec.Char
@@ -54,41 +50,17 @@ data TCMParseResult
 
 
 {- |
-The results of a TCM file consisting of
-
-  * A custom alphabet of "Symbols"
-
-  * A matrix consisting of the transition costs between symbols
-
-The following equality will hold for an 'FileFormatTCM':
-
-> (length . customAlphabet) tcm == (rows . transitionCosts) tcm && (length . customAlphabet) tcm == (cols . transitionCosts) tcm
-
-Note that the 'transitionCosts` does not need to be a symetic matrix nor have identity values on the matrix diagonal.
--}
-data FileFormatTCM = FileFormatTCM
-    { customAlphabet ∷ NonEmpty ShortText
-    -- ^ The custom alphabet of "Symbols" for which the TCM matrix is defined
-    , transitionCosts ∷ Matrix Rational
-    -- ^ The cost to transition between any two symbols, square but not necessarily symmetric
-    }
-    -- n+1 X n+1 matrix where n = length customAlphabet
-    deriving stock (Eq, Generic, Show)
-    deriving anyclass (NFData)
-
-
-{- |
 Parses the entirety of a stream producing a TCM result.
 The result will contain an Alphabet with no duplicate elements
 and a square Matrix with dimension @(n+1) x (n+1)@ where @n@ is
 the length of the Alphabet.
 -}
-{-# INLINEABLE tcmStreamParser #-}
-{-# SPECIALIZE tcmStreamParser ∷ Parsec Void T.Text FileFormatTCM #-}
-{-# SPECIALIZE tcmStreamParser ∷ Parsec Void LT.Text FileFormatTCM #-}
-{-# SPECIALIZE tcmStreamParser ∷ Parsec Void String FileFormatTCM #-}
-tcmStreamParser ∷ (MonadFail m, MonadParsec e s m, Token s ~ Char) ⇒ m FileFormatTCM
-tcmStreamParser = validateTCMParseResult =<< tcmDefinition <* eof
+{-# INLINEABLE tcmStreamReader #-}
+{-# SPECIALIZE tcmStreamReader ∷ Parsec Void T.Text FileFormatTCM #-}
+{-# SPECIALIZE tcmStreamReader ∷ Parsec Void LT.Text FileFormatTCM #-}
+{-# SPECIALIZE tcmStreamReader ∷ Parsec Void String FileFormatTCM #-}
+tcmStreamReader ∷ (MonadFail m, MonadParsec e s m, Token s ~ Char) ⇒ m FileFormatTCM
+tcmStreamReader = validateTCMParseResult =<< tcmDefinition <* eof
 
 
 {- |
