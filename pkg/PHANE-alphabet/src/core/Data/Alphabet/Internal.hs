@@ -173,6 +173,23 @@ instance Foldable Alphabet where
     length = length . symbolVector
 
 
+instance Foldable1 Alphabet where
+    head = (! 0) . symbolVector
+
+
+    last a =
+        let v = symbolVector a
+            n = length v
+        in  v ! (n - 1)
+
+
+    foldrMap1 f g a =
+        let v = symbolVector a
+            n = length v
+            s = v ! 0
+        in  foldr g (f s) $ V.slice 1 (n - 1) v
+
+
 instance (Hashable a) ⇒ Hashable (Alphabet a) where
     hashWithSalt salt = hashWithSalt salt . toList
 

@@ -147,12 +147,15 @@ library codecs-TCM
 
   Build-Depends:
     base >= 4.11 && < 5.0,
-    deepseq >= 1.4 && < 2.0,
     matrices >= 0.4 && < 5.0,
     text-short >= 0.1.3 && < 1.0,
+    vector >= 0.13 && < 1.0,
     PHANE-alphabet,
     PHANE-file-formats:data-types-TCM,
     PHANE-measure-units,
+
+  Default-Extensions:
+    OverloadedStrings
 
   Exposed-Modules:
     File.Format.TransitionCostMatrix.Codec
@@ -207,6 +210,7 @@ Library reader-TCM
 --     matrices >= 0.4 && < 5.0,
 --     megaparsec >= 9.0 && < 10.0,
 --     parser-combinators >= 1.0 && < 2.0,
+--     scientific >= 0.3.5 && < 1.0,
 --     text >= 1.2.4 && < 2.0,
 --     text-short >= 0.1.3 && < 1.0,
 -- 
