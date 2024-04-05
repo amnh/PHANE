@@ -35,7 +35,6 @@ import Data.Text.Lazy qualified as LT
 import Data.Text.Short (ShortText)
 import Data.Void
 import File.Format.TransitionCostMatrix.Types
-import GHC.Generics
 import Text.Megaparsec hiding (someTill)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer (scientific)

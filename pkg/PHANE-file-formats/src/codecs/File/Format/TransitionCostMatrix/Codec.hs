@@ -45,18 +45,18 @@ data DiscretizationOverflowError = DiscretizationOverflowError
 {- |
 Extract from a 'FileFormatTCM' the corresponding:
 
-  * $\Sigma\,\colon\quad$ 'Alphabet' of symbols with $n = \left\lvert\Sigma\right\rvert$
-  * $\mathbf{q}\,\colon\quad$The 'Rational' coefficient which "integerizes" the input matrix.
-  * $\mathcal{M}\,\colon\quad$ Symbol Change Matrix (SCM) ($n \times n$) of pairwise 'SymbolChangeCost' values.
+  * \(~~\:\Sigma\,\colon\quad\) 'Alphabet' of symbols with \(n = \left\lvert\Sigma\right\rvert\).
+  * \(~~\:\mathbf{q}\,\colon\quad\) The 'Rational' coefficient which "integerizes" the input matrix.
+  * \(\,\mathcal{M}\,\colon\quad\) Symbol Change Matrix (SCM) (\(n \times n\)) of pairwise 'SymbolChangeCost' values.
 
 This codec performs the following important conversions:
 
-  1. /If and only if/ the gap character $\mathrm{\textemdash} \in\Sigma$,
-     then the output $\mathcal{M}$ will have the last row and column moved to the first row and column,
-     effectively changing the gap index from $n - 1$ in the input SCM to index $0$ in the output $\mathcal{M}$.
+  1. /If and only if/ the gap character \(- \in\Sigma\),
+     then the output \(\mathcal{M}\) will have the last row and column moved to the first row and column,
+     effectively changing the gap index from \(n - 1\) in the input SCM to index \(0\) in the output \(\mathcal{M}\).
 
-  2. "Integerize" the input matrix $\mathtt{A}_{\mathsf{SCM}}$ by factoring out a rational coefficient $\mathbb{q}$ such that,
-     $\mathbf{q} * \mathcal{M} = \mathtt{A}_{\mathsf{SCM}}$.
+  2. "Integerize" the input matrix \(\mathtt{A}_{\mathsf{SCM}}\) by factoring out a rational coefficient \(\mathbb{q}\) such that,
+     \(\mathbf{q} * \mathcal{M} = \mathtt{A}_{\mathsf{SCM}}\).
 -}
 extractFileFormatTCM
     ∷ FileFormatTCM → Either DiscretizationOverflowError (Alphabet ShortText, Rational, Matrix SymbolChangeCost)

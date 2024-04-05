@@ -36,7 +36,11 @@ note() {
 mkdir -p "${DOC_DIR}"
 
 note "Build individual package documentation"
-cabal haddock --haddock-html --haddock-quickjump all
+cabal haddock all \
+      --haddock-html \
+      --haddock-html-location='https://hackage.haskell.org/package/$pkg-$version/docs' \
+      --haddock-hyperlink-source \
+      --haddock-quickjump
 
 
 note "Gather together package documentation"
