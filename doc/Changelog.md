@@ -86,6 +86,8 @@ The changelog is available [on GitHub][GitHub-Changelog].
 
   * Added initial library version
 
+  * Added additive `Semigroup` instance for `SymbolChangeCost`.
+
   * Applied [`fourmolu`][Hackage-fourmolu] styling specified by `config/fourmolu.yaml`
 
 

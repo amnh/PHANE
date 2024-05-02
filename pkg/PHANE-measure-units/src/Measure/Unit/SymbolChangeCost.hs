@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -16,6 +17,7 @@ import Data.Bifunctor
 import Data.Coerce (coerce)
 import Data.Data
 import Data.Hashable
+import Data.Monoid (Sum (..))
 import Data.Vector.Generic qualified as GV
 import Data.Vector.Generic.Mutable qualified as MGV
 import Data.Vector.Primitive qualified as PV
@@ -31,6 +33,7 @@ The distance between two measurable elements.
 -}
 newtype SymbolChangeCost = SymbolChangeCost Word
     deriving stock (Eq, Data, Generic, Ord)
+    deriving (Monoid, Semigroup) via (Sum Word)
 
 
 newtype instance UV.MVector s SymbolChangeCost = MV_SymbolChangeCost (PV.MVector s Word)
