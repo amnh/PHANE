@@ -343,8 +343,9 @@ extractMedians (_, me, _)
     | GV.null me = me
     | otherwise =
         let gap = buildGap $ me ! 0
-        in  GV.filter (/= gap) me
-
+        -- additing this due to some final state wierdness
+        -- in  GV.filter (/= gap) me
+        in  GV.filter (\e → e /= gap && e /= nil) me
 
 {- |
 Extract the /ungapped/ medians of a single field of a dynamic character.
