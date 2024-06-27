@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StrictData #-}
 
 {- |
@@ -23,11 +24,11 @@ The results of a TCM file consisting of
 
   * A matrix consisting of the transition costs between symbols
 
-The following equality will hold for an 'FileFormatTCM':
+The following equality will hold for an 'File.Format.TransitionCostMatrix.Types.FileFormatTCM':
 
 > (length . customAlphabet) tcm == (rows . transitionCosts) tcm && (length . customAlphabet) tcm == (cols . transitionCosts) tcm
 
-Note that the 'transitionCosts` does not need to be a symetic matrix nor have identity values on the matrix diagonal.
+Note that the 'File.Format.TransitionCostMatrix.Types.transitionCosts` does not need to be a symetic matrix nor have identity values on the matrix diagonal.
 -}
 data FileFormatTCM = FileFormatTCM
     { customAlphabet ∷ NonEmpty ShortText

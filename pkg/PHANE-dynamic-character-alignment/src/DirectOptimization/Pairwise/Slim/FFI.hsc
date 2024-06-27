@@ -124,8 +124,8 @@ foreign import ccall unsafe "c_alignment_interface.h align3d"
 -- Align two dynamic characters using an FFI call for more efficient computation
 -- on small alphabet sizes.
 --
--- Requires a pre-generated 'CompactMeasure' from a call to
--- 'generateCompactMeasure' defining the alphabet and transition costs.
+-- Requires a pre-generated 'Layout.Compact.States.StateTransitionsCompact' from a call to
+-- 'Layout.Compact.States.getFFI2D' defining the alphabet and transition costs.
 -- {-# INLINE foreignPairwiseDO #-}
 {-# SCC smallAlphabetPairwiseDO #-}
 smallAlphabetPairwiseDO

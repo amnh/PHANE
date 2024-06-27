@@ -1,3 +1,6 @@
+{- |
+The type-class for (conditionally) extracting a compact matrix which can be passed across the FFI.
+-}
 module Layout.Compact.Class (
     HasStateTransitionsCompact (..),
     FFI2D (),
@@ -17,7 +20,7 @@ The representation returns a @Just@ value /if and only if/ the size of the
 symbol alphabet is compatible with FFI string alignment interoperability.
 
 /NOTE:/ Measurability of 'Measure.Dispersion.Dispersion' implies measurability
-of 'Measure.Centroid.Centroid' and 'Measure.Distance.Distance'.
+of 'Measure.Median.Median' and 'Measure.Distance.Distance'.
 -}
 class HasStateTransitionsCompact a where
     stateTransitionCompact ∷ a → Maybe StateTransitionsCompact

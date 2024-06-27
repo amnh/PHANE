@@ -6,12 +6,15 @@ module DirectOptimization.Pairwise.Wide (
 
 import Bio.DynamicCharacter
 import Bio.DynamicCharacter.Element (WideState)
-import DirectOptimization.Pairwise.Internal (AlignmentCost, SymbolChangeCost, TCM2Dλ)
+import DirectOptimization.Pairwise.Internal (AlignmentCost, SymbolDistance, TCM2Dλ)
 import DirectOptimization.Pairwise.Ukkonen
 
 
+{- |
+Pairwise alignment of dynamic characters for /wide/ alphabets.
+-}
 widePairwiseDO
-    ∷ SymbolChangeCost
+    ∷ SymbolDistance
     → TCM2Dλ WideState
     → WideDynamicCharacter
     → WideDynamicCharacter

@@ -38,8 +38,8 @@ import Layout.Memoize.States
 import Measure.Range
 import Measure.Transition
 import Measure.Transition.Edits
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 

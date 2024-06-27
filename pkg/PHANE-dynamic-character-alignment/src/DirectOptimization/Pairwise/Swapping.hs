@@ -60,6 +60,11 @@ swappingDO
 swappingDO = directOptimizationFromDirectionMatrix buildDirectionMatrix
 
 
+{- |
+Populate the direction matrix, containing the directional arrows from the
+Needleman-Wunsch algorithm. The direction matrix is used to guide the traceback
+subroutine of the string alignment algorithm.
+-}
 {-# SCC buildDirectionMatrix #-}
 {-# INLINEABLE buildDirectionMatrix #-}
 {-# SPECIALIZE buildDirectionMatrix ∷

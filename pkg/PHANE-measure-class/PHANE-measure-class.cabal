@@ -122,5 +122,5 @@ Library
   Exposed-Modules:
     Measure.Dispersion
     Measure.Distance
-    Measure.Centroid
+    Measure.Median
     Measure.Range

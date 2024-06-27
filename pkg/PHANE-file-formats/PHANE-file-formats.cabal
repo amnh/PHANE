@@ -201,7 +201,7 @@ Library reader-TCM
 --     public
 -- 
 --   HS-Source-Dirs:
---     src
+--     src/writer
 -- 
 --   Build-Depends:
 --     base >= 4.11 && < 5.0,

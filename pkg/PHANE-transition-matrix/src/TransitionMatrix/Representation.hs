@@ -44,7 +44,7 @@ Additionally, the compact representation notes if the discrete metric, the
 discrete metric adjoined by the gap symbol, or the L1 norm are the specified
 measure. If any of these metrics are specified, specialized functions which
 are more efficient will be returned when calling 'symbolDistances', 'stateTransitionPairwiseDispersion', and
-'getStateTransitionCubeλ'.
+'stateTransitionThreewayDispersion'.
 
 Notably, if it is the case that /both/ the measure has an 'iota' symbol count
 /and/ the measure is a specialized metric described above, then calling 'stateTransitionCompact'
@@ -63,7 +63,7 @@ Use the following accessor to the retrieve the desired functionality:
 
   * 'symbolDistances'
   * 'stateTransitionPairwiseDispersion'
-  * 'getStateTransitionCubeλ'
+  * 'stateTransitionThreewayDispersion'
   * 'stateTransitionCompact'
 -}
 data TransitionMatrix a
@@ -182,9 +182,9 @@ instance (FiniteBits a, Hashable a) ⇒ HasStateTransitions (TransitionMatrix a)
 
     -- \|
     -- /O(1)/
-    stateTransitionPairwiseCentroid (IotaMatrix _ mtx) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastMatrix mtx) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastSpecialized met) = stateTransitionPairwiseCentroid met
+    stateTransitionPairwiseMedian (IotaMatrix _ mtx) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastMatrix mtx) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastSpecialized met) = stateTransitionPairwiseMedian met
 
 
     -- \|
@@ -203,9 +203,9 @@ instance (FiniteBits a, Hashable a) ⇒ HasStateTransitions (TransitionMatrix a)
 
     -- \|
     -- /O(1)/
-    stateTransitionThreewayCentroid (IotaMatrix _ mtx) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastMatrix mtx) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastSpecialized met) = stateTransitionThreewayCentroid met
+    stateTransitionThreewayMedian (IotaMatrix _ mtx) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastMatrix mtx) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastSpecialized met) = stateTransitionThreewayMedian met
 
 
 instance MeasurableRange (TransitionMatrix a) SymbolIndex where

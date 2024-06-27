@@ -32,7 +32,7 @@ module Layout.Compact.States.Structure
   , cost2D
   , cost3D
   , costSymbol
-  -- ** Centroid
+  -- ** Median
   , mean2D
   , mean3D
   -- * Indexing via 'Bits' interface
@@ -43,7 +43,7 @@ module Layout.Compact.States.Structure
   -- ** Distance
   , cost2D'
   , cost3D'
-  -- ** Centroid
+  -- ** Median
   , mean2D'
   , mean3D'
   -- * Byte measurements
@@ -63,7 +63,7 @@ import Foreign
 import Foreign.C.Types
 import GHC.Generics (Generic)
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 import Prelude hiding (head, last)
 import System.IO.Unsafe (unsafePerformIO)
@@ -183,7 +183,7 @@ data  FFI3D
 --     - 'cost2D'     : state  ⨉ state          → ℕ
 --     - 'cost3D'     : state  ⨉ state  ⨉ state → ℕ
 --
---   * Centroid
+--   * Median
 --     - 'mean2D'     : state ⨉ state         → state
 --     - 'mean3D'     : state ⨉ state ⨉ state → state
 --
@@ -203,7 +203,7 @@ data  StateTransitionsCompact
 
 
 -- |
--- Synonym for 'StateTransitionsCompact', provided for terseness.
+-- Synonym for 'Layout.Compact.States.Indexing.StateTransitionsCompact', provided for terseness.
 type TCMρ = StateTransitionsCompact
 
 
@@ -241,16 +241,16 @@ instance Eq StateTransitionsCompact where
 instance HasEditExtrema StateTransitionsCompact where
 
     {-# INLINE maxDeletion #-}
-    maxDeletion  = SymbolChangeCost . maxDelCost
+    maxDeletion  = SymbolDistance . maxDelCost
 
     {-# INLINE maxInsertion #-}
-    maxInsertion = SymbolChangeCost . maxInsCost
+    maxInsertion = SymbolDistance . maxInsCost
 
     {-# INLINE minDeletion #-}
-    minDeletion  = SymbolChangeCost . minDelCost
+    minDeletion  = SymbolDistance . minDelCost
 
     {-# INLINE minInsertion #-}
-    minInsertion = SymbolChangeCost . minInsCost
+    minInsertion = SymbolDistance . minInsCost
 
 
 {- |
@@ -264,13 +264,13 @@ instance Bits b => HasStateTransitions StateTransitionsCompact b where
 
     stateTransitionPairwiseDistance   = cost2D'
 
-    stateTransitionPairwiseCentroid   = mean2D'
+    stateTransitionPairwiseMedian   = mean2D'
 
     stateTransitionThreewayDispersion = both3D'
 
     stateTransitionThreewayDistance   = cost3D'
 
-    stateTransitionThreewayCentroid   = mean3D'
+    stateTransitionThreewayMedian   = mean3D'
 
 
 {- |
@@ -284,8 +284,8 @@ instance {-# OVERLAPPING #-} HasStateTransitions StateTransitionsCompact CUInt w
     {-# SPECIALISE INLINE stateTransitionPairwiseDistance   :: StateTransitionsCompact -> StateTransitionPairwiseDistanceλ   CUInt #-}
     stateTransitionPairwiseDistance   = cost2D
 
-    {-# SPECIALISE INLINE stateTransitionPairwiseCentroid   :: StateTransitionsCompact -> StateTransitionPairwiseCentroidλ   CUInt #-}
-    stateTransitionPairwiseCentroid   = mean2D
+    {-# SPECIALISE INLINE stateTransitionPairwiseMedian   :: StateTransitionsCompact -> StateTransitionPairwiseMedianλ   CUInt #-}
+    stateTransitionPairwiseMedian   = mean2D
 
     {-# SPECIALISE INLINE stateTransitionThreewayDispersion :: StateTransitionsCompact -> StateTransitionThreewayDispersionλ CUInt #-}
     stateTransitionThreewayDispersion = both3D
@@ -293,8 +293,8 @@ instance {-# OVERLAPPING #-} HasStateTransitions StateTransitionsCompact CUInt w
     {-# SPECIALISE INLINE stateTransitionThreewayDistance   :: StateTransitionsCompact -> StateTransitionThreewayDistanceλ   CUInt #-}
     stateTransitionThreewayDistance   = cost3D
 
-    {-# SPECIALISE INLINE stateTransitionThreewayCentroid   :: StateTransitionsCompact -> StateTransitionThreewayCentroidλ   CUInt #-}
-    stateTransitionThreewayCentroid   = mean3D
+    {-# SPECIALISE INLINE stateTransitionThreewayMedian   :: StateTransitionsCompact -> StateTransitionThreewayMedianλ   CUInt #-}
+    stateTransitionThreewayMedian   = mean3D
 
 
 {- |
@@ -308,8 +308,8 @@ instance {-# OVERLAPPING #-} HasStateTransitions StateTransitionsCompact Word64 
     {-# SPECIALISE INLINE stateTransitionPairwiseDistance   :: StateTransitionsCompact -> StateTransitionPairwiseDistanceλ   Word64 #-}
     stateTransitionPairwiseDistance   = cost2D
 
-    {-# SPECIALISE INLINE stateTransitionPairwiseCentroid   :: StateTransitionsCompact -> StateTransitionPairwiseCentroidλ   Word64 #-}
-    stateTransitionPairwiseCentroid   = mean2D
+    {-# SPECIALISE INLINE stateTransitionPairwiseMedian   :: StateTransitionsCompact -> StateTransitionPairwiseMedianλ   Word64 #-}
+    stateTransitionPairwiseMedian   = mean2D
 
     {-# SPECIALISE INLINE stateTransitionThreewayDispersion :: StateTransitionsCompact -> StateTransitionThreewayDispersionλ Word64 #-}
     stateTransitionThreewayDispersion = both3D
@@ -317,15 +317,15 @@ instance {-# OVERLAPPING #-} HasStateTransitions StateTransitionsCompact Word64 
     {-# SPECIALISE INLINE stateTransitionThreewayDistance   :: StateTransitionsCompact -> StateTransitionThreewayDistanceλ   Word64 #-}
     stateTransitionThreewayDistance   = cost3D
 
-    {-# SPECIALISE INLINE stateTransitionThreewayCentroid   :: StateTransitionsCompact -> StateTransitionThreewayCentroidλ   Word64 #-}
-    stateTransitionThreewayCentroid   = mean3D
+    {-# SPECIALISE INLINE stateTransitionThreewayMedian   :: StateTransitionsCompact -> StateTransitionThreewayMedianλ   Word64 #-}
+    stateTransitionThreewayMedian   = mean3D
 
 
 instance HasSymbolDistances StateTransitionsCompact where
 
     symbolDistances tcm i =
         let f (SymbolIndex w) = w
-        in  SymbolChangeCost . costSymbol tcm (f i) . f
+        in  SymbolDistance . costSymbol tcm (f i) . f
 
 
 instance Show StateTransitionsCompact where
@@ -765,7 +765,7 @@ bytesSizeOfCompact i =
 
 
 {- |
-Pretty prints a consise, human-readable summary of the 'StateTransitionsCompact'..
+Pretty prints a consise, human-readable summary of the 'Layout.Compact.States.Indexing.StateTransitionsCompact'..
 -}
 renderSummary :: StateTransitionsCompact -> String
 renderSummary tcm =
@@ -783,7 +783,7 @@ renderSummary tcm =
 
 
 {- |
-Pretty prints the full 'StateTransitionsCompact' matrix in a human-readable format.
+Pretty prints the full 'Layout.Compact.States.Indexing.StateTransitionsCompact' matrix in a human-readable format.
 -}
 renderMatrix :: StateTransitionsCompact -> String
 renderMatrix tcm =

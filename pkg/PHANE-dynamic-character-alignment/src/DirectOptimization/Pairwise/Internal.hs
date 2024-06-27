@@ -12,7 +12,7 @@ module DirectOptimization.Pairwise.Internal (
     -- * Alignment types
     AlignmentCost,
     StateChangeCost,
-    SymbolChangeCost,
+    SymbolDistance,
     TCM2Dλ,
 
     -- * Alignment generic functions
@@ -44,7 +44,7 @@ import DirectOptimization.Pairwise.Direction
 import Measure.Transition
 import Measure.Unit.AlignmentCost
 import Measure.Unit.StateChangeCost
-import Measure.Unit.SymbolChangeCost
+import Measure.Unit.SymbolDistance
 
 
 {-# SCC directOptimization #-}

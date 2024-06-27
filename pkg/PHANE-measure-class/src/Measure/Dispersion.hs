@@ -21,7 +21,7 @@ module Measure.Dispersion (
 {- |
 Abstract function computing the [Dispersion](https://en.wikipedia.org/wiki/Statistical_dispersion)
 of a collection of points, returning the dispersion 'Measure.Distance.Distance'
-and 'Measure.Centroid.Centroid'.
+and 'Measure.Median.Median'.
 -}
 type Dispersion c e = ∀ f. (Foldable f) ⇒ f e → (c, e)
 

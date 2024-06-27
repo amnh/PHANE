@@ -16,7 +16,7 @@ import Measure.Unit.SymbolIndex
 The index of the vector where the gap state is stored.
 
 /NOTE:/ This index value is very important for many gap-related operations,
-both internally for the 'Alphabet' module/library and externally in general.
+both internally for the 'Data.Alphabet.Alphabet' module/library and externally in general.
 -}
 gapIndex ∷ SymbolIndex
 gapIndex = SymbolIndex 0

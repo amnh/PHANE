@@ -211,14 +211,14 @@ type CharChange = Maybe (Char, Char → Char)
 
 
 {- |
-Used as the 'Show' instance for 'SlimState'.
+Used as the 'Show' instance for 'Bio.DynamicCharacter.Element.SlimState.SlimState'.
 Correctly renderes all 255 possible values.
-For alphabet size less than or equal to 5, the 'SlimState' is rendered as the IUPAC code for DNA.
+For alphabet size less than or equal to 5, the 'Bio.DynamicCharacter.Element.SlimState.SlimState' is rendered as the IUPAC code for DNA.
 If the alphabet size is 6, the 6th state's presence is rendered as an italic font style.
 If the alphabet size is 7, the 7th state's presence is rendered as an bold font style.
-If the alpahbet size is 8, another state @'Ω'@ is added to the alphabet.
+If the alpahbet size is 8, another state @\'Ω\'@ is added to the alphabet.
 
-Below is a complete rendering table for 'SlimState':
+Below is a complete rendering table for 'Bio.DynamicCharacter.Element.SlimState.SlimState':
 
 === __Rendering table:__
 @

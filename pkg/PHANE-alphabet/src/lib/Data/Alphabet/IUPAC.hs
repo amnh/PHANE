@@ -2,7 +2,7 @@
 {-# LANGUAGE Strict #-}
 
 {- |
-Helpful 'Alphabet' conversions to/from the IUPAC standard for DNA, RNA, and amino acids.
+Helpful 'Data.Alphabet.Alphabet' conversions to/from the IUPAC standard for DNA, RNA, and amino acids.
 -}
 module Data.Alphabet.IUPAC (
     iupacToAminoAcid,

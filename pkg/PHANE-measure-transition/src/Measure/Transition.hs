@@ -2,6 +2,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Safe #-}
 
+{- |
+Abstract data-types, type-aliases, and type-classes for PHANE measures.
+-}
 module Measure.Transition (
     -- * Core "Transition Matrix" Type-class
     HasTransitionMatrix,
@@ -10,12 +13,12 @@ module Measure.Transition (
     SymbolDistanceλ,
 
     -- * State Pairwise Measures
-    StateTransitionPairwiseCentroidλ,
+    StateTransitionPairwiseMedianλ,
     StateTransitionPairwiseDispersionλ,
     StateTransitionPairwiseDistanceλ,
 
     -- * State Threeway Measures
-    StateTransitionThreewayCentroidλ,
+    StateTransitionThreewayMedianλ,
     StateTransitionThreewayDispersionλ,
     StateTransitionThreewayDistanceλ,
 
@@ -60,9 +63,9 @@ Supports the following measures:
     - 'stateTransitionPairwiseDispersion' : state ⨉ state         → (ℕ , state)
     - 'stateTransitionThreewayDispersion' : state ⨉ state ⨉ state → (ℕ , state)
 
-  * 'Measure.Centroid.Centroid'
-    - 'stateTransitionPairwiseCentroid'   : state ⨉ state         → state
-    - 'stateTransitionThreewayCentroid'   : state ⨉ state ⨉ state → state
+  * 'Measure.Median.Median'
+    - 'stateTransitionPairwiseMedian'   : state ⨉ state         → state
+    - 'stateTransitionThreewayMedian'   : state ⨉ state ⨉ state → state
 
   * 'Measure.Distance.Distance'
     - 'symbolDistances'                   : symbol ⨉ symbol         → ℕ

@@ -179,7 +179,7 @@ instance HasSymbolCount Word64 where
 
 
 {- |
-The largest 'SymbolCount' value for which the predicate 'iota' holds.
+The largest 'Measure.Unit.SymbolCount' value for which the predicate 'iota' holds.
 
 Useful for partitioning a collection of symbols based on whether it is too large for the C FFI.
 -}
@@ -188,7 +188,7 @@ infimumSymbolLimit = SymbolCount 8
 
 
 {- |
-Predicate to deciding if a 'SymbolCount' is small enough to be compatible with the C FFI.
+Predicate to deciding if a 'Measure.Unit.SymbolCount' is small enough to be compatible with the C FFI.
 -}
 iota ∷ (HasSymbolCount a) ⇒ a → Bool
 iota = (<= infimumSymbolLimit) . symbolCount

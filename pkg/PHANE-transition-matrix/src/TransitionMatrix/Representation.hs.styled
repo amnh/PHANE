@@ -53,7 +53,7 @@ import           Measure.Unit.SymbolIndex
 -- discrete metric adjoined by the gap symbol, or the L1 norm are the specified
 -- measure. If any of these metrics are specified, specialized functions which
 -- are more efficient will be returned when calling 'symbolDistances', 'stateTransitionPairwiseDispersion', and
--- 'getStateTransitionCubeλ'.
+-- 'stateTransitionThreewayDispersion'.
 --
 -- Notably, if it is the case that /both/ the measure has an 'iota' symbol count
 -- /and/ the measure is a specialized metric described above, then calling 'getCompactPairwise'
@@ -68,7 +68,7 @@ import           Measure.Unit.SymbolIndex
 -- It is important to use this type in the metadata decorations rather than store
 -- a function because a function cannot be contained in a compact region.
 --
--- Use the 'symbolDistances', 'stateTransitionPairwiseDispersion', 'getStateTransitionCubeλ', and 'getCompactPairwise' to the retrieve the
+-- Use the 'symbolDistances', 'stateTransitionPairwiseDispersion', 'stateTransitionThreewayDispersion', and 'getCompactPairwise' to the retrieve the
 -- desired functions.
 data  TransitionMatrix a
     = IotaMatrix      {-# UNPACK #-} (Maybe SpecializableMetric) {-# UNPACK #-} StateTransitionsCompact
@@ -158,9 +158,9 @@ instance (FiniteBits a, Hashable a) => HasStateTransitions (TransitionMatrix a) 
 
     -- |
     -- /O(1)/
-    stateTransitionPairwiseCentroid (IotaMatrix _ mtx   ) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastMatrix      mtx) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastSpecialized met) = stateTransitionPairwiseCentroid met
+    stateTransitionPairwiseMedian (IotaMatrix _ mtx   ) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastMatrix      mtx) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastSpecialized met) = stateTransitionPairwiseMedian met
 
     -- |
     -- /O(1)/
@@ -176,9 +176,9 @@ instance (FiniteBits a, Hashable a) => HasStateTransitions (TransitionMatrix a) 
 
     -- |
     -- /O(1)/
-    stateTransitionThreewayCentroid (IotaMatrix _ mtx   ) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastMatrix      mtx) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastSpecialized met) = stateTransitionThreewayCentroid met
+    stateTransitionThreewayMedian (IotaMatrix _ mtx   ) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastMatrix      mtx) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastSpecialized met) = stateTransitionThreewayMedian met
 
 
 
@@ -198,9 +198,9 @@ instance {-# OVERLAPPING #-} HasStateTransitions (TransitionMatrix CUInt) CUInt 
 
     -- |
     -- /O(1)/
-    stateTransitionPairwiseCentroid (IotaMatrix _ mtx   ) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastMatrix      mtx) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastSpecialized met) = stateTransitionPairwiseCentroid met
+    stateTransitionPairwiseMedian (IotaMatrix _ mtx   ) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastMatrix      mtx) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastSpecialized met) = stateTransitionPairwiseMedian met
 
     -- |
     -- /O(1)/
@@ -216,9 +216,9 @@ instance {-# OVERLAPPING #-} HasStateTransitions (TransitionMatrix CUInt) CUInt 
 
     -- |
     -- /O(1)/
-    stateTransitionThreewayCentroid (IotaMatrix _ mtx   ) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastMatrix      mtx) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastSpecialized met) = stateTransitionThreewayCentroid met
+    stateTransitionThreewayMedian (IotaMatrix _ mtx   ) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastMatrix      mtx) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastSpecialized met) = stateTransitionThreewayMedian met
 
 
 instance {-# OVERLAPPING #-} HasStateTransitions (TransitionMatrix Word64) Word64 where
@@ -237,9 +237,9 @@ instance {-# OVERLAPPING #-} HasStateTransitions (TransitionMatrix Word64) Word6
 
     -- |
     -- /O(1)/
-    stateTransitionPairwiseCentroid (IotaMatrix _ mtx   ) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastMatrix      mtx) = stateTransitionPairwiseCentroid mtx
-    stateTransitionPairwiseCentroid (VastSpecialized met) = stateTransitionPairwiseCentroid met
+    stateTransitionPairwiseMedian (IotaMatrix _ mtx   ) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastMatrix      mtx) = stateTransitionPairwiseMedian mtx
+    stateTransitionPairwiseMedian (VastSpecialized met) = stateTransitionPairwiseMedian met
 
     -- |
     -- /O(1)/
@@ -255,9 +255,9 @@ instance {-# OVERLAPPING #-} HasStateTransitions (TransitionMatrix Word64) Word6
 
     -- |
     -- /O(1)/
-    stateTransitionThreewayCentroid (IotaMatrix _ mtx   ) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastMatrix      mtx) = stateTransitionThreewayCentroid mtx
-    stateTransitionThreewayCentroid (VastSpecialized met) = stateTransitionThreewayCentroid met
+    stateTransitionThreewayMedian (IotaMatrix _ mtx   ) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastMatrix      mtx) = stateTransitionThreewayMedian mtx
+    stateTransitionThreewayMedian (VastSpecialized met) = stateTransitionThreewayMedian met
 
 
 instance MeasurableRange (TransitionMatrix a) SymbolIndex where

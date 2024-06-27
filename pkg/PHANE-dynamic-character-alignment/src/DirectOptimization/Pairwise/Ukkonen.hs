@@ -50,17 +50,17 @@ algorithm is to generate a traversal matrix, then perform a traceback.
 {-# SCC ukkonenDO #-}
 {-# INLINEABLE ukkonenDO #-}
 {-# SPECIALIZE ukkonenDO ∷
-    SymbolChangeCost → TCM2Dλ WideState → WideDynamicCharacter → WideDynamicCharacter → (AlignmentCost, WideDynamicCharacter)
+    SymbolDistance → TCM2Dλ WideState → WideDynamicCharacter → WideDynamicCharacter → (AlignmentCost, WideDynamicCharacter)
     #-}
 {-# SPECIALIZE ukkonenDO ∷
-    SymbolChangeCost → TCM2Dλ HugeState → HugeDynamicCharacter → HugeDynamicCharacter → (AlignmentCost, HugeDynamicCharacter)
+    SymbolDistance → TCM2Dλ HugeState → HugeDynamicCharacter → HugeDynamicCharacter → (AlignmentCost, HugeDynamicCharacter)
     #-}
 ukkonenDO
     ∷ ( FiniteBits e
       , Ord (v e)
       , Vector v e
       )
-    ⇒ SymbolChangeCost
+    ⇒ SymbolDistance
     -- ^ Coefficient value, representing the /minimum/ transition cost from a state to gap
     → TCM2Dλ e
     -- ^ Metric between states producing the medoid of states.
@@ -151,7 +151,7 @@ input did not contain any gap symbols.
 {-# SCC createUkkonenMethodMatrix #-}
 {-# INLINEABLE createUkkonenMethodMatrix #-}
 {-# SPECIALIZE createUkkonenMethodMatrix ∷
-    SymbolChangeCost
+    SymbolDistance
     → Word
     → WideState
     → TCM2Dλ WideState
@@ -160,7 +160,7 @@ input did not contain any gap symbols.
     → (AlignmentCost, Matrix Direction)
     #-}
 {-# SPECIALIZE createUkkonenMethodMatrix ∷
-    SymbolChangeCost
+    SymbolDistance
     → Word
     → HugeState
     → TCM2Dλ HugeState
@@ -170,7 +170,7 @@ input did not contain any gap symbols.
     #-}
 createUkkonenMethodMatrix
     ∷ (Vector v e)
-    ⇒ SymbolChangeCost
+    ⇒ SymbolDistance
     -- ^ Coefficient value, representing the /minimum/ transition cost from a state to gap
     → Word
     -- ^ Number of ambiguous elements in both inputs which contained gap as a possible state

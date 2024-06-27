@@ -1,9 +1,9 @@
 {- |
-An 'Alphabet' represents an /ordered/ list of unique symbols with constant time random access.
+An 'Data.Alphabet.Alphabet' represents an /ordered/ list of unique symbols with constant time random access.
 Symbols are any data type which are coercible from a'String' through the 'Data.String.IsString'
 type-class.
 
-An 'Alphabet' is constructed in one of two ways:
+An 'Data.Alphabet.Alphabet' is constructed in one of two ways:
 
   1. Supplying a `Foldable` structure of symbols which are 'Data.String.IsString'
      instances to the 'fromSymbols' function.
@@ -12,17 +12,17 @@ An 'Alphabet' is constructed in one of two ways:
      both of which are 'Data.String.IsString' instances to the
      'fromSymbolsWithStateNames' function.
 
-Both 'Alphabet' construction methods are order preserving with respect to the
+Both 'Data.Alphabet.Alphabet' construction methods are order preserving with respect to the
 input symbol order.
 
-Every 'Alphabet' contains a "gap" symbol denoted by the expression:
+Every 'Data.Alphabet.Alphabet' contains a "gap" symbol denoted by the expression:
 > fromString "-"
 The "gap" character is always located at 'gapIndex' in the ordered
 list regardless of its presence or position in the construction structure.
 
-An 'Alphabet' will never contain the "missing" symbol denoted by the expression:
+An 'Data.Alphabet.Alphabet' will never contain the "missing" symbol denoted by the expression:
 > fromString "?"
-This symbol will be removed from the 'Alphabet' if it is present in the supplied input.
+This symbol will be removed from the 'Data.Alphabet.Alphabet' if it is present in the supplied input.
 -}
 module Data.Alphabet (
     Alphabet (),

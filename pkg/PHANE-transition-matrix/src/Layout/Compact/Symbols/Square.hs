@@ -40,7 +40,7 @@ A data structure for storing a square array of sizeality
 greater than or equal to two, with positive cost values at the array indices.
 Values are stored in an unboxed structure for cache efficiency.
 
-Attempts to construct an empty or singleton 'SDMS' through the above
+Attempts to construct an empty or singleton 'Layout.Compact.Symbols.Square.SDMS' through the above
 constructors will result in a runtime exception.
 -}
 newtype SymbolDistanceMatrixSquare = SDMS {sdm ∷ SymbolDistanceMatrix}
@@ -55,7 +55,7 @@ instance NFData SymbolDistanceMatrixSquare where
 
 
 {- |
-Any structural representation which can produce a Symbol Change Matrix.
+Any structural representation which can produce a Symbol Distance Matrix.
 -}
 instance HasEditExtrema SymbolDistanceMatrixSquare where
     {-# INLINEABLE maxEdit #-}
@@ -79,7 +79,7 @@ instance HasEditExtrema SymbolDistanceMatrixSquare where
 
 
 {- |
-Any structural representation which can produce a Symbol Change Matrix.
+Any structural representation which can produce a Symbol Distance Matrix.
 -}
 instance HasSymbolDistances SymbolDistanceMatrixSquare where
     {-# INLINE symbolDistances #-}

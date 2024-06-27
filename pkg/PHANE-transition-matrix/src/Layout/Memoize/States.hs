@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -12,7 +13,13 @@ module Layout.Memoize.States (
 
 import Control.DeepSeq
 import Data.Bits
+
+
+#if MIN_VERSION_base(4,20,0)
+import Data.Foldable (fold)
+#else
 import Data.Foldable (fold, foldl')
+#endif
 import Data.Hashable
 import Data.Word (Word64)
 import Foreign.C.Types (CUInt)
@@ -26,16 +33,16 @@ import Layout.Memoize.Dispersion
 import Layout.Memoize.Hashable
 import Measure.Range
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
 data Sparse a = Sparse
-    { maxDelCost ∷ {-# UNPACK #-} !SymbolChangeCost
-    , maxInsCost ∷ {-# UNPACK #-} !SymbolChangeCost
-    , minDelCost ∷ {-# UNPACK #-} !SymbolChangeCost
-    , minInsCost ∷ {-# UNPACK #-} !SymbolChangeCost
+    { maxDelCost ∷ {-# UNPACK #-} !SymbolDistance
+    , maxInsCost ∷ {-# UNPACK #-} !SymbolDistance
+    , minDelCost ∷ {-# UNPACK #-} !SymbolDistance
+    , minInsCost ∷ {-# UNPACK #-} !SymbolDistance
     , matrixForm ∷ {-# UNPACK #-} !(Either SymbolDistanceMatrixTriangular SymbolDistanceMatrixSquare)
     , memoized2Dλ ∷ !(TCM2Dλ a)
     , memoized3Dλ ∷ !(TCM3Dλ a)

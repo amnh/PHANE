@@ -13,7 +13,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {- |
-Internal definitions of the 'Alphabet' data-type.
+Internal definitions of the 'Data.Alphabet.Internal.Alphabet' data-type.
 -}
 module Data.Alphabet.Internal (
     -- * Data-type
@@ -256,9 +256,9 @@ instance Show1 Alphabet where
 {- |
 \( \mathcal{O} \left(\, \lvert\Sigma\rvert \,\right) \)
 
-Retrieves the state names for the symbols of the 'Alphabet'.
+Retrieves the state names for the symbols of the 'Data.Alphabet.Internal.Alphabet'.
 
-If the symbols of the 'Alphabet' were not given state names during
+If the symbols of the 'Data.Alphabet.Internal.Alphabet' were not given state names during
 construction then an empty list is returned.
 -}
 alphabetStateNames ∷ (IsList (f a), Item (f a) ~ a) ⇒ Alphabet a → f a
@@ -268,7 +268,7 @@ alphabetStateNames = fromList . toList . stateNames
 {- |
 \( \mathcal{O} \left(\, \lvert\Sigma\rvert \,\right) \)
 
-Retrieves the symbols of the 'Alphabet'. Synonym for 'toList'.
+Retrieves the symbols of the 'Data.Alphabet.Internal.Alphabet'. Synonym for 'toList'.
 -}
 {-# INLINE [1] alphabetSymbols #-}
 
@@ -406,7 +406,7 @@ getSubsetIndex a s zero
 {- |
 \( \mathcal{O} \left(\, n * \log_{2} n \,\right) \)
 
-Constructs an 'Alphabet' from a 'Foldable' structure of symbols which are 'IsString' values.
+Constructs an 'Data.Alphabet.Internal.Alphabet' from a 'Foldable' structure of symbols which are 'IsString' values.
 -}
 {-# INLINE [1] fromSymbols #-}
 {-# SPECIALIZE fromSymbols ∷ (Foldable1 t) ⇒ t String → Alphabet String #-}
@@ -429,7 +429,7 @@ fromSymbols inputSymbols =
 {- |
 \( \mathcal{O} \left(\, n * \log_{2} n \,\right) \)
 
-Constructs an 'Alphabet' from a 'Foldable' structure of symbols and
+Constructs an 'Data.Alphabet.Internal.Alphabet' from a 'Foldable' structure of symbols and
 corresponding state names, both of which are 'IsString' values.
 
 The input ordering is preserved.

@@ -10,6 +10,9 @@ import DirectOptimization.Pairwise.Internal (AlignmentCost)
 import DirectOptimization.Pairwise.Slim.FFI
 
 
+{- |
+Pairwise alignment of dynamic characters for /slim/ alphabets.
+-}
 slimPairwiseDO
     ∷ TCMρ
     → SlimDynamicCharacter

@@ -1,3 +1,6 @@
+{- |
+Allocate matricies across the FFI.
+-}
 module Layout.Compact.States.Indexing (
     StateTransitionsCompact (),
 
@@ -12,7 +15,7 @@ module Layout.Compact.States.Indexing (
     cost3D,
     costSymbol,
 
-    -- ** Centroid
+    -- ** Median
     mean2D,
     mean3D,
 
@@ -28,7 +31,7 @@ module Layout.Compact.States.Indexing (
     cost2D',
     cost3D',
 
-    -- ** Centroid
+    -- ** Median
     mean2D',
     mean3D',
 ) where

@@ -34,8 +34,8 @@ import Layout.Compact.Symbols (SymbolDistanceMatrixSquare)
 import Layout.Compact.Symbols.Unsafe (unsafeCompactStateFromSDMS, unsafeFromSDMλSquare)
 import Layout.Memoize.Dispersion
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
@@ -48,7 +48,7 @@ sdmλ ∷ SDMλ
 sdmλ i j =
     let i' = coerce i ∷ Word
         j' = coerce j ∷ Word
-    in  SymbolChangeCost $ max i' j' - min i' j'
+    in  SymbolDistance $ max i' j' - min i' j'
 
 
 sdmρ ∷ Word → SymbolDistanceMatrixSquare

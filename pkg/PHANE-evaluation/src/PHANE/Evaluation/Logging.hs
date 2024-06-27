@@ -1,5 +1,5 @@
 {- |
-Logging functionality for the 'Evaluation' monad.
+Logging functionality for the 'PHANE.Evaluation.Evaluation' monad.
 
 There are two primary type-classes used for logging:
 

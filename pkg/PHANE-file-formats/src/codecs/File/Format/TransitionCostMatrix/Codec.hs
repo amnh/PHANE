@@ -3,10 +3,10 @@
 {-# LANGUAGE Strict #-}
 
 {- |
-Functionality for coverting the serializable representation data-type 'FileFormatTCM' to and from a nrmalized represnetation for pragmatic use.
+Functionality for coverting the serializable representation data-type 'File.Format.TransitionCostMatrix.Types.FileFormatTCM' to and from a nrmalized represnetation for pragmatic use.
 -}
 module File.Format.TransitionCostMatrix.Codec (
-    -- * Codec conversions for 'FileFormatTCM'
+    -- * Codec conversions for 'File.Format.TransitionCostMatrix.Types.FileFormatTCM'
     extractFileFormatTCM,
     implantFileFormatTCM,
 
@@ -30,10 +30,13 @@ import Data.Text.Short (ShortText)
 import Data.Vector.Generic qualified as GV
 import Data.Vector.Unboxed (Unbox)
 import File.Format.TransitionCostMatrix.Types
-import Measure.Unit.SymbolChangeCost
+import Measure.Unit.SymbolDistance
 import Numeric.Natural
 
 
+{- |
+Representation of an error in discretizing a rational-valued matrix.
+-}
 data DiscretizationOverflowError = DiscretizationOverflowError
     { discreteLimit ∷ Natural
     , numeratorGCD ∷ Natural
@@ -43,23 +46,23 @@ data DiscretizationOverflowError = DiscretizationOverflowError
 
 
 {- |
-Extract from a 'FileFormatTCM' the corresponding:
+Extract from a 'File.Format.TransitionCostMatrix.Types.FileFormatTCM' the corresponding:
 
   * \(~~\:\Sigma\,\colon\quad\) 'Alphabet' of symbols with \(n = \left\lvert\Sigma\right\rvert\).
   * \(~~\:\mathbf{q}\,\colon\quad\) The 'Rational' coefficient which "integerizes" the input matrix.
-  * \(\,\mathcal{M}\,\colon\quad\) Symbol Change Matrix (SCM) (\(n \times n\)) of pairwise 'SymbolChangeCost' values.
+  * \(\,\mathcal{M}\,\colon\quad\) Symbol Distance Matrix (SDM) (\(n \times n\)) of pairwise 'Measure.Unit.SymbolDistance.SymbolDistance' values.
 
 This codec performs the following important conversions:
 
   1. /If and only if/ the gap character \(- \in\Sigma\),
      then the output \(\mathcal{M}\) will have the last row and column moved to the first row and column,
-     effectively changing the gap index from \(n - 1\) in the input SCM to index \(0\) in the output \(\mathcal{M}\).
+     effectively changing the gap index from \(n - 1\) in the input SDM to index \(0\) in the output \(\mathcal{M}\).
 
-  2. "Integerize" the input matrix \(\mathtt{A}_{\mathsf{SCM}}\) by factoring out a rational coefficient \(\mathbb{q}\) such that,
-     \(\mathbf{q} * \mathcal{M} = \mathtt{A}_{\mathsf{SCM}}\).
+  2. "Integerize" the input matrix \(\mathtt{A}_{\mathsf{SDM}}\) by factoring out a rational coefficient \(\mathbb{q}\) such that,
+     \(\mathbf{q} * \mathcal{M} = \mathtt{A}_{\mathsf{SDM}}\).
 -}
 extractFileFormatTCM
-    ∷ FileFormatTCM → Either DiscretizationOverflowError (Alphabet ShortText, Rational, Matrix SymbolChangeCost)
+    ∷ FileFormatTCM → Either DiscretizationOverflowError (Alphabet ShortText, Rational, Matrix SymbolDistance)
 extractFileFormatTCM (FileFormatTCM symbols matrixA) =
     let numSymbols = length symbols
         dimMatrix = BM.rows matrixA
@@ -83,12 +86,16 @@ extractFileFormatTCM (FileFormatTCM symbols matrixA) =
             Just i → gapIndexTransform i matrixA
 
         attachAlphabet
-            ∷ (Rational, Matrix SymbolChangeCost)
-            → (Alphabet ShortText, Rational, Matrix SymbolChangeCost)
+            ∷ (Rational, Matrix SymbolDistance)
+            → (Alphabet ShortText, Rational, Matrix SymbolDistance)
         attachAlphabet (coefficient, matrixC) = (alphabet, coefficient, matrixC)
     in  attachAlphabet <$> integerize matrixB
 
 
+{- |
+Smart constructor to convert component types into the consolidated
+'File.Format.TransitionCostMatrix.Types.FileFormatTCM' data-type.
+-}
 implantFileFormatTCM ∷ (Integral n, Unbox n) ⇒ Alphabet ShortText → Rational → Matrix n → FileFormatTCM
 implantFileFormatTCM alphabet coefficient discretized =
     let symbolλ ∷ NonEmpty ShortText → NonEmpty ShortText
@@ -108,7 +115,7 @@ implantFileFormatTCM alphabet coefficient discretized =
             }
 
 
-integerize ∷ BM.Matrix Rational → Either DiscretizationOverflowError (Rational, Matrix SymbolChangeCost)
+integerize ∷ BM.Matrix Rational → Either DiscretizationOverflowError (Rational, Matrix SymbolDistance)
 integerize ratM =
     let dimensions@(n, _) = BM.dim ratM
         dimRange = [0 .. n - 1]
@@ -122,7 +129,7 @@ integerize ratM =
         rationalValues = snd <$> originalValues
 
         limit ∷ Natural
-        limit = fromIntegral (maxBound ∷ SymbolChangeCost)
+        limit = fromIntegral (maxBound ∷ SymbolDistance)
 
         overflow ∷ (a, Natural) → Bool
         overflow (_, y) = y > limit
@@ -174,9 +181,9 @@ integerize ratM =
                         , overflowedValues = x :| xs
                         }
             _ →
-                let scm = UM.fromList dimensions . toList $ fromIntegral <$> prospectiveValues
+                let sdm = UM.fromList dimensions . toList $ fromIntegral <$> prospectiveValues
                     weight = coefficient
-                in  Right (weight, scm)
+                in  Right (weight, sdm)
 
 
 gapIndexTransform ∷ Int → BM.Matrix Rational → BM.Matrix Rational

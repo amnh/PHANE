@@ -10,7 +10,8 @@
 
 {- |
 Smart constructor methods for producing a tranistion cost matrix.
-The 'Diagnosis' provides a metadata describing the structure of the tranistion cost matrix.
+The 'TransitionMatrix.Diagnosis.TransitionMeasureDiagnosis' provides
+a metadata describing the structure of the tranistion cost matrix.
 -}
 module TransitionMatrix.Diagnosis (
     -- * Specialized Representation
@@ -59,8 +60,8 @@ import Layout.Special.Type
 import Measure.Distance
 import Measure.Range
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 import Numeric
 import Numeric.Natural
@@ -74,7 +75,7 @@ The result of intelligently encoding a "Transition Measure."
 -}
 data TransitionMeasureDiagnosis a = TransitionMeasureDiagnosis
     { factoredCoefficient ∷ Rational
-    -- ^ The multiplicative constant factor of a symbol change matrix.
+    -- ^ The multiplicative constant factor of a symbol distance matrix.
     --  Minimum value of the multiplicative identity /one/.
     , transitionMetricity ∷ Metricity
     -- ^ The most restrictive metric classifcation of the 'TransitionMatrix'.
@@ -128,7 +129,7 @@ __Time:__ \( \mathcal{O} \left( 1 \right) \)
 
 Nullary constructor for the <https://en.wikipedia.org/wiki/Discrete_space discrete metric>.
 -}
-discreteCrossGap ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TransitionMatrix a
+discreteCrossGap ∷ SymbolCount → SymbolDistance → SymbolDistance → TransitionMatrix a
 discreteCrossGap dim@(SymbolCount n) 1 2 =
     let m = DiscreteCrossGap dim 1 2
 

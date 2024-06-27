@@ -3,19 +3,22 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Safe #-}
 
+{- |
+The data-types and type-aliases for PHANE measures.
+-}
 module Measure.Transition.Types (
     -- * Symbol Measure
     SymbolDistanceλ,
 
     -- * State Pairwise Measures
-    StateTransitionPairwiseCentroidλ,
+    StateTransitionPairwiseMedianλ,
     StateTransitionPairwiseDispersionλ,
     StateTransitionPairwiseDistanceλ,
 
     -- * State Threeway Measures
     StateTransitionThreewayDispersionλ,
     StateTransitionThreewayDistanceλ,
-    StateTransitionThreewayCentroidλ,
+    StateTransitionThreewayMedianλ,
 
     -- * Synonyms
     SDMλ,
@@ -25,11 +28,11 @@ module Measure.Transition.Types (
     -- * Abstract Measures
 ) where
 
-import Measure.Centroid
 import Measure.Dispersion
 import Measure.Distance
+import Measure.Median
 import Measure.Unit.StateChangeCost
-import Measure.Unit.SymbolChangeCost
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
@@ -37,20 +40,20 @@ import Measure.Unit.SymbolIndex
 An abstract representation of the /distance/ bewteen two symbols in an alphabet.
 Given the indicies of two symbols, the distance between the symbols is returned.
 
-This is a 'Distance' measure, /specialized/ to measuring 'SymbolIndex' with
-'StateChangeCost' as the differential unit of measure.
+This is a 'Distance' measure, /specialized/ to measuring 'Measure.Unit.SymbolIndex' with
+'Measure.Unit.StateChangeCost.StateChangeCost' as the differential unit of measure.
 
 Metonymously, refered to as the Symbol Distance Matrix (SDM). There is a more
 terse synonym, 'SDMλ', provided for convience.
 -}
-type SymbolDistanceλ = Distance SymbolChangeCost SymbolIndex
+type SymbolDistanceλ = Distance SymbolDistance SymbolIndex
 
 
 {- |
 An abstract representation of the /distance/ bewteen /two/ states.
 Given two states, the cost to transition between the states and the
 median state is returned. This is a form of 'Dispersion', /specialized/ to
-two elements with 'StateChangeCost' as the distance measure.
+two elements with 'Measure.Unit.StateChangeCost.StateChangeCost' as the distance measure.
 
 Abstractly, this function is the cross-product between the collection of all
 possible states, forming a matrix of each pair's transition cost and median.
@@ -77,20 +80,20 @@ type StateTransitionPairwiseDistanceλ e = Distance StateChangeCost e
 
 
 {- |
-The /centroid/ /(median)/ bewteen /two/ states.
+The /(geometric) median/ /(median)/ bewteen /two/ states.
 
 The second component of the more general 'StateTransitionPairwiseDispersionλ'.
 
 /NOTE:/ Can be more efficient that taking 'snd' of the 'Dispersion'.
 -}
-type StateTransitionPairwiseCentroidλ e = CentroidPairwise e
+type StateTransitionPairwiseMedianλ e = MedianPairwise e
 
 
 {- |
 An abstract representation of the /distance/ bewteen /three/ states.
 Given three states, the cost to transition between the states and the
 median state is returned. This is a form of 'Dispersion', /specialized/ to
-three elements with 'StateChangeCost' as the distance measure.
+three elements with 'Measure.Unit.StateChangeCost.StateChangeCost' as the distance measure.
 
 Abstractly, this function is the /triple/ cross-product between the collection
 of all possible states, forming a /cube/ of each triple's transition cost and median.
@@ -119,13 +122,13 @@ type StateTransitionThreewayDistanceλ e = e → e → e → StateChangeCost
 
 
 {- |
-The /centroid/ /(median)/ bewteen /three/ states.
+The /(geometric) median/ /(median)/ bewteen /three/ states.
 
 The second component of the more general 'StateTransitionThreewayDispersionλ'.
 
 /NOTE:/ Can be more efficient that taking 'snd' of the 'Dispersion'.
 -}
-type StateTransitionThreewayCentroidλ e = CentroidThreeway e
+type StateTransitionThreewayMedianλ e = MedianThreeway e
 
 
 {- |

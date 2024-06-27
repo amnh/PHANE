@@ -1,5 +1,5 @@
 {- |
-Special 'Alphabet' constructions and queries for popular symbol sets.
+Special 'Data.Alphabet.Alphabet' constructions and queries for popular symbol sets.
 -}
 module Data.Alphabet.Special (
     -- * Constructions

@@ -1,3 +1,6 @@
+{- |
+Construction of a transition matrix.
+-}
 module TransitionMatrix (
     -- * Specialized Representation
     TransitionMatrix (),

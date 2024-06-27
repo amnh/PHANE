@@ -74,7 +74,7 @@ instance Storable SymbolIndex where
 
 
 {- |
-Use a 'SymbolIndex' in place of an 'Integral' value for index related operations.
+Use a 'Measure.Unit.SymbolIndex.SymbolIndex' in place of an 'Integral' value for index related operations.
 -}
 {-# SCC atSymbolIndex #-}
 {-# INLINEABLE atSymbolIndex #-}

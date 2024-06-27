@@ -342,11 +342,12 @@ extractMedians ∷ (FiniteBits e, Vector v e) ⇒ OpenDynamicCharacter v e → v
 extractMedians (_, me, _)
     | GV.null me = me
     | otherwise =
-        --let gap = buildGap $ me ! 0
+        -- let gap = buildGap $ me ! 0
         let (# gap, nil #) = buildGapAndNil $ me ! 0
-        -- additing this due to some final state wierdness
-        -- in  GV.filter (/= gap) me
-        in  GV.filter (\e → e /= gap && e /= nil) me
+        in  -- additing this due to some final state wierdness
+            -- in  GV.filter (/= gap) me
+            GV.filter (\e → e /= gap && e /= nil) me
+
 
 {- |
 Extract the /ungapped/ medians of a single field of a dynamic character.

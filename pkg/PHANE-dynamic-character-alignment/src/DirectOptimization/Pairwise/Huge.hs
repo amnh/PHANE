@@ -6,12 +6,15 @@ module DirectOptimization.Pairwise.Huge (
 
 import Bio.DynamicCharacter
 import Bio.DynamicCharacter.Element (HugeState)
-import DirectOptimization.Pairwise.Internal (AlignmentCost, SymbolChangeCost, TCM2Dλ)
+import DirectOptimization.Pairwise.Internal (AlignmentCost, SymbolDistance, TCM2Dλ)
 import DirectOptimization.Pairwise.Ukkonen
 
 
+{- |
+Pairwise alignment of dynamic characters for /huge/ alphabets.
+-}
 hugePairwiseDO
-    ∷ SymbolChangeCost
+    ∷ SymbolDistance
     → TCM2Dλ HugeState
     → HugeDynamicCharacter
     → HugeDynamicCharacter

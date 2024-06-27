@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 {- |
-The 'Evaluation' type's monad transformer definition and types.
+The 'PHANE.Evaluation.Evaluation' type's monad transformer definition and types.
 -}
 module PHANE.Evaluation (
     Evaluation (),
@@ -121,7 +121,7 @@ The following should hold:
 newtype Evaluation env a = Evaluation
     --    { unwrapEvaluation ∷ RWST env Void (ImplicitEnvironment) IO (EvaluationResult a)
     { unwrapEvaluation ∷ ReaderT (ImplicitEnvironment env) IO (EvaluationResult a)
-    -- ^ Run the 'Evaluation' monad transformer
+    -- ^ Run the 'PHANE.Evaluation.Evaluation' monad transformer
     }
 
 
@@ -377,7 +377,7 @@ deriving newtype instance Show RandomSeed
 {- |
 __Time:__ \( \mathcal{O}\left( \mathord{?} \right) \)
 
-Run the 'Evaluation' computation.
+Run the 'PHANE.Evaluation.Evaluation' computation.
 
 Initial randomness seed and configuration for logging outputs required to initiate the computation.
 -}
@@ -400,7 +400,7 @@ runEvaluation logConfig randomSeed environ eval = do
 {- |
 __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
-Change the polymorphic environment of the 'Evaluation' /in place/ as a "mutable" global update.
+Change the polymorphic environment of the 'PHANE.Evaluation.Evaluation' /in place/ as a "mutable" global update.
 
 If this is undeisreable, consider 'Control.Monad.Reader.Class.local' for a localized change to the environemnt.
 -}
@@ -432,7 +432,7 @@ setVerbositySTDOUT = setVerbosityOf modConfigSTDOUT
 {- |
 __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
-Set the verbosity level of log data streamed to the log file (if any) for the sub-'Evaluation'.
+Set the verbosity level of log data streamed to the log file (if any) for the sub-'PHANE.Evaluation.Evaluation'.
 -}
 setVerbosityFileLog ∷ Verbosity → Evaluation env ()
 setVerbosityFileLog = setVerbosityOf modConfigStream
@@ -485,7 +485,7 @@ be fully evaluated to /normal form/, along with "the spine" connecting @b@ to @c
 
 The parallel map will evenly distributes elements of the list across available
 threads. The number of threads available on they system is queried and memoized
-at the start of the 'Evaluation'. The length of the supplied list is calculated,
+at the start of the 'PHANE.Evaluation.Evaluation'. The length of the supplied list is calculated,
 and the list is split into sub-lists of equal length (± 1).
 
 __Examples__
@@ -559,7 +559,7 @@ getParallelChunkTraverseBy selector = pure (parallelTraverseEvaluationBy selecto
 {- |
 __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
-Generate a 'RandomSeed' to initialize an 'Evaluation' by using system entropy.
+Generate a 'PHANE.Evaluation.RandomSeed' to initialize an 'PHANE.Evaluation.Evaluation' by using system entropy.
 -}
 initializeRandomSeed ∷ IO RandomSeed
 initializeRandomSeed = do
@@ -573,7 +573,7 @@ initializeRandomSeed = do
 {- |
 __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
-Set the random seed for the 'Evaluation'.
+Set the random seed for the 'PHANE.Evaluation.Evaluation'.
 -}
 setRandomSeed ∷ (Enum i) ⇒ i → Evaluation env ()
 setRandomSeed seed = Evaluation . ReaderT $ \store →
@@ -595,7 +595,7 @@ shuffleList = fmap List.fromList . shuffleM . List.toList
 {- |
 __Time:__ \( \mathcal{O}\left( \mathord{?} \right) \)
 
-Lift one 'Evaluation' environment to another.
+Lift one 'PHANE.Evaluation.Evaluation' environment to another.
 -}
 mapEvaluation ∷ (outer → inner) → Evaluation inner a → Evaluation outer a
 mapEvaluation f eval =

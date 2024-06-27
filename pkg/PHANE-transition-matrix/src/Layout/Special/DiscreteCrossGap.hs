@@ -39,8 +39,8 @@ import Layout.Compact.Symbols (SymbolDistanceMatrixSquare)
 import Layout.Compact.Symbols.Unsafe (unsafeCompactStateFromSDMS, unsafeFromSDMλSquare)
 import Layout.Memoize.Dispersion
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
@@ -48,7 +48,7 @@ import Measure.Unit.SymbolIndex
 The Discrete metric crossed with the gap element where the gap element where
 the weighting ratio is 2:1
 -}
-sdmλ ∷ SymbolChangeCost → SymbolChangeCost → SDMλ
+sdmλ ∷ SymbolDistance → SymbolDistance → SDMλ
 sdmλ g s i j
     | i == j = 0
     | i == SymbolIndex 0 = g
@@ -70,8 +70,8 @@ sdm12λ i j
 
 tcmρ
     ∷ SymbolCount
-    → SymbolChangeCost
-    → SymbolChangeCost
+    → SymbolDistance
+    → SymbolDistance
     → StateTransitionsCompact
 tcmρ n g s = unsafeCompactStateFromSDMS 0 $ unsafeFromSDMλSquare (sdmλ g s) n
 
@@ -95,19 +95,19 @@ Definition of the L1 norm metric.
 -}
 {-# SCC tcm2Dλ #-}
 {-# INLINEABLE tcm2Dλ #-}
-{-# SPECIALIZE tcm2Dλ ∷ (FiniteBits b) ⇒ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ b #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ Int #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ CUInt #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ Word #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ Word8 #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ Word16 #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ Word32 #-}
-{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM2Dλ Word64 #-}
+{-# SPECIALIZE tcm2Dλ ∷ (FiniteBits b) ⇒ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ b #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ Int #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ CUInt #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ Word #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ Word8 #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ Word16 #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ Word32 #-}
+{-# SPECIALIZE tcm2Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM2Dλ Word64 #-}
 tcm2Dλ
     ∷ (FiniteBits b)
     ⇒ SymbolCount
-    → SymbolChangeCost
-    → SymbolChangeCost
+    → SymbolDistance
+    → SymbolDistance
     → TCM2Dλ b
 tcm2Dλ elementBitWidth gapCost subCost =
     bitDispersionPairwise (symbolBounds elementBitWidth) (sdmλ gapCost subCost)
@@ -139,19 +139,19 @@ Definition of the L1 norm metric.
 -}
 {-# SCC tcm3Dλ #-}
 {-# INLINEABLE tcm3Dλ #-}
-{-# SPECIALIZE tcm3Dλ ∷ (FiniteBits b) ⇒ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ b #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ Int #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ CUInt #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ Word #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ Word8 #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ Word16 #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ Word32 #-}
-{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolChangeCost → SymbolChangeCost → TCM3Dλ Word64 #-}
+{-# SPECIALIZE tcm3Dλ ∷ (FiniteBits b) ⇒ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ b #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ Int #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ CUInt #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ Word #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ Word8 #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ Word16 #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ Word32 #-}
+{-# SPECIALIZE tcm3Dλ ∷ SymbolCount → SymbolDistance → SymbolDistance → TCM3Dλ Word64 #-}
 tcm3Dλ
     ∷ (FiniteBits b)
     ⇒ SymbolCount
-    → SymbolChangeCost
-    → SymbolChangeCost
+    → SymbolDistance
+    → SymbolDistance
     → TCM3Dλ b
 tcm3Dλ elementBitWidth gapCost subCost =
     bitDispersionThreeway (symbolBounds elementBitWidth) (sdmλ gapCost subCost)

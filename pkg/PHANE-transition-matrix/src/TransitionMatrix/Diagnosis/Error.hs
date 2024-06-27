@@ -11,6 +11,9 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE UnboxedSums #-}
 
+{- |
+Data-types for representing and encoding failures during the matrix diagnosis process.
+-}
 module TransitionMatrix.Diagnosis.Error (
     -- * Failure
     DiagnosisFailure (),
@@ -39,6 +42,9 @@ import GHC.Exts (fromList)
 import GHC.Generics
 
 
+{- |
+Encoding of which type of error occured during the matrix diagnosis process.
+-}
 data DiagnosisError a
     = JaggedColumns !Word !IntSet
     | JaggedRows !Word !IntSet
@@ -55,6 +61,9 @@ data DiagnosisError a
 type role DiagnosisError nominal
 
 
+{- |
+Collection of failures which occured while diagnosing a matrix.
+-}
 newtype DiagnosisFailure a = DiagnosisFailure (NonEmpty (DiagnosisError a))
     deriving newtype (NFData, Eq)
     deriving stock (Data, Generic)
@@ -182,9 +191,9 @@ nicelyRenderList =
 
 
 {- |
-Ensures that ther is at most /one/ 'DiagnosisFailure' which satisfies the
-predicate 'malformedInputShape' and that if such an error exists, that it is
-the first error in the list.
+Ensures that ther is at most /one/ 'TransitionMatrix.Diagnosis.Error.DiagnosisFailure'
+which satisfies the predicate 'malformedInputShape' and that if such an error exists,
+that it is the first error in the list.
 -}
 makeDiagnosisFailure ∷ (Ord a) ⇒ NonEmpty (DiagnosisError a) → DiagnosisFailure a
 makeDiagnosisFailure xs =

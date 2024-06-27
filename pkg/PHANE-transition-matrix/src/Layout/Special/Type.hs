@@ -27,16 +27,19 @@ import Layout.Special.DiscreteCrossGap qualified as Gap
 import Layout.Special.L1Norm qualified as L1N
 import Measure.Range
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
+{- |
+Represents and encodes a matrix with a metric which can be "special cased" for improved efficiency.
+-}
 data SpecializableMetric
     = DiscreteCrossGap
         {-# UNPACK #-} !SymbolCount
-        {-# UNPACK #-} !SymbolChangeCost
-        {-# UNPACK #-} !SymbolChangeCost
+        {-# UNPACK #-} !SymbolDistance
+        {-# UNPACK #-} !SymbolDistance
     | DiscreteMetric {-# UNPACK #-} !SymbolCount
     | L1Norm {-# UNPACK #-} !SymbolCount
     deriving stock (Data, Eq, Generic)
@@ -48,14 +51,14 @@ instance HasEditExtrema SpecializableMetric where
         \case
             DiscreteCrossGap _ _ g → g
             DiscreteMetric{} → 1
-            L1Norm (SymbolCount n) → SymbolChangeCost $ n - 1
+            L1Norm (SymbolCount n) → SymbolDistance $ n - 1
 
 
     maxInsertion =
         \case
             DiscreteCrossGap _ _ g → g
             DiscreteMetric{} → 1
-            L1Norm (SymbolCount n) → SymbolChangeCost $ n - 1
+            L1Norm (SymbolCount n) → SymbolDistance $ n - 1
 
 
     minDeletion =

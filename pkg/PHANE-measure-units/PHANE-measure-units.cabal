@@ -122,8 +122,8 @@ Library
   Exposed-Modules:
     Measure.Unit.AlignmentCost
     Measure.Unit.StateChangeCost
-    Measure.Unit.SymbolChangeCost
     Measure.Unit.SymbolCount
+    Measure.Unit.SymbolDistance
     Measure.Unit.SymbolIndex
 
   Hs-Source-Dirs:

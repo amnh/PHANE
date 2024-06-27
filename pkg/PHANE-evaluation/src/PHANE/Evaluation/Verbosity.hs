@@ -2,7 +2,7 @@
 {-# LANGUAGE UnboxedSums #-}
 
 {- |
-Specification of verbosity for logging within the 'PHANE.Evaluation'.
+Specification of verbosity for logging within the 'PHANE.Evaluation.Evaluation'.
 -}
 module PHANE.Evaluation.Verbosity (
     -- * Verbosity Specification
@@ -34,7 +34,7 @@ The verbosity levels are as follows:
 
   (7) 'Dump': Copious output of internal data-structures to permit inspection of computational state.
 
-The 'Verbosity' specification values are coupled with corresponding 'LogLevel' values.
+The 'Verbosity' specification values are coupled with corresponding 'PHANE.Evaluation.Logging.Class.LogLevel' values.
 -}
 data Verbosity
     = None

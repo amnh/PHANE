@@ -39,7 +39,7 @@ The /seven/ 'LogLevel' values should be thought of as being partitioned into /th
 
   * __Debug Trace__ (@6 - 7@): These are for software developers to trace and inspect program state.
 
-The 'LogLevel' values are coupled with corresponding 'Verbosity' specification values.
+The 'LogLevel' values are coupled with corresponding 'PHANE.Evaluation.Verbosity.Verbosity' specification values.
 -}
 data LogLevel
     = LogFail

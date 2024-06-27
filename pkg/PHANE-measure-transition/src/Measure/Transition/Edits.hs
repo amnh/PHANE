@@ -5,7 +5,7 @@ module Measure.Transition.Edits (
     HasEditExtrema (..),
 ) where
 
-import Measure.Unit.SymbolChangeCost
+import Measure.Unit.SymbolDistance
 
 
 {- |
@@ -16,22 +16,22 @@ class HasEditExtrema a where
 
 
     {-# INLINEABLE maxEdit #-}
-    maxEdit ∷ a → SymbolChangeCost
+    maxEdit ∷ a → SymbolDistance
     maxEdit a = max (maxDeletion a) $ maxInsertion a
 
 
-    maxDeletion ∷ a → SymbolChangeCost
+    maxDeletion ∷ a → SymbolDistance
 
 
-    maxInsertion ∷ a → SymbolChangeCost
+    maxInsertion ∷ a → SymbolDistance
 
 
     {-# INLINEABLE minEdit #-}
-    minEdit ∷ a → SymbolChangeCost
+    minEdit ∷ a → SymbolDistance
     minEdit a = min (minDeletion a) $ minInsertion a
 
 
-    minDeletion ∷ a → SymbolChangeCost
+    minDeletion ∷ a → SymbolDistance
 
 
-    minInsertion ∷ a → SymbolChangeCost
+    minInsertion ∷ a → SymbolDistance

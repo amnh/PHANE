@@ -21,8 +21,8 @@ import Layout.Compact.Symbols.Internal (SymbolDistanceMatrix (..))
 import Layout.Compact.Symbols.Square (SymbolDistanceMatrixSquare (..), rowMajorVector)
 import Layout.Compact.Symbols.Triangular (SymbolDistanceMatrixTriangular (..))
 import Measure.Transition
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
@@ -33,7 +33,7 @@ Generate the 2D and 3D compact state transiton cost matricies from the supplied
 symbol distance matrix with linear dimensions of the alphabet symbol count.
 -}
 unsafeCompactStateFromSDMS
-    ∷ SymbolChangeCost
+    ∷ SymbolDistance
     -- ^ The gap open cost. A zero value indicates non-affine alignment context
     → SymbolDistanceMatrixSquare
     -- ^ The dense, pre-computed matrix of costs to shift between symbols.

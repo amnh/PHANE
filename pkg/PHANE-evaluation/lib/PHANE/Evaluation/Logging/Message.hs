@@ -1,7 +1,8 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 {- |
-A 'LogMessage' represents the atomic logging component for the 'PHANE.Evaluation' monad.
+A 'PHANE.Evaluation.Logging.Message.LogMessage' represents the atomic logging component for the 'PHANE.Evaluation' monad.
 
 They constructed by using the 'IsString' type-class method 'fromString'
 as well as with the following functions:
@@ -12,10 +13,10 @@ as well as with the following functions:
   * 'loggedReal'
   * 'loggedText'
 
-Outputting of a component 'LogMessage' can be performed by'outputMessage'.
+Outputting of a component 'PHANE.Evaluation.Logging.Message.LogMessage' can be performed by'outputMessage'.
 
-The 'LogMessage' data-type internally uses the linearized 'Builder' for 'Text' values to
-improve efficiency.
+The 'PHANE.Evaluation.Logging.Message.LogMessage' data-type internally uses the linearized 'Data.Text.Builder.Linear.Builder'
+for 'Text' values to improve efficiency.
 -}
 module PHANE.Evaluation.Logging.Message (
     -- * Data-type
@@ -36,7 +37,13 @@ module PHANE.Evaluation.Logging.Message (
 import Control.Applicative (Alternative (..))
 import Data.Bits (FiniteBits)
 import Data.Coerce (coerce)
+
+
+#if MIN_VERSION_base(4,20,0)
+import Data.Foldable (fold, toList)
+#else
 import Data.Foldable (fold, foldl', toList)
+#endif
 import Data.Functor (($>))
 import Data.List (intersperse)
 import Data.Ratio
@@ -70,7 +77,7 @@ deriving newtype instance IsString LogMessage
 {- |
 __Time:__ \[ \mathcal{O}\left( 1 \right) \]
 
-Construct a 'LogMessage' from a unicode character.
+Construct a 'PHANE.Evaluation.Logging.Message.LogMessage' from a unicode character.
 -}
 loggedChar ∷ Char → LogMessage
 loggedChar = coerce @Builder @LogMessage . fromChar
@@ -79,7 +86,7 @@ loggedChar = coerce @Builder @LogMessage . fromChar
 {- |
 __Time:__ \[ \mathcal{O}\left( log_10\left( v \right) \right) \]
 
-Construct a 'LogMessage' from an integral value, rendering it in base @10@.
+Construct a 'PHANE.Evaluation.Logging.Message.LogMessage' from an integral value, rendering it in base @10@.
 -}
 loggedDecimal ∷ (Integral a, FiniteBits a) ⇒ a → LogMessage
 loggedDecimal = coerce @Builder @LogMessage . fromDec
@@ -88,7 +95,7 @@ loggedDecimal = coerce @Builder @LogMessage . fromDec
 {- |
 __Time:__ \[ \mathcal{O}\left( log_16\left( v \right) \right) \]
 
-Construct a 'LogMessage' from an integral value, rendering it in base @16@.
+Construct a 'PHANE.Evaluation.Logging.Message.LogMessage' from an integral value, rendering it in base @16@.
 -}
 loggedHexadecimal ∷ (Integral a, FiniteBits a) ⇒ a → LogMessage
 loggedHexadecimal = coerce @Builder @LogMessage . fromHex
@@ -97,7 +104,7 @@ loggedHexadecimal = coerce @Builder @LogMessage . fromHex
 {- |
 __Time:__ \[ \mathcal{O}\left( log_10\left( v \right) \right) \]
 
-Construct a 'LogMessage' from a 'Real' value.
+Construct a 'PHANE.Evaluation.Logging.Message.LogMessage' from a 'Real' value.
 
 Converts the number to a rational number and renders it in decimal notation with a decimal point.
 -}
@@ -108,24 +115,24 @@ loggedReal = coerce @Builder @LogMessage . fromString . renderRational . toRatio
 {- |
 __Time:__ \[ \mathcal{O}\left( 1 \right) \]
 
-Construct a 'LogMessage' from a 'Text' value.
+Construct a 'PHANE.Evaluation.Logging.Message.LogMessage' from a 'Text' value.
 -}
 loggedText ∷ Text → LogMessage
 loggedText = coerce @Builder @LogMessage . fromText
 
 
 {- |
-Convert the 'LogMessage' to 'Text', finalizing the underlying text builder.
+Convert the 'PHANE.Evaluation.Logging.Message.LogMessage' to 'Text', finalizing the underlying text builder.
 -}
 finalizedText ∷ LogMessage → Text
 finalizedText = runBuilder . coerce @LogMessage @Builder
 
 
 {- |
-Output the 'LogMessage' to the file 'Handle'.
+Output the 'PHANE.Evaluation.Logging.Message.LogMessage' to the file 'Handle'.
 
-Only at the time of invoking 'outputMessage' does the the 'LogMessage' finalize
-the 'Text' value to be output to the handle's buffer.
+Only at the time of invoking 'outputMessage' does the the 'PHANE.Evaluation.Logging.Message.LogMessage'
+finalize the 'Text' value to be output to the handle's buffer.
 -}
 outputMessage ∷ Handle → LogMessage → IO Bool
 outputMessage handle message =

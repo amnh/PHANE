@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -19,7 +20,12 @@ module Layout.Compact.Symbols.Internal (
 
 import Control.DeepSeq
 import Data.Data
+
+
+#if MIN_VERSION_base(4,20,0)
+#else
 import Data.Foldable (foldl')
+#endif
 import Data.Vector.Storable (Vector)
 import Data.Vector.Storable qualified as V
 import Data.Word
@@ -27,8 +33,8 @@ import Foreign.Ptr (Ptr)
 import Foreign.Storable
 import GHC.Generics
 import Measure.Range
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
@@ -66,14 +72,14 @@ instance HasSymbolCount SymbolDistanceMatrix where
 Indexing without bounds checking.
 -}
 {-# INLINE index #-}
-{-# SPECIALIZE INLINE index ∷ SymbolDistanceMatrix → Int → SymbolChangeCost #-}
+{-# SPECIALIZE INLINE index ∷ SymbolDistanceMatrix → Int → SymbolDistance #-}
 index ∷ (Integral c) ⇒ SymbolDistanceMatrix → Int → c
 index (SymbolDistanceMatrix _ v) i =
     fromIntegral $ v `V.unsafeIndex` i
 
 
 {- |
-Deconstructs the 'SymbolDistanceMatrix' to expose the underlying unboxed 'Vector'.
+Deconstructs the 'Layout.Compact.Symbols.Internal.SymbolDistanceMatrix' to expose the underlying unboxed 'Vector'.
 -}
 {-# INLINE rowMajorVector #-}
 rowMajorVector ∷ SymbolDistanceMatrix → Vector Word16

@@ -6,6 +6,9 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE UnboxedSums #-}
 
+{- |
+The type of metric possesed by a diagnosed matrix.
+-}
 module TransitionMatrix.Metricity (
     -- * Diagnosable Metrics
     Metricity (..),
@@ -27,7 +30,7 @@ import Measure.Unit.SymbolCount
 
 
 {- |
-There is a heirachichal nature if a Symbol Change Matrix's metricity.
+There is a heirachichal nature if a Symbol Distance Matrix's metricity.
 
 @
       Non-metric
@@ -146,7 +149,7 @@ metricityOfDistance dim δ =
 
 
 {- |
-An internal helper function used in both 'isMetric' & 'isUltraMetric' exported functions.
+An internal helper function used in in determining Metric & Ultra Metric cases.
 -}
 nonZeroDiagonal ∷ (Foldable f, Integral d) ⇒ Distance d i → f i → Bool
 nonZeroDiagonal δ = any (\i → δ i i /= 0)

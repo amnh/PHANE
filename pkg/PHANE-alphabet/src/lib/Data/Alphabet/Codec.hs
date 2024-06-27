@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {- |
-Facilitates encoding and decoding symbols from an 'Alphabet' into a
+Facilitates encoding and decoding symbols from an 'Data.Alphabet.Alphabet' into a
 bit-packed state. Operating on encodings is useful for abstracting
 functonality while simultaneously reducing memory presure.
 
@@ -29,7 +29,7 @@ import GHC.Exts (IsList (fromList), Item)
 {- |
 \$\mathcal{O}\left(\, \log_{2}\lvert\Sigma\rvert * n \,\right)$
 
-Encode a collection of symbols as a unique subset of the supplied 'Alphabet'.
+Encode a collection of symbols as a unique subset of the supplied 'Data.Alphabet.Alphabet'.
 The result is bit-packed encoding of the collection of symbols which uniquely
 corresponds to an element of the power-set of the alphabet.
 
@@ -95,7 +95,7 @@ encodeState alphabet f symbols = getSubsetIndex alphabet symbolsSet emptyElement
 \$\mathcal{O}\left(\, \log_{2}\left(\Sigma\right) * n \,\right)$
 
 Decode a bit-packed endcoding to a collection of symbols which is a unique
-subset of the supplied 'Alphabet'.
+subset of the supplied 'Data.Alphabet.Alphabet'.
 
 /NOTE:/ This is the inverse of 'encodeState'.
 -}

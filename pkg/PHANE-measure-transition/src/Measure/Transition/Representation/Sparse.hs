@@ -45,16 +45,16 @@ import Layout.Compact.Symbols.Triangular (SymbolDistanceMatrixTriangular)
 import Measure.Range
 import Measure.Transition
 import Measure.Transition.Edits
-import Measure.Unit.SymbolChangeCost
 import Measure.Unit.SymbolCount
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
 data Sparse a = Sparse
-    { maxDelCost :: {-# UNPACK #-} SymbolChangeCost
-    , maxInsCost :: {-# UNPACK #-} SymbolChangeCost
-    , minDelCost :: {-# UNPACK #-} SymbolChangeCost
-    , minInsCost :: {-# UNPACK #-} SymbolChangeCost
+    { maxDelCost :: {-# UNPACK #-} SymbolDistance
+    , maxInsCost :: {-# UNPACK #-} SymbolDistance
+    , minDelCost :: {-# UNPACK #-} SymbolDistance
+    , minInsCost :: {-# UNPACK #-} SymbolDistance
     , matrixForm :: {-# UNPACK #-} (Either SymbolDistanceMatrixSquare SymbolDistanceMatrixTriangular)
     , memoized2Dλ :: TCM2Dλ a
     , memoized3Dλ :: TCM3Dλ a
@@ -85,7 +85,7 @@ instance HasSymbolDistances (Sparse a) where
     symbolDistances = either symbolDistances symbolDistances . matrixForm
 
 
-instance HasEditExtrema (Sparse a) SymbolChangeCost where
+instance HasEditExtrema (Sparse a) SymbolDistance where
     maxDeletion = maxDelCost
 
 
@@ -114,7 +114,7 @@ instance HasStateTransitionsCompact (TransitionMatrix3 a) where
     getCompactPairwise _ = Nothing
 
 
-instance HasEditExtrema (TransitionMatrix3 a) SymbolChangeCost where
+instance HasEditExtrema (TransitionMatrix3 a) SymbolDistance where
     {-# INLINEABLE maxEdit #-}
     maxEdit (IotaMatrix _ tcm) = maxEdit tcm
     maxEdit (VastMatrix sdm) = maxEdit sdm
@@ -198,7 +198,7 @@ instance HasStateTransitionsCompact (TransitionMatrix a) where
     getCompactPairwise LinearNormλ{} = Nothing
 
 
-instance HasEditExtrema (TransitionMatrix a) SymbolChangeCost where
+instance HasEditExtrema (TransitionMatrix a) SymbolDistance where
     {-# INLINEABLE maxEdit #-}
     maxEdit (LayoutSquareρ _ tcm) = maxEdit tcm
     maxEdit (LayoutSquareλ _ _ e _ _) = e
@@ -380,7 +380,7 @@ discreteMetric =
 {- |
 Nullary constructor for the <https://en.wikipedia.org/wiki/Discrete_space discrete metric>.
 -}
-discreteCrossGap :: SymbolChangeCost -> SymbolChangeCost -> SymbolCount -> TransitionMatrix a
+discreteCrossGap :: SymbolDistance -> SymbolDistance -> SymbolCount -> TransitionMatrix a
 discreteCrossGap 1 2 =
     \case
         SymbolCount 2 -> DiscreteCrossGapρ Gap.tcm12ρ2

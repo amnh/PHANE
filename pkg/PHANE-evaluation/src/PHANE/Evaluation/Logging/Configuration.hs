@@ -3,7 +3,7 @@
 {-# LANGUAGE UnboxedSums #-}
 
 {- |
-Configuration and initialization for logging within the 'PHANE.Evaluation' monad.
+Configuration and initialization for logging within the 'PHANE.Evaluation.Evaluation' monad.
 -}
 module PHANE.Evaluation.Logging.Configuration (
     -- * Data-types
@@ -118,7 +118,7 @@ instance CoArbitrary LogFeed where
 {- |
 __Time:__ \( \mathcal{O}\left( 1 \right) \)
 
-Create configuration for logging output stream to initialize an 'Evaluation'.
+Create configuration for logging output stream to initialize an 'PHANE.Evaluation.Evaluation'.
 
 Allocates required file handles. Performs basic sanity checking.
 -}
@@ -156,9 +156,9 @@ initializeLogging vOut vErr vFile =
 __Time:__ \[ \mathcal{O}\left( n \right) \] where \[ n \] is the length of any
 bytes remaining in the log feed buffers.
 
-Release logging resources of the supplied 'LogConfiguration'.
+Release logging resources of the supplied 'PHANE.Evaluation.Logging.Configuration.LogConfiguration'.
 All log feeds will have thier buffers flushed and subsequently no further logging
-will be possible with the given 'LogConfiguration'.
+will be possible with the given 'PHANE.Evaluation.Logging.Configuration.LogConfiguration'.
 -}
 finalizeLogging ∷ LogConfiguration → IO ()
 finalizeLogging config =
@@ -173,7 +173,8 @@ finalizeLogging config =
 __Time:__ \[ \mathcal{O}\left( n \right) \] where \[ n \] is the length of any
 bytes remaining in the log feed buffers.
 
-Flush all logging feeds in the 'LogConfiguration' to thier appropriate file handles.
+Flush all logging feeds in the 'PHANE.Evaluation.Logging.Configuration.LogConfiguration'
+to thier appropriate file handles.
 -}
 flushLogs ∷ LogConfiguration → IO ()
 flushLogs =
@@ -188,8 +189,8 @@ flushLogs =
 __Time:__ \[ \mathcal{O}\left( n \right) \] where \[ n \] is the 'LogMessage' length.
 
 Perform the I/O logging effect for the supplied 'LogMessage' to each of the approppriate streams.
-The 'LogConfiguration' defines how to log to the STDOUT feed, STDERR feed, and an optional file
-on disk feed.
+The 'PHANE.Evaluation.Logging.Configuration.LogConfiguration' defines how to log to the STDOUT feed,
+STDERR feed, and an optional file on disk feed.
 Furthermore, the supplied 'LogLevel' dictates the whether the 'LogMessage' should be emitted or
 supressed based on the 'PHANE.Evaluation.Verbosity' of each feed.
 

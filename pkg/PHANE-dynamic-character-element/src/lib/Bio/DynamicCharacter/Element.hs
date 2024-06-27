@@ -4,9 +4,9 @@ Concrete encodings for the elements of a dynamic character.
 There are the three encodings base on the size of the alphabet \( \Sigma \) which
 corresponds to the dynamic character:
 
-  * If \( \mathtt{~~0} < \lvert\, \Sigma \,\rvert \le \mathtt{~~8} \mapsto \) 'SlimState'
+  * If \( \mathtt{~~0} < \lvert\, \Sigma \,\rvert \le \mathtt{~~8} \mapsto \) 'Bio.DynamicCharacter.Element.SlimState.SlimState'
 
-  * If \( \mathtt{~~8} < \lvert\, \Sigma \,\rvert \le \mathtt{64}  \mapsto \) 'WideState'
+  * If \( \mathtt{~~8} < \lvert\, \Sigma \,\rvert \le \mathtt{64}  \mapsto \) 'Bio.DynamicCharacter.Element.SlimState.WideState'
 
   * If \( \mathtt{64}  < \lvert\, \Sigma \,\rvert \le \infty       \mapsto \) @BitVector@
 

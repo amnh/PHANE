@@ -20,7 +20,7 @@ import Data.Word
 import Foreign.C.Types (CUInt)
 import Measure.Dispersion
 import Measure.Distance
-import Measure.Unit.SymbolChangeCost
+import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
@@ -35,11 +35,11 @@ type role Bounds representational representational
 
 
 {- |
-Takes one or more elements of 'FiniteBits' and a symbol change cost function
+Takes one or more elements of 'FiniteBits' and a symbol distance cost function
 and returns a tuple of a new character, along with the cost of obtaining that
 character. The return character may be (or is even likely to be) ambiguous.
 Will attempt to intersect the two characters, but will union them if that is
-not possible, based on the symbol change cost function.
+not possible, based on the symbol distance cost function.
 
 To clarify, the return character is an intersection of all possible least-cost
 combinations, so for instance, if @ char1 == A,T @ and @ char2 == G,C @, and
@@ -61,18 +61,18 @@ value is A,C,G,T.
 {-# SPECIALISE bitDispersion :: (Bounded c, Integral c, Num d) => (SymbolIndex, SymbolIndex) -> Distance c SymbolIndex -> Dispersion d Word16 #-}
 {-# SPECIALISE bitDispersion :: (Bounded c, Integral c, Num d) => (SymbolIndex, SymbolIndex) -> Distance c SymbolIndex -> Dispersion d Word32 #-}
 {-# SPECIALISE bitDispersion :: (Bounded c, Integral c, Num d) => (SymbolIndex, SymbolIndex) -> Distance c SymbolIndex -> Dispersion d Word64 #-}
-{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolChangeCost i -> Dispersion SymbolChangeCost CUInt  #-}
-{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolChangeCost i -> Dispersion SymbolChangeCost Word   #-}
-{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolChangeCost i -> Dispersion SymbolChangeCost Word8  #-}
-{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolChangeCost i -> Dispersion SymbolChangeCost Word16 #-}
-{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolChangeCost i -> Dispersion SymbolChangeCost Word32 #-}
-{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolChangeCost i -> Dispersion SymbolChangeCost Word64 #-}
-{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolChangeCost SymbolIndex -> Dispersion SymbolChangeCost CUInt  #-}
-{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolChangeCost SymbolIndex -> Dispersion SymbolChangeCost Word   #-}
-{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolChangeCost SymbolIndex -> Dispersion SymbolChangeCost Word8  #-}
-{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolChangeCost SymbolIndex -> Dispersion SymbolChangeCost Word16 #-}
-{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolChangeCost SymbolIndex -> Dispersion SymbolChangeCost Word32 #-}
-{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolChangeCost SymbolIndex -> Dispersion SymbolChangeCost Word64 #-}
+{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolDistance i -> Dispersion SymbolDistance CUInt  #-}
+{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolDistance i -> Dispersion SymbolDistance Word   #-}
+{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolDistance i -> Dispersion SymbolDistance Word8  #-}
+{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolDistance i -> Dispersion SymbolDistance Word16 #-}
+{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolDistance i -> Dispersion SymbolDistance Word32 #-}
+{-# SPECIALISE bitDispersion :: (Enum i, Ix i) => (i, i) -> Distance SymbolDistance i -> Dispersion SymbolDistance Word64 #-}
+{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolDistance SymbolIndex -> Dispersion SymbolDistance CUInt  #-}
+{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolDistance SymbolIndex -> Dispersion SymbolDistance Word   #-}
+{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolDistance SymbolIndex -> Dispersion SymbolDistance Word8  #-}
+{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolDistance SymbolIndex -> Dispersion SymbolDistance Word16 #-}
+{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolDistance SymbolIndex -> Dispersion SymbolDistance Word32 #-}
+{-# SPECIALISE bitDispersion :: (SymbolIndex, SymbolIndex) -> Distance SymbolDistance SymbolIndex -> Dispersion SymbolDistance Word64 #-}
 -}
 bitDispersion
     ∷ ( Bounded c
@@ -85,12 +85,12 @@ bitDispersion
     ⇒ (i, i)
     -- ^ Magnitude
     → Distance c i
-    -- ^ Symbol change matrix (SDM) to determine cost
+    -- ^ symbol distance matrix (SDM) to determine cost
     → Dispersion d b
     -- ^ List of elements for of which to find the k-median and cost
-bitDispersion ixBounds sigma xs = (fromIntegral distance, centroid)
+bitDispersion ixBounds sigma xs = (fromIntegral distance, gMedian)
     where
-        (distance, centroid) = foldl' processRange (maxBound, zero) $ range ixBounds
+        (distance, gMedian) = foldl' processRange (maxBound, zero) $ range ixBounds
         withBounds = getBitBounds <$> toList xs
         --    wlog  = getFirst $ foldMap1 First xs
         wlog = fromJust . getFirst $ foldMap (First . Just) xs
@@ -151,40 +151,40 @@ Calculate the median between /two/ states.
     (Bounded c, Integral c, Num d) ⇒ (SymbolIndex, SymbolIndex) → Distance c SymbolIndex → DispersionPairwise d Word64
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionPairwise SymbolChangeCost CUInt
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionPairwise SymbolDistance CUInt
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionPairwise SymbolChangeCost Word
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionPairwise SymbolDistance Word
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionPairwise SymbolChangeCost Word8
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionPairwise SymbolDistance Word8
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionPairwise SymbolChangeCost Word16
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionPairwise SymbolDistance Word16
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionPairwise SymbolChangeCost Word32
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionPairwise SymbolDistance Word32
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionPairwise SymbolChangeCost Word64
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionPairwise SymbolDistance Word64
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionPairwise SymbolChangeCost CUInt
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionPairwise SymbolDistance CUInt
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionPairwise SymbolChangeCost Word
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionPairwise SymbolDistance Word
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionPairwise SymbolChangeCost Word8
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionPairwise SymbolDistance Word8
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionPairwise SymbolChangeCost Word16
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionPairwise SymbolDistance Word16
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionPairwise SymbolChangeCost Word32
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionPairwise SymbolDistance Word32
     #-}
 {-# SPECIALIZE bitDispersionPairwise ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionPairwise SymbolChangeCost Word64
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionPairwise SymbolDistance Word64
     #-}
 bitDispersionPairwise
     ∷ ( Bounded c
@@ -241,40 +241,40 @@ Calculate the median between /three/ states.
     (Bounded c, Integral c, Num d) ⇒ (SymbolIndex, SymbolIndex) → Distance c SymbolIndex → DispersionThreeway d Word64
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionThreeway SymbolChangeCost CUInt
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionThreeway SymbolDistance CUInt
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionThreeway SymbolChangeCost Word
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionThreeway SymbolDistance Word
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionThreeway SymbolChangeCost Word8
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionThreeway SymbolDistance Word8
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionThreeway SymbolChangeCost Word16
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionThreeway SymbolDistance Word16
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionThreeway SymbolChangeCost Word32
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionThreeway SymbolDistance Word32
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolChangeCost i → DispersionThreeway SymbolChangeCost Word64
+    (Enum i, Ix i) ⇒ (i, i) → Distance SymbolDistance i → DispersionThreeway SymbolDistance Word64
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionThreeway SymbolChangeCost CUInt
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionThreeway SymbolDistance CUInt
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionThreeway SymbolChangeCost Word
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionThreeway SymbolDistance Word
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionThreeway SymbolChangeCost Word8
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionThreeway SymbolDistance Word8
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionThreeway SymbolChangeCost Word16
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionThreeway SymbolDistance Word16
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionThreeway SymbolChangeCost Word32
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionThreeway SymbolDistance Word32
     #-}
 {-# SPECIALIZE bitDispersionThreeway ∷
-    (SymbolIndex, SymbolIndex) → Distance SymbolChangeCost SymbolIndex → DispersionThreeway SymbolChangeCost Word64
+    (SymbolIndex, SymbolIndex) → Distance SymbolDistance SymbolIndex → DispersionThreeway SymbolDistance Word64
     #-}
 bitDispersionThreeway
     ∷ ( Bounded c

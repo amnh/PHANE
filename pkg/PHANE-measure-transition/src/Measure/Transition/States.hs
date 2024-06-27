@@ -3,6 +3,9 @@
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE Strict #-}
 
+{- |
+Getter "lens" type-class for 'Measure.Distance.Dispersion'.
+-}
 module Measure.Transition.States (
     HasStateTransitions (..),
 ) where
@@ -16,7 +19,7 @@ Any structural representation which can produce a functions measuring the
 produce 2D and 3D "Transition Cost Matrices."
 
 /NOTE:/ Measurability of 'Measure.Dispersion.Dispersion' implies measurability
-of 'Measure.Centroid.Centroid' and 'Measure.Distance.Distance'.
+of 'Measure.Median.Median' and 'Measure.Distance.Distance'.
 -}
 class HasStateTransitions a e where
     {-# MINIMAL stateTransitionPairwiseDispersion, stateTransitionThreewayDispersion #-}
@@ -29,8 +32,8 @@ class HasStateTransitions a e where
     stateTransitionPairwiseDistance = ((fst .) .) . stateTransitionPairwiseDispersion
 
 
-    stateTransitionPairwiseCentroid ∷ a → StateTransitionPairwiseCentroidλ e
-    stateTransitionPairwiseCentroid = ((snd .) .) . stateTransitionPairwiseDispersion
+    stateTransitionPairwiseMedian ∷ a → StateTransitionPairwiseMedianλ e
+    stateTransitionPairwiseMedian = ((snd .) .) . stateTransitionPairwiseDispersion
 
 
     stateTransitionThreewayDispersion ∷ a → StateTransitionThreewayDispersionλ e
@@ -40,5 +43,5 @@ class HasStateTransitions a e where
     stateTransitionThreewayDistance = (((fst .) .) .) . stateTransitionThreewayDispersion
 
 
-    stateTransitionThreewayCentroid ∷ a → StateTransitionThreewayCentroidλ e
-    stateTransitionThreewayCentroid = (((snd .) .) .) . stateTransitionThreewayDispersion
+    stateTransitionThreewayMedian ∷ a → StateTransitionThreewayMedianλ e
+    stateTransitionThreewayMedian = (((snd .) .) .) . stateTransitionThreewayDispersion

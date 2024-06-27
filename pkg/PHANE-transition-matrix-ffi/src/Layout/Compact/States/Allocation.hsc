@@ -77,7 +77,7 @@ foreign import ccall unsafe "c_code_alloc_setup.h setUp3dCostMtx"
 -- Prefer 'fromSDMρ' to 'fromSDMλ', as this function performs /ϴ(a²)/ less
 -- allocation than that function.
 fromSDMρ
-  :: SymbolChangeCost           -- ^ The gap open cost. A zero value indicates non-affine alignment context
+  :: SymbolDistance           -- ^ The gap open cost. A zero value indicates non-affine alignment context
   -> SymbolDistanceMatrixSquare -- ^ The dense, pre-computed matrix of costs to shift between symbols.
   -> TCMρ
 fromSDMρ penalty scmρ =
@@ -96,7 +96,7 @@ fromSDMρ penalty scmρ =
 -- allocation than this function.
 fromSDMλ
   :: SymbolCount      -- ^ The character alphabet size
-  -> SymbolChangeCost -- ^ The gap open cost. A zero value indicates non-affine alignment context
+  -> SymbolDistance -- ^ The gap open cost. A zero value indicates non-affine alignment context
   -> SDMλ             -- ^ The function defining the costs to shift between symbols.
   -> TCMρ
 fromSDMλ alphabetSize openningCost scmλ =

@@ -6,6 +6,15 @@
 
 {- HLINT ignore "Redundant pure" -}
 
+{- |
+The pre-order traversal logic for aligning dynamic characters.
+
+The algorithm is a direct trascription of the 2020 MC Bioinformatics paper,
+
+/" Efficient Implied Alignment"/.
+
+<https://doi.org/10.1186/s12859-020-03595-2>
+-}
 module DirectOptimization.PreOrder (
     preOrderLogic,
 ) where
