@@ -27,9 +27,8 @@ import Data.Ix (Ix (range))
 import Data.Ord
 import Data.Vector.Storable (Vector)
 import Data.Vector.Storable qualified as V
-import Data.Word
 import GHC.Generics
-import Layout.Compact.Symbols.Internal (SymbolDistanceMatrix (..))
+import Layout.Compact.Symbols.Internal (DiscretizedResolution, SymbolDistanceMatrix (..))
 import Layout.Compact.Symbols.Internal qualified as SDM
 import Layout.Compact.Symbols.Square (SymbolDistanceMatrixSquare)
 import Layout.Compact.Symbols.Square qualified as SDMS
@@ -170,7 +169,7 @@ __Time:__ \( \mathcal{O}\left( 1 \right) \)
 Deconstructs the 'SymbolDistanceMatrixTriangular' to expose the underlying unboxed 'Vector'.
 -}
 {-# INLINE rowMajorVector #-}
-rowMajorVector ∷ SymbolDistanceMatrixTriangular → Vector Word16
+rowMajorVector ∷ SymbolDistanceMatrixTriangular → Vector DiscretizedResolution
 rowMajorVector = SDM.rowMajorVector . sdm
 
 
@@ -178,7 +177,7 @@ firstRowExtrema
     ∷ ( Integral b
       , Num c
       )
-    ⇒ (Vector Word16 → b)
+    ⇒ (Vector DiscretizedResolution → b)
     → SymbolDistanceMatrixTriangular
     → c
 firstRowExtrema f (SDMT (SymbolDistanceMatrix (SymbolCount n) v)) =

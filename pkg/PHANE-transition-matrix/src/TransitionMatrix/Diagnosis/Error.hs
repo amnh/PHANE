@@ -26,20 +26,26 @@ module TransitionMatrix.Diagnosis.Error (
 
     -- * Error extraction
     getDiagnosisErrors,
+
+    -- ** Conditional bounds
+    dicretizedValueBounds,
 ) where
 
 import Control.DeepSeq
+import Data.Bits
 import Data.Char (toLower)
 import Data.Data
 import Data.Foldable
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (intercalate, partition, sort)
+import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set (Set)
-import Data.Word (Word16)
 import GHC.Exts (fromList)
 import GHC.Generics
+import Layout.Compact.States (DiscretizedResolutionIota)
+import Layout.Compact.Symbols.Internal (DiscretizedResolution)
+import Measure.Unit.SymbolCount
 
 
 {- |
@@ -53,7 +59,7 @@ data DiagnosisError a
     | MatrixDimension0
     | MatrixDimension1
     | ValueNegative !(Set a)
-    | ValueOverflow !(Set a)
+    | ValueOverflow SymbolCount !(Set a)
     deriving stock (Data, Eq, Ord, Generic)
     deriving anyclass (NFData)
 
@@ -75,7 +81,7 @@ type role DiagnosisFailure nominal
 instance (Ord a) ⇒ Semigroup (DiagnosisFailure a) where
     (<>) (DiagnosisFailure lhs@(x :| xs)) (DiagnosisFailure rhs) =
         let rhs' = filter (`notElem` lhs) $ toList rhs
-            end = sort $ xs <> rhs'
+            end = List.sort $ xs <> rhs'
         in  DiagnosisFailure $ x :| end
 
 
@@ -83,28 +89,24 @@ instance (Show a) ⇒ Show (DiagnosisError a) where
     show =
         \case
             JaggedColumns n xs →
-                intercalate
-                    "\n"
+                joinLines
                     [ "Unequal column lengths in the proffered transition measure range."
                     , fold ["Expected all columns to be of length ", show n, " but found the following:"]
                     , nicelyRenderList $ IS.toList xs
                     ]
             JaggedRows n xs →
-                intercalate
-                    "\n"
+                joinLines
                     [ "Unequal row lengths in the proffered transition measure range."
                     , fold ["Expected all rows to be of length ", show n, " but found the following:"]
                     , nicelyRenderList $ IS.toList xs
                     ]
             NotSquareGrid m n →
-                intercalate
-                    "\n"
+                joinLines
                     [ "Unequal dimensions proffered for transition measure range."
                     , fold ["Cannot construct a non-square, ", show m, "⨉", show n, " transition measure"]
                     ]
             NotSquareList n →
-                intercalate
-                    "\n"
+                joinLines
                     [ "List of non-square length proffered as transition measure range."
                     , let root = sqrt $ fromIntegral n ∷ Double
                           lower = floor root ∷ Word
@@ -119,31 +121,36 @@ instance (Show a) ⇒ Show (DiagnosisError a) where
                             ]
                     ]
             MatrixDimension0 →
-                intercalate
-                    "\n"
+                joinLines
                     [ "0-dimensional transition measure proffered."
                     , "Cannot construct an empty transition measure"
                     ]
             MatrixDimension1 →
-                intercalate
-                    "\n"
+                joinLines
                     [ "1-dimensional transition measure proffered."
                     , "Cannot construct a transition measure of size 1, must be of size 2 or greater."
                     ]
             ValueNegative xs →
-                intercalate
-                    "\n"
-                    [ "Negative values in the proffered transition measure range."
+                joinLines
+                    [ "Negative values in the proffered transition measure."
                     , "Expected only non-negative values in range but found the following:"
                     , nicelyRenderList $ toList xs
                     ]
-            ValueOverflow xs →
-                intercalate
-                    "\n"
-                    [ "Values exceeding " <> show (maxBound ∷ Word16) <> " in the transition measure range."
-                    , "Expected smaller values in range but found the following:"
-                    , nicelyRenderList $ toList xs
-                    ]
+            ValueOverflow sCount xs →
+                let upper = snd $ dicretizedValueBounds sCount
+                in  joinLines
+                        [ unwords
+                            [ "Overflow values in the proffered the transition measure of"
+                            , show sCount
+                            , "symbols."
+                            ]
+                        , unwords
+                            [ "Expected values less than"
+                            , show upper
+                            , "but found the following:"
+                            ]
+                        , nicelyRenderList $ toList xs
+                        ]
 
 
 instance (Show a) ⇒ Show (DiagnosisFailure a) where
@@ -161,18 +168,20 @@ instance (Show a) ⇒ Show (DiagnosisFailure a) where
                         ]
             bullet [] = []
             bullet (x : xs) = ("  • " <> drop 4 x) : xs
-            prettifyErr = intercalate "\n" . fmap renderError . toList
-            indentError = intercalate "\n" . bullet . fmap ("    " <>) . lines
+            prettifyErr = joinLines . fmap renderError . toList
+            indentError = joinLines . bullet . fmap ("    " <>) . lines
             renderError = indentError . show
         in  tenseSensitiveShow . getDiagnosisErrors
 
 
 nicelyRenderList ∷ (Show a) ⇒ [a] → String
 nicelyRenderList =
-    let limit = 75
-        showTokens = words . intercalate ", " . fmap show
+    let indent = "  "
+        limit = 75
+        enclose xs = "{ " <> xs <> " }"
+        showTokens = words . enclose . List.intercalate ", " . fmap show
         revUnwords = unwords . reverse
-        revUnlines = intercalate "\n" . reverse
+        revUnlines = List.intercalate ("\n" <> indent) . reverse
         breakLines =
             let go acc = \case
                     [] → revUnlines acc
@@ -197,9 +206,9 @@ that it is the first error in the list.
 -}
 makeDiagnosisFailure ∷ (Ord a) ⇒ NonEmpty (DiagnosisError a) → DiagnosisFailure a
 makeDiagnosisFailure xs =
-    let sortedErrors = sort $ toList xs
+    let sortedErrors = List.sort $ toList xs
         uniqueErrors = pruneDuplicates sortedErrors
-        (badShapes, other) = partition malformedInputShape uniqueErrors
+        (badShapes, other) = List.partition malformedInputShape uniqueErrors
     in  DiagnosisFailure $ case badShapes of
             [] → fromList other
             x : _ → x :| other
@@ -210,6 +219,34 @@ Extract the list of diagnosed errors with the proffered transition measure.
 -}
 getDiagnosisErrors ∷ DiagnosisFailure a → NonEmpty (DiagnosisError a)
 getDiagnosisErrors (DiagnosisFailure xs) = xs
+
+
+{- |
+The /minimum/ and /maximum/ discretized values permitted for a matrix cell.
+This is based on the representation of the discretized encoding.
+
+/Note:/ the limit ensures that a single addition operation
+will not cause arithmetic overflow of the underlying type.
+-}
+dicretizedValueBounds ∷ (Integral i) ⇒ SymbolCount → (i, i)
+dicretizedValueBounds symbols =
+    let getBitWidth ∷ (FiniteBits b) ⇒ b → Int
+        getBitWidth = pred . finiteBitSize
+
+        upperBitWidth ∷ Int
+        upperBitWidth = getBitWidth (undefined ∷ DiscretizedResolution)
+
+        lowerBitWidth ∷ Int
+        lowerBitWidth = getBitWidth (undefined ∷ DiscretizedResolutionIota)
+
+        bitWidth ∷ Int
+        bitWidth
+            | iota symbols = lowerBitWidth
+            | otherwise = upperBitWidth
+
+        upperValueFromBits ∷ Int → Integer
+        upperValueFromBits b = pred $ (1 ∷ Integer) `shiftL` b
+    in  (0, fromInteger $ upperValueFromBits bitWidth)
 
 
 pruneDuplicates ∷ [DiagnosisError a] → [DiagnosisError a]
@@ -243,3 +280,7 @@ sameErrorType MatrixDimension1{} MatrixDimension1{} = True
 sameErrorType ValueNegative{} ValueNegative{} = True
 sameErrorType ValueOverflow{} ValueOverflow{} = True
 sameErrorType _ _ = False
+
+
+joinLines ∷ [String] → String
+joinLines = List.intercalate "\n"

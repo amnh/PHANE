@@ -440,7 +440,7 @@ expandBandedMatrix gap tcmλ lesserLeft longerTop mCost mDir po co = updatedBand
                     edgeCellDefinitions gap costλ longerTop mCost mDir
 
             let computeCell !leftElement !insertCost !i !j =
-                    {-# SCC recomputeCell #-}
+                    {-# SCC "recomputeCell" #-}
                     let !topElement = longerTop ! (j - 1)
                         !deleteCost = costλ gap topElement
                         !alignCost = costλ leftElement topElement
@@ -757,7 +757,7 @@ edgeCellDefinitions gap costλ longerTop mCost mDir =
 
         -- Write to an internal cell (not on a boundary) of the matrix.
         internalCell !leftElement !insertCost !i !j =
-            {-# SCC internalCell_expanding #-}
+            {-# SCC "internalCell_expanding" #-}
             let !topElement = longerTop ! (j - 1)
                 !deleteCost = costλ gap topElement
                 !alignCost = costλ leftElement topElement
@@ -777,7 +777,7 @@ edgeCellDefinitions gap costλ longerTop mCost mDir =
         -- We can also reduce the number of comparisons the first row makes from 3 to 1,
         -- since the diagonal and leftward values are "out of bounds."
         leftColumn _leftElement !insertCost !i !j =
-            {-# SCC leftColumn #-}
+            {-# SCC "leftColumn" #-}
             do
                 firstPrevCost ← readCost (i - 1) j
                 write (i, j) (# insertCost + firstPrevCost, UpArrow #)
@@ -791,7 +791,7 @@ edgeCellDefinitions gap costλ longerTop mCost mDir =
         -- We can also reduce the number of comparisons the first row makes from 3 to 2,
         -- since the leftward values are "out of bounds."
         leftBoundary !leftElement !insertCost !i !j =
-            {-# SCC leftBoundary #-}
+            {-# SCC "leftBoundary" #-}
             let topElement = longerTop ! (j - 1)
                 alignCost = costλ leftElement topElement
             in  do
@@ -809,7 +809,7 @@ edgeCellDefinitions gap costλ longerTop mCost mDir =
         -- We can also reduce the number of comparisons the first row makes from 3 to 1,
         -- since the diagonal and upward values are "out of bounds."
         rightBoundary !leftElement _insertCost !i !j =
-            {-# SCC rightBoundary #-}
+            {-# SCC "rightBoundary" #-}
             let topElement = longerTop ! (j - 1)
                 deleteCost = costλ gap topElement
                 alignCost = costλ leftElement topElement
@@ -823,7 +823,7 @@ edgeCellDefinitions gap costλ longerTop mCost mDir =
                                 maxBound
                     write (i, j) v
 
-        rightColumn = {-# SCC rightColumn #-} internalCell
+        rightColumn = {-# SCC "rightColumn" #-} internalCell
 
 
 {- |

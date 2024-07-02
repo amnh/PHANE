@@ -11,6 +11,7 @@
 module Layout.Compact.Symbols.Internal (
     -- * Representational Type
     SymbolDistanceMatrix (..),
+    DiscretizedResolution,
 
     -- * Queries
     index,
@@ -38,6 +39,9 @@ import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
+type DiscretizedResolution = Word32
+
+
 {- |
 General symbol distance matrix layout.
 -}
@@ -45,7 +49,7 @@ data SymbolDistanceMatrix
     = SymbolDistanceMatrix
         {-# UNPACK #-} !SymbolCount
         -- ^ Matrix dimension
-        {-# UNPACK #-} !(Vector Word16)
+        {-# UNPACK #-} !(Vector DiscretizedResolution)
         -- ^ Contiguous array of matrix values
     deriving stock (Data, Eq, Generic)
 
@@ -82,7 +86,7 @@ index (SymbolDistanceMatrix _ v) i =
 Deconstructs the 'Layout.Compact.Symbols.Internal.SymbolDistanceMatrix' to expose the underlying unboxed 'Vector'.
 -}
 {-# INLINE rowMajorVector #-}
-rowMajorVector ∷ SymbolDistanceMatrix → Vector Word16
+rowMajorVector ∷ SymbolDistanceMatrix → Vector DiscretizedResolution
 rowMajorVector (SymbolDistanceMatrix _ v) = v
 
 

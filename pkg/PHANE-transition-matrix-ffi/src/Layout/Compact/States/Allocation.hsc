@@ -17,23 +17,37 @@ compilation units, and also driver.c, which is not imported, but is
 included indirectory for reference.
 -}
 module Layout.Compact.States.Allocation (
+    -- * Type synonym
+    DiscretizedResolutionIota,
+    
     -- * Construction
     initialize,
-    --    fromSDMρ
-    --  , fromSDMλ
 ) where
 
-import Data.Vector.Storable (Vector, unsafeCast)
+import Data.Foldable (fold)
+import Data.List qualified as List
+import Data.Vector.Storable (Vector)
 import Data.Vector.Storable qualified as V
 import Foreign
 import Foreign.C.Types
 import Layout.Compact.States.Structure
 import System.IO.Unsafe (unsafePerformIO)
 
-import Debug.Trace
 
-nice :: Show a => String -> a -> String
-nice key val = key <> ":\t" <> show val
+debugging :: Bool
+debugging = False
+
+
+nice :: Show a => String -> a -> [String]
+nice key vals
+    | debugging = [ key <> ":\t" <> show vals ]
+    | otherwise = []
+
+
+{- |
+The representation of values sent across the FFI.
+-}
+type DiscretizedResolutionIota = CUShort
 
 
 {- |
@@ -45,9 +59,9 @@ It is therefore indexed not by powers of two, but by cardinal integer.
 foreign import ccall unsafe "c_code_alloc_setup.h setUp2dCostMtx"
     initializeCostMatrix2D_FFI
         ∷ Ptr FFI2D
-        → Ptr CUShort
+        → Ptr DiscretizedResolutionIota
         -- ^ tcm (The SDM row-major vector)
-        → CUShort
+        → DiscretizedResolutionIota
         -- ^ gap_open_cost
         → CSize
         -- ^ alphSize
@@ -57,9 +71,9 @@ foreign import ccall unsafe "c_code_alloc_setup.h setUp2dCostMtx"
 foreign import ccall unsafe "c_code_alloc_setup.h setUp3dCostMtx"
     initializeCostMatrix3D_FFI
         ∷ Ptr FFI3D
-        → Ptr CUShort
+        → Ptr DiscretizedResolutionIota
         -- ^ tcm (The SDM row-major vector)
-        → CUShort
+        → DiscretizedResolutionIota
         -- ^ gap_open_cost
         → CSize
         -- ^ alphSize
@@ -113,28 +127,19 @@ row-major vecotr of symbol transtion distances linear dimensions of the
 symbol count.
 -}
 initialize
-    ∷ Word
+    ∷ forall e. (Integral e, Storable e) => Word
     -- ^ Number of symbols to allocate for
     → Word
     -- ^ Penalty cost to begin a gap sequence
-    → Vector CUShort
+    → Vector e
     → TCMρ
 initialize dim penalty inputVector =
-    let clip ∷ Vector CUShort → Vector CUShort
+    let unsafeTruncateElements :: Vector e -> Vector DiscretizedResolutionIota
+        unsafeTruncateElements = V.map fromIntegral
+
+        clip ∷ Vector DiscretizedResolutionIota → Vector DiscretizedResolutionIota
         (clip, size) = clampSize dim
-        safeVector = (\x -> trace (unlines
-                [ nice "size" size
-                , nice "safeVector" x
-                , nice "openPenalty" openPenalty
-                , nice "dimension" dimension
-                , nice "rowLen" rowLen
---                , nice "firstRow" firstRow
---                , nice "firstCol" firstCol
---                , nice "maxDel" maxDel
---                , nice "maxIns" maxIns
---                , nice "minDel" minDel
---                , nice "minIns" minIns
-                ]) x) $  clip inputVector
+        safeVector = clip $ unsafeTruncateElements inputVector
         openPenalty = fromIntegral penalty
         dimension = fromIntegral size
         rowLen = fromEnum size
@@ -144,19 +149,25 @@ initialize dim penalty inputVector =
         maxIns = V.maximum firstRow
         minDel = V.minimum firstCol
         minIns = V.minimum firstRow
-    in  unsafePerformIO $ (trace (unlines
-            [ nice "size" size
-            , nice "safeVector" safeVector
-            , nice "openPenalty" openPenalty
-            , nice "dimension" dimension
-            , nice "rowLen" rowLen
-            , nice "firstRow" firstRow
-            , nice "firstCol" firstCol
-            , nice "maxDel" maxDel
-            , nice "maxIns" maxIns
-            , nice "minDel" minDel
-            , nice "minIns" minIns
-            ])) () `seq`
+
+        conditionalOutput :: IO ()
+        conditionalOutput
+            | not debugging = pure ()
+            | otherwise = putStrLn . unlines' $ fold
+                [ nice "size" size
+                , nice "safeVector" safeVector
+                , nice "openPenalty" openPenalty
+                , nice "dimension" dimension
+                , nice "rowLen" rowLen
+                , nice "firstRow" firstRow
+                , nice "firstCol" firstCol
+                , nice "maxDel" maxDel
+                , nice "maxIns" maxIns
+                , nice "minDel" minDel
+                , nice "minIns" minIns
+                ]
+        
+    in  unsafePerformIO $ conditionalOutput *>
             ( V.unsafeWith safeVector $ \arr → do
                 cm2D ← malloc ∷ IO (Ptr FFI2D)
                 cm3D ← malloc ∷ IO (Ptr FFI3D)
@@ -178,15 +189,21 @@ initialize dim penalty inputVector =
 {- |
 Ensure that the size does not exceed 'maximumDimension'.
 -}
-clampSize ∷ (Storable a) ⇒ Word → (Vector a → Vector CUShort, Word)
+clampSize ∷ Word → (Vector DiscretizedResolutionIota → Vector DiscretizedResolutionIota, Word)
 clampSize n =
-    let truncateVector ∷ Vector CUShort → Vector CUShort
+    let dim = min maximumDimension n
+        
+        truncateVector ∷ Vector DiscretizedResolutionIota → Vector DiscretizedResolutionIota
         truncateVector =
-            let x = fromEnum maximumDimension
-            in  V.slice 0 (x * x)
+            let x = fromEnum dim
+            in  V.slice 0 $ x * x
 
-        transform ∷ Vector CUShort → Vector CUShort
+        transform ∷ Vector DiscretizedResolutionIota → Vector DiscretizedResolutionIota
         transform
             | n <= maximumDimension = id
             | otherwise = truncateVector
-    in  (transform . unsafeCast, min maximumDimension n)
+    in  (transform, dim)
+
+
+unlines' :: [String] -> String
+unlines' = List.intercalate "\n"

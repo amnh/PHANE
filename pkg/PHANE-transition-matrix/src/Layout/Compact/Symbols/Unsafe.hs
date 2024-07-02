@@ -13,11 +13,9 @@ module Layout.Compact.Symbols.Unsafe (
 ) where
 
 import Data.Coerce
-import Data.Vector.Storable (Vector, force, generate, unsafeCoerceVector)
-import Data.Word (Word16)
-import Foreign.C.Types (CUShort (..))
+import Data.Vector.Storable (Vector, force, generate)
 import Layout.Compact.States (StateTransitionsCompact, initialize)
-import Layout.Compact.Symbols.Internal (SymbolDistanceMatrix (..))
+import Layout.Compact.Symbols.Internal (DiscretizedResolution, SymbolDistanceMatrix (..))
 import Layout.Compact.Symbols.Square (SymbolDistanceMatrixSquare (..), rowMajorVector)
 import Layout.Compact.Symbols.Triangular (SymbolDistanceMatrixTriangular (..))
 import Measure.Transition
@@ -39,13 +37,9 @@ unsafeCompactStateFromSDMS
     -- ^ The dense, pre-computed matrix of costs to shift between symbols.
     → StateTransitionsCompact
 unsafeCompactStateFromSDMS penalty sdms =
-    let castVec ∷ Vector Word16 → Vector CUShort
-        castVec = unsafeCoerceVector
-
-        dimension = coerce $ symbolCount sdms
+    let dimension = coerce $ symbolCount sdms
         gapSeqCost = coerce penalty
-        costVector = castVec $ rowMajorVector sdms
-    in  initialize dimension gapSeqCost costVector
+    in  initialize dimension gapSeqCost $ rowMajorVector sdms
 
 
 unsafeFromSDMλSquare ∷ SDMλ → SymbolCount → SymbolDistanceMatrixSquare
@@ -66,9 +60,9 @@ unsafeFromSDMλTriangular sdmλ sc@(SymbolCount n) =
     in  coerce . SymbolDistanceMatrix sc . force $ generate dim g
 
 
-unsafeFromVectorSquare ∷ SymbolCount → Vector Word16 → SymbolDistanceMatrixSquare
+unsafeFromVectorSquare ∷ SymbolCount → Vector DiscretizedResolution → SymbolDistanceMatrixSquare
 unsafeFromVectorSquare = (coerce .) . (. force) . SymbolDistanceMatrix
 
 
-unsafeFromVectorTriangular ∷ SymbolCount → Vector Word16 → SymbolDistanceMatrix
+unsafeFromVectorTriangular ∷ SymbolCount → Vector DiscretizedResolution → SymbolDistanceMatrix
 unsafeFromVectorTriangular = (coerce .) . (. force) . SymbolDistanceMatrix

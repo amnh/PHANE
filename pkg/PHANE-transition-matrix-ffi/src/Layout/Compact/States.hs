@@ -8,6 +8,7 @@ Construction of a dense transition cost matrix 'StateTransitionsCompact'
 module Layout.Compact.States (
     -- * Compact Representation of State Transitions
     StateTransitionsCompact (..),
+    DiscretizedResolutionIota,
 
     -- * FFI TCM Components
     FFI2D (),

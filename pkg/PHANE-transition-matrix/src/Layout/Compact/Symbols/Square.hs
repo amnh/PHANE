@@ -25,9 +25,8 @@ import Data.Ix (Ix (range))
 import Data.Ord
 import Data.Vector.Storable (Vector)
 import Data.Vector.Storable qualified as V
-import Data.Word
 import GHC.Generics
-import Layout.Compact.Symbols.Internal (SymbolDistanceMatrix (..))
+import Layout.Compact.Symbols.Internal (DiscretizedResolution, SymbolDistanceMatrix (..))
 import Layout.Compact.Symbols.Internal qualified as SDM
 import Measure.Range
 import Measure.Transition
@@ -147,11 +146,11 @@ bytesSizeMatrixSquare = SDM.bytesSizeSymbolMatrix . sdm
 Deconstructs the 'SymbolDistanceMatrixSquare' to expose the underlying unboxed 'Vector'.
 -}
 {-# INLINE rowMajorVector #-}
-rowMajorVector ∷ SymbolDistanceMatrixSquare → Vector Word16
+rowMajorVector ∷ SymbolDistanceMatrixSquare → Vector DiscretizedResolution
 rowMajorVector = SDM.rowMajorVector . sdm
 
 
-firstRowExtrema ∷ (Integral b, Num c) ⇒ (Vector Word16 → b) → SymbolDistanceMatrixSquare → c
+firstRowExtrema ∷ (Integral b, Num c) ⇒ (Vector DiscretizedResolution → b) → SymbolDistanceMatrixSquare → c
 firstRowExtrema f (SDMS (SymbolDistanceMatrix (SymbolCount n) v)) =
     fromIntegral . f $ V.slice 0 (fromEnum n) v
 

@@ -28,25 +28,27 @@ module TransitionMatrix.Diagnosis (
     fromColumns,
     fromRows,
     generate,
+
+    -- * Error measurment from discretization
+    ErrorFromDiscretization (..),
 ) where
 
 import Control.DeepSeq
+import Data.Bifunctor (second)
 import Data.Bits
 import Data.Coerce
 import Data.Foldable
 import Data.Hashable
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (sortBy, transpose, unfoldr)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List qualified as List
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Ord
-import Data.Ratio
+import Data.Scientific
 import Data.Vector qualified as V
 import Data.Vector.Storable qualified as VS
 import Data.Word
-import GHC.Exts qualified as GHC (fromList)
 import GHC.Generics
 import Layout.Compact.States (StateTransitionsCompact)
 import Layout.Compact.Symbols
@@ -63,8 +65,8 @@ import Measure.Transition
 import Measure.Unit.SymbolCount
 import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
-import Numeric
 import Numeric.Natural
+import TransitionMatrix.Diagnosis.Discretization
 import TransitionMatrix.Diagnosis.Error
 import TransitionMatrix.Metricity
 import TransitionMatrix.Representation
@@ -77,6 +79,8 @@ data TransitionMeasureDiagnosis a = TransitionMeasureDiagnosis
     { factoredCoefficient ∷ Rational
     -- ^ The multiplicative constant factor of a symbol distance matrix.
     --  Minimum value of the multiplicative identity /one/.
+    , measuredErrorFromDiscretization ∷ Maybe ErrorFromDiscretization
+    -- ^ How much numerical error, if any, occured during matrix discretization.
     , transitionMetricity ∷ Metricity
     -- ^ The most restrictive metric classifcation of the 'TransitionMatrix'.
     , transitionMatrix ∷ TransitionMatrix a
@@ -92,14 +96,60 @@ type role TransitionMeasureDiagnosis representational
 instance Show (TransitionMeasureDiagnosis a) where
     show d =
         let display ∷ Int → Rational → String
-            display n x = (showFFloat (Just n) $ fromRat x) ""
-        in  unwords
-                [ "TransitionMeasureDiagnosis"
-                , "("
-                , display 4 $ factoredCoefficient d
-                , show $ transitionMetricity d
-                , ")"
-                ]
+            display n x =
+                let (digits, e) = toDecimalDigits $ case fromRationalRepetendLimited (n + n + n) x of
+                        Left (s, _) → s
+                        Right (s, Nothing) → s
+                        Right (s, Just _) → s
+                    dLen = length digits
+                    dShow = foldMap show
+                in  fold $
+                        if dLen - e < n || e < 0
+                            -- Yes scientific notation
+                            then case digits of
+                                [] → ["?"]
+                                y : ys →
+                                    [ show y
+                                    , "."
+                                    , dShow . take n $ ys <> replicate n 0
+                                    , "e"
+                                    , show $ succ e
+                                    ]
+                            -- No scientific notation
+                            else
+                                let ds = replicate (negate e) 0 <> digits <> replicate n 0
+                                    (whole, float) = second (take n) $ splitAt e ds
+                                    whole' = case whole of
+                                        [] → [0]
+                                        w → w
+                                in  [dShow whole', ".", dShow float]
+
+            numErr ∷ [String]
+            numErr = case measuredErrorFromDiscretization d of
+                Nothing → mempty
+                Just err →
+                    [ "℮"
+                    , "{"
+                    , "μ"
+                    , "="
+                    , (<> ",") . ("±" <>) . display 4 $ discretizationErrrorMean err
+                    , "σ"
+                    , "="
+                    , display 4 $ discretizationErrrorSTD err
+                    , "}"
+                    ]
+        in  unwords $
+                fold
+                    [
+                        [ "TransitionMeasureDiagnosis"
+                        , "("
+                        , display 4 $ factoredCoefficient d
+                        , "×"
+                        , show $ transitionMetricity d
+                        ]
+                    , numErr
+                    , [")"]
+                    ]
 
 
 {- |
@@ -280,7 +330,7 @@ fromList
     → Either (DiagnosisFailure a) (TransitionMeasureDiagnosis b)
 fromList xs =
     let chunks ∷ Int → [a] → [[a]]
-        chunks n = takeWhile (not . null) . unfoldr (Just . splitAt n)
+        chunks n = takeWhile (not . null) . List.unfoldr (Just . splitAt n)
 
         inputLen = length xs
         size = floor $ sqrt (fromIntegral inputLen ∷ Double)
@@ -390,7 +440,7 @@ fromColumns
     ⇒ t (t' a)
     → Either (DiagnosisFailure a) (TransitionMeasureDiagnosis b)
 fromColumns xs =
-    let gridForm = transpose . fmap toList $ toList xs
+    let gridForm = List.transpose . fmap toList $ toList xs
         (height, out) = modeAndOutlierLengths xs
         jaggedCheck
             | IS.null out = mempty
@@ -643,12 +693,13 @@ completeDiagnosis
       , Hashable a
       , NFData a
       )
-    ⇒ (Rational, SymbolDistanceMatrixSquare)
+    ⇒ (Rational, Maybe ErrorFromDiscretization, SymbolDistanceMatrixSquare)
     → TransitionMeasureDiagnosis a
-completeDiagnosis (coefficient, sdms) =
+completeDiagnosis (coefficient, errMay, sdms) =
     let (metricity, measure) = meaureWithMetricity sdms
     in  TransitionMeasureDiagnosis
             { factoredCoefficient = coefficient
+            , measuredErrorFromDiscretization = errMay
             , transitionMetricity = metricity
             , transitionMatrix = measure
             }
@@ -685,7 +736,9 @@ checkInputValidity
       )
     ⇒ t (t' a)
     → Maybe (DiagnosisFailure a)
-    → Either (DiagnosisFailure a) (Rational, SymbolDistanceMatrixSquare)
+    → Either
+        (DiagnosisFailure a)
+        (Rational, Maybe ErrorFromDiscretization, SymbolDistanceMatrixSquare)
 checkInputValidity grid precheckedError =
     let dimension ∷ Word
         dimension = toEnum . length $ grid
@@ -701,18 +754,22 @@ checkInputValidity grid precheckedError =
 mergeInputFailures
     ∷ (Real a)
     ⇒ ( Maybe (DiagnosisFailure a)
-      , Either (DiagnosisFailure a) (Rational, Word, VS.Vector Word16)
+      , Either
+            (DiagnosisFailure a)
+            (Rational, Word, Maybe ErrorFromDiscretization, VS.Vector DiscretizedResolution)
       )
-    → Either (DiagnosisFailure a) (Rational, SymbolDistanceMatrixSquare)
+    → Either
+        (DiagnosisFailure a)
+        (Rational, Maybe ErrorFromDiscretization, SymbolDistanceMatrixSquare)
 mergeInputFailures =
     \case
         (Just shapeError, Left valueErrors) → Left $ shapeError <> valueErrors
         (Just shapeError, Right _) → Left shapeError
         (Nothing, Left valueErrors) → Left valueErrors
-        (Nothing, Right (c, n, v)) →
+        (Nothing, Right (c, n, e, v)) →
             let dim = SymbolCount n
                 sdms = unsafeFromVectorSquare dim v
-            in  Right (c, sdms)
+            in  Right (c, e, sdms)
 
 
 {- |
@@ -751,30 +808,13 @@ checkValueRange
     ∷ (Real a)
     ⇒ Word
     → V.Vector a
-    → Either (DiagnosisFailure a) (Rational, Word, VS.Vector Word16)
-checkValueRange dimension originalValues =
-    let overflow ∷ (a, Rational) → Bool
-        overflow = let limit = toRational (maxBound ∷ Word16) in \(_, y) → y > limit
-        negative ∷ (Ord b, Num b) ⇒ (a, b) → Bool
-        negative (_, y) = y < 0
-        rationalValues = toRational <$> originalValues
-        coefficient = foldl1 lcm $ abs . denominator <$> rationalValues
-        prospectiveValues = ((coefficient % 1) *) <$> rationalValues
-        negativeValues = fmap fst . V.filter negative $ V.zip originalValues prospectiveValues
-        overflowValues = fmap fst . V.filter overflow $ V.zip originalValues prospectiveValues
-        coercedVector = VS.convert $ toEnum . fromEnum <$> prospectiveValues
-
-        failure ∷ (Ord a) ⇒ NonEmpty (DiagnosisError a) → Either (DiagnosisFailure a) b
-        failure = Left . makeDiagnosisFailure
-        vectorToSet = GHC.fromList . toList
-    in  case (V.null negativeValues, V.null overflowValues) of
-            (True, True) → Right (1 % coefficient, dimension, coercedVector)
-            (False, True) → failure . pure $ ValueNegative (vectorToSet negativeValues)
-            (True, False) → failure . pure $ ValueOverflow (vectorToSet overflowValues)
-            (False, False) →
-                failure $
-                    ValueNegative (vectorToSet negativeValues)
-                        :| [ValueOverflow (vectorToSet overflowValues)]
+    → Either
+        (DiagnosisFailure a)
+        (Rational, Word, Maybe ErrorFromDiscretization, VS.Vector DiscretizedResolution)
+checkValueRange n inputs =
+    let f ∷ (a, c, d) → (a, Word, c, d)
+        f (x, y, z) = (x, n, y, z)
+    in  f <$> adaptiveDiscretization (SymbolCount n) inputs
 
 
 {- |
@@ -795,7 +835,7 @@ modeAndOutlierLengths =
         collateOccuranceMap =
             let comparator ∷ (Ord v) ⇒ (k, v) → (k, v) → Ordering
                 comparator = comparing (Down . snd)
-            in  fmap fst . sortBy comparator . Map.assocs
+            in  fmap fst . List.sortBy comparator . Map.assocs
 
         getResults =
             \case

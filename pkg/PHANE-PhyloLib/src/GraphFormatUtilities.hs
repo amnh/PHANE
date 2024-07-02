@@ -359,7 +359,6 @@ getBodyParts inRep nodeNumber =
     if T.null inRep
         then error "No group to parse in getBodyParts"
         else -- trace ("In body parts") (
-
             let subGraphPart = (T.reverse . T.dropWhile (/= ')') $ T.reverse inRep)
                 branchLength = getBranchLength inRep
                 subGraphLabel = getNodeLabel nodeNumber inRep
@@ -385,7 +384,6 @@ getParenBoundedGraph leftParenCounter rightParenCounter curText inText =
                         if firstChar /= ')'
                             then getParenBoundedGraph leftParenCounter rightParenCounter (T.snoc curText firstChar) (T.tail inText)
                             else -- right paren
-
                                 if rightParenCounter + 1 == leftParenCounter -- closing matrched paren
                                     then
                                         let restOfComponent = T.takeWhile (/= ',') inText
@@ -577,7 +575,6 @@ mergeNetNodesAndEdges inGraph =
             in  -- nothing to do (no repeated node labels)
                 if isNothing graphDelta
                     then -- need to reindex nodes and edges so nodes are sequential
-
                         let (_, nodeIndexPairs) = getNodeIndexPair [] [] nodeList
                             nodeMap = Map.fromList nodeIndexPairs
                             reindexedNodeList = fmap (reIndexLNode nodeMap) (G.labNodes inGraph)
@@ -585,7 +582,6 @@ mergeNetNodesAndEdges inGraph =
                         in  -- to make nodes sequencentioal required later
                             G.mkGraph reindexedNodeList reIndexedEdgeList
                     else -- modifications were made to graph
-
                         let (nodesToDelete, edgesToDelete, edgesToCreate) = fromJust graphDelta
                             newGraph = (G.insEdges edgesToCreate . G.delNodes (fmap fst nodesToDelete) $ G.delEdges (fmap G.toEdge edgesToDelete) inGraph)
                         in  -- trace (showGraph newGraph)
@@ -817,7 +813,6 @@ fgl2FEN writeEdgeWeight writeNodeLable inFGLGraph =
         then T.empty
         else -- Modify greaph for enewick stuff (leaves -> indegree 1, 'split' network nodes)
         -- trace ("Original:\n" <> showGraph inFGLGraph) (
-
             let fglGraph = modifyFGLForEnewick inFGLGraph
             in  -- get forest roots
                 -- trace ("Final:\n" <> showGraph fglGraph) (

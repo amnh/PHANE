@@ -318,11 +318,11 @@ instance MonadUnliftIO (Evaluation env) where
     {-# INLINE withRunInIO #-}
     -- f :: (forall a. Evaluation env a -> IO a) -> IO b
     withRunInIO f =
-        {-# SCC withRunInIO_Evaluation #-}
+        {-# SCC "withRunInIO_Evaluation" #-}
         Evaluation . ReaderT $ \env →
-            {-# SCC withRunInIO_ReaderT_f #-}
+            {-# SCC "withRunInIO_ReaderT_f" #-}
             withRunInIO $
-                {-# SCC withRunInIO_WITH_run #-}
+                {-# SCC "withRunInIO_WITH_run" #-}
                 \run →
                     pure <$> f (run . executeEvaluation env)
 
