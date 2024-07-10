@@ -68,6 +68,10 @@ import Measure.Unit.SymbolIndex
 import Prelude hiding (head, last)
 import System.IO.Unsafe (unsafePerformIO)
 
+
+type SequencePointer = Ptr CUInt
+
+
 -- |
 -- Specify which alignment to perform
 data  AlignmentStrategy = Linear | Affine
@@ -115,11 +119,11 @@ data  FFI2D
     -- ^ if tcm is metric
     , allElems2D            :: CInt
     -- ^ total number of elements
-    , bestCost2D            :: Ptr CUInt
+    , bestCost2D            :: SequencePointer
     {- ^ The transformation cost matrix, including ambiguities, storing the **best**
          cost for each ambiguity pair
     -}
-    , medians2D             :: Ptr CUInt
+    , medians2D             :: SequencePointer
     {- ^ The matrix of possible medians between elements in the alphabet. The best
          possible medians according to the cost matrix.
     -}
@@ -159,8 +163,8 @@ data  FFI3D
     , include_ambiguities3D :: CInt
     , gapOpenCost3D         :: CInt
     , allElems3D            :: CInt
-    , bestCost3D            :: Ptr CUInt
-    , medians3D             :: Ptr CUInt
+    , bestCost3D            :: SequencePointer
+    , medians3D             :: SequencePointer
     }
     deriving stock    (Generic)
     deriving anyclass (NFData)
@@ -189,14 +193,14 @@ data  FFI3D
 --
 data  StateTransitionsCompact
     = StateTransitionsCompact
-    { gapPenalty :: {-# UNPACK #-} Word
+    { matrix2D   :: {-# UNPACK #-} (Ptr FFI2D)
+    , matrix3D   :: {-# UNPACK #-} (Ptr FFI3D)
+    , matrixSize :: {-# UNPACK #-} Word
+    , gapPenalty :: {-# UNPACK #-} Word
     , maxDelCost :: {-# UNPACK #-} Word
     , maxInsCost :: {-# UNPACK #-} Word
     , minDelCost :: {-# UNPACK #-} Word
     , minInsCost :: {-# UNPACK #-} Word
-    , matrixSize :: {-# UNPACK #-} Word
-    , matrix2D   :: {-# UNPACK #-} (Ptr FFI2D)
-    , matrix3D   :: {-# UNPACK #-} (Ptr FFI3D)
     }
     deriving stock    (Generic)
     deriving anyclass (NFData)
