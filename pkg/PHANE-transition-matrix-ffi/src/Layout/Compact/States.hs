@@ -1,7 +1,8 @@
 {- |
 
 
-Construction of a dense transition cost matrix 'StateTransitionsCompact'
+Construction of a dense transition cost matrix
+'Layout.Compact.States.Structure.StateTransitionsCompact'.
 
 /O(a^5)/ where /a/ is the size of the character alphabet
 -}

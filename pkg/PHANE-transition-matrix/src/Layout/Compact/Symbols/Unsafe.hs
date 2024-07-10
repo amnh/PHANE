@@ -36,10 +36,9 @@ unsafeCompactStateFromSDMS
     → SymbolDistanceMatrixSquare
     -- ^ The dense, pre-computed matrix of costs to shift between symbols.
     → StateTransitionsCompact
-unsafeCompactStateFromSDMS penalty sdms =
+unsafeCompactStateFromSDMS gapOpenCost sdms =
     let dimension = coerce $ symbolCount sdms
-        gapSeqCost = coerce penalty
-    in  initialize dimension gapSeqCost $ rowMajorVector sdms
+    in  initialize dimension gapOpenCost $ rowMajorVector sdms
 
 
 unsafeFromSDMλSquare ∷ SDMλ → SymbolCount → SymbolDistanceMatrixSquare

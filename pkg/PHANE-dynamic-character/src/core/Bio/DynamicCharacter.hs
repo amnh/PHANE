@@ -5,6 +5,11 @@
 -- {-# LANGUAGE Strict #-}
 {-# LANGUAGE UnboxedTuples #-}
 
+{- |
+Dynamic characters are character which constitute a variable length sequence of states instead of a single state having fixed width.
+Consequently, the states contained within two dynamic characters have a /dynamic/ relationship between each other depending on how they are aligned.
+This module provides the functionality to construct, query, and modify dynamic characters.
+-}
 module Bio.DynamicCharacter (
     -- * Generic Dynamic Character Constructions
     OpenDynamicCharacter,
@@ -228,11 +233,11 @@ setAlign
     → Int
     -- ^ Index to set
     → e
-    -- ^ Aligned ``Left'' element
+    -- ^ Aligned "left" element
     → e
-    -- ^ Median Element
+    -- ^ Median element
     → e
-    -- ^ Aligned ``Right'' Element
+    -- ^ Aligned "right" element
     → m ()
 setAlign (lc, mc, rc) i le me re =
     unsafeWrite lc i le *> unsafeWrite mc i me *> unsafeWrite rc i re
@@ -252,9 +257,9 @@ setDelete
     → Int
     -- ^ Index to set
     → e
-    -- ^ Deleted ``Right'' element
+    -- ^ Deleted "right" element
     → e
-    -- ^ Median Element
+    -- ^ Median element
     → m ()
 setDelete (lc, mc, rc) i me re =
     unsafeWrite lc i (me `xor` me) *> unsafeWrite mc i me *> unsafeWrite rc i re
@@ -274,9 +279,9 @@ setInsert
     → Int
     -- ^ Index to set
     → e
-    -- ^ Median Element
+    -- ^ Median element
     → e
-    -- ^ Inserted ``Left'' element
+    -- ^ Inserted "left" element
     → m ()
 setInsert (lc, mc, rc) i le me =
     unsafeWrite lc i le *> unsafeWrite mc i me *> unsafeWrite rc i (me `xor` me)
@@ -435,6 +440,10 @@ removeGapAndNil rc
         in  GV.filter (\e → e /= gap && e /= nil) rc
 
 
+{- |
+Construct a dynamic character from a sequence of "symbol sets".
+The provided 'Alphabet' is used to encode the present symbols of each set into a dynamic character element.
+-}
 {-# INLINEABLE encodeDynamicCharacter #-}
 {-# SPECIALIZE encodeDynamicCharacter ∷
     (Foldable f, Foldable g, Ord s) ⇒ Alphabet s → (Word → SlimState) → f (g s) → SlimDynamicCharacter

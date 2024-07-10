@@ -42,7 +42,7 @@ Flag Optimize
 
 Common ghc-flags
 
-  Ghc-Options:
+  GHC-Options:
     -fdiagnostics-color=always
     -fhide-source-paths
     -j
@@ -56,12 +56,11 @@ Common ghc-flags
       -rdynamic
 
   If !flag(Optimize)
-    Ghc-Options:
+    GHC-Options:
       -O0
   Else
-    Ghc-Options:
+    GHC-Options:
       -O2
-      -rtsopts
       -threaded
 
       -- Optimization flags
@@ -76,7 +75,7 @@ Common ghc-flags
       -fstatic-argument-transformation
 
   If !flag(Forego-Sanity)
-    Ghc-Options:
+    GHC-Options:
       -- Sanity check warnings
       --   1. Include all warnings by default
       -Weverything
@@ -92,11 +91,11 @@ Common ghc-flags
       -Wno-unsafe
 
   If !flag(Forego-Sanity) && impl(ghc >=9.2)
-    Ghc-Options:
+    GHC-Options:
       -Wno-missing-kind-signatures
 
   If !flag(Forego-Sanity) && impl(ghc >=9.4)
-    Ghc-Options:
+    GHC-Options:
       -Wno-redundant-strictness-flags
 
 
@@ -130,7 +129,7 @@ Executable test-harness
   GHC-Options:
     -threaded
 
-  Hs-Source-Dirs:
+  HS-Source-Dirs:
     app
 
 
@@ -199,7 +198,7 @@ Library result
     PHANE.Evaluation.Result
     PHANE.Evaluation.ErrorPhase
 
-  Hs-Source-Dirs:
+  HS-Source-Dirs:
     lib
 
   Visibility:
@@ -222,10 +221,10 @@ Test-Suite test-cases
     tasty-quickcheck >= 0.9 && < 1.0,
     tasty-rerun >= 1.1.14 && < 2.0,
 
-  Ghc-Options:
+  GHC-Options:
     -threaded
 
-  Hs-Source-Dirs:
+  HS-Source-Dirs:
     test
 
   Main-Is:

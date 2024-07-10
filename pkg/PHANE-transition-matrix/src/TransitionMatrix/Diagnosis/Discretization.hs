@@ -25,7 +25,6 @@ import Data.Foldable
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
 import Data.Ord
 import Data.Ratio
 import Data.Semigroup (Arg (..))

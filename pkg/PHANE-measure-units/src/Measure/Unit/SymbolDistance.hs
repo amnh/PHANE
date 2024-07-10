@@ -10,6 +10,7 @@ The distance between two symbols indicating the "cost" of transitioning from one
 -}
 module Measure.Unit.SymbolDistance (
     SymbolDistance (..),
+    fromSymbolDistance,
 ) where
 
 import Control.DeepSeq
@@ -207,5 +208,12 @@ instance GV.Vector UV.Vector SymbolDistance where
     elemseq = const seq
 
 
+{- |
+__Time:__ \( \mathcal{O}\left( 0 \right) \)
+
+Convert a 'Measure.Unit.SymbolDistance.SymbolDistance' to a 'Word'
+as a "no-op" via type coercion.
+-}
+{-# INLINE fromSymbolDistance #-}
 fromSymbolDistance ∷ SymbolDistance → Word
 fromSymbolDistance = coerce

@@ -36,9 +36,9 @@ Because of this, the term "compact" is used to describe the representation.
 
 If any measure has an 'iota' symbol count, i.e. a symbol count of less than
 or equal to 'infimumSymbolLimit', the compact representation will pre-compute
-the entire transition cost matrix in a structure which is 'Storable' and
-inter-operable with the C FFI. If and only if the measure is specified for an
-'iota' symbol count will 'stateTransitionCompact' return a @Just@ value.
+the entire transition cost matrix in a structure which is 'Foreign.C.Types.Storable'
+and inter-operable with the C FFI. If and only if the measure is specified for
+an 'iota' symbol count will 'stateTransitionCompact' return a @Just@ value.
 
 Additionally, the compact representation notes if the discrete metric, the
 discrete metric adjoined by the gap symbol, or the L1 norm are the specified

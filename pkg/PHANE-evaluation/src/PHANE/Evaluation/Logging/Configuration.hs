@@ -272,14 +272,23 @@ logMessageToFeeds config level txt =
             pure (errΔ, outΔ, logΔ)
 
 
+{- |
+Apply the update function to the logging feed for @STDERR@.
+-}
 modConfigSTDERR ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfiguration
 modConfigSTDERR f x = x{configSTDERR = f $ configSTDERR x}
 
 
+{- |
+Apply the update function to the logging feed for @STDOUT@.
+-}
 modConfigSTDOUT ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfiguration
 modConfigSTDOUT f x = x{configSTDOUT = f $ configSTDOUT x}
 
 
+{- |
+Apply the update function to the logging feed for file stream.
+-}
 modConfigStream ∷ (LogFeed → LogFeed) → LogConfiguration → LogConfiguration
 modConfigStream f x = x{configStream = f $ configStream x}
 

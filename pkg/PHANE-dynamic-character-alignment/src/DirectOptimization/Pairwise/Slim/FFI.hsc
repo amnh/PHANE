@@ -315,7 +315,7 @@ algn3d char1 char2 char3 mismatchCost openningGapCost indelCost denseTCMs = hand
 {- Generic helper functions -}
 
 {- |
-Efficiently convert from 'Int' to 'CSize'.
+Efficiently convert from 'Int' to 'Foreign.C.Types.CSize'.
 -}
 {-# INLINE ics #-}
 ics :: Int -> CSize

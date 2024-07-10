@@ -1034,7 +1034,9 @@ getVertexList inGraph
         in  vertexList'
 
 
---  | relabelFGL takes P.Gr Attributes Attributes and converts to P.Gr Text Double
+{- |
+'relabelFGL' takes P.Gr Attributes Attributes and converts to P.Gr Text Double
+-}
 relabelFGL ∷ P.Gr Attributes Attributes → P.Gr Text Double
 relabelFGL inGraph
     | G.isEmpty inGraph = G.empty
@@ -1049,7 +1051,9 @@ relabeLEdge ∷ G.LEdge b → G.LEdge Double
 relabeLEdge (u, v, _) = (u, v, 0.0 ∷ Double)
 
 
---  | relabelFGL takes P.Gr Attributes Attributes and converts to P.Gr Text Double
+{- |
+'relabelFGL' takes P.Gr Attributes Attributes and converts to P.Gr Text Double
+-}
 relabelFGLEdgesDouble ∷ P.Gr a b → P.Gr a Double
 relabelFGLEdgesDouble inGraph
     | G.isEmpty inGraph = G.empty

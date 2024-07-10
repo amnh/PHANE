@@ -39,14 +39,14 @@ import Data.Vector.Unboxed.Mutable qualified as MUV
 {- |
 A set of gaps extracted froma sequence to be re-inserted later.
 
-/NOTE:/ The 'GapSet' type is closed to ensure invaiants hold.
+/NOTE:/ The 'Bio.DynamicCharacter.HandleGaps.GapSet' type is closed to ensure invaiants hold.
 -}
 newtype GapSet = GapSet (IntMap Word)
     deriving newtype (Eq, Show)
 
 
 {- |
-The 'GapSet' which contains no gaps.
+The 'Bio.DynamicCharacter.HandleGaps.GapSet' which contains no gaps.
 
 /NOTE:/ Useful for making comparisons.
 -}
@@ -133,7 +133,7 @@ deleteGaps c@(x, y, z)
 {- |
 Adds gaps elements to the supplied character.
 
-/NOTE:/ It is important to have the 'gap' state passed in as a parameter!
+/NOTE:/ It is important to have the 'Data.Alphabet.gapSymbol' state passed in as a parameter!
 There is the possibility that the alignment context is empty, but one or more
 gaps need to be added. We cannot construct a gap state from an empty input so
 the gap state must be externally supplied.

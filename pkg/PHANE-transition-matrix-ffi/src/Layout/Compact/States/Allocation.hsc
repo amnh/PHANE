@@ -32,7 +32,8 @@ import Foreign
 import Foreign.C.Types
 import Layout.Compact.States.Structure
 import System.IO.Unsafe (unsafePerformIO)
-
+import Measure.Unit.SymbolCount (SymbolCount(..))
+import Measure.Unit.SymbolDistance (SymbolDistance, fromSymbolDistance)
 
 debugging :: Bool
 debugging = False
@@ -60,11 +61,11 @@ foreign import ccall unsafe "c_code_alloc_setup.h setUp2dCostMtx"
     initializeCostMatrix2D_FFI
         ∷ Ptr FFI2D
         → Ptr DiscretizedResolutionIota
-        -- ^ tcm (The SDM row-major vector)
+        -- ^ Symbol Change Matrix (SDM) as a row-major vector
         → DiscretizedResolutionIota
-        -- ^ gap_open_cost
+        -- ^ Gap open cost
         → CSize
-        -- ^ alphSize
+        -- ^ Alphabet size/symbol count
         → IO ()
 
 
@@ -72,11 +73,11 @@ foreign import ccall unsafe "c_code_alloc_setup.h setUp3dCostMtx"
     initializeCostMatrix3D_FFI
         ∷ Ptr FFI3D
         → Ptr DiscretizedResolutionIota
-        -- ^ tcm (The SDM row-major vector)
+        -- ^ Symbol Change Matrix (SDM) as a row-major vector
         → DiscretizedResolutionIota
-        -- ^ gap_open_cost
+        -- ^ Gap open cost
         → CSize
-        -- ^ alphSize
+        -- ^ Alphabet size/symbol count
         → IO ()
 
 
@@ -127,13 +128,14 @@ row-major vecotr of symbol transtion distances linear dimensions of the
 symbol count.
 -}
 initialize
-    ∷ forall e. (Integral e, Storable e) => Word
+    ∷ forall e. (Integral e, Storable e)
+    => SymbolCount
     -- ^ Number of symbols to allocate for
-    → Word
+    → SymbolDistance
     -- ^ Penalty cost to begin a gap sequence
     → Vector e
     → TCMρ
-initialize dim penalty inputVector =
+initialize (SymbolCount dim) penalty inputVector =
     let unsafeTruncateElements :: Vector e -> Vector DiscretizedResolutionIota
         unsafeTruncateElements = V.map fromIntegral
 
@@ -175,7 +177,7 @@ initialize dim penalty inputVector =
                 _ ← initializeCostMatrix3D_FFI cm3D arr openPenalty dimension
                 pure
                     StateTransitionsCompact
-                        { gapPenalty = penalty
+                        { gapPenalty = fromSymbolDistance penalty
                         , maxDelCost = fromIntegral maxDel
                         , maxInsCost = fromIntegral maxIns
                         , minDelCost = fromIntegral minDel
