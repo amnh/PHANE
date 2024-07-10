@@ -5,11 +5,6 @@
 #include "c_code_alloc_setup.h"
 
 {- |
-License     :  BSD-style
-
-Maintainer  :  wheeler@amnh.org
-Portability :  portable
-
 Generate the 2D and 3D compact TCM matricies used for FFI calls.
 
 For notes on usage, data construction and external see referenced C
@@ -48,7 +43,7 @@ nice key vals
 {- |
 The representation of values sent across the FFI.
 -}
-type DiscretizedResolutionIota = CUShort
+type DiscretizedResolutionIota = CUInt
 
 
 {- |
