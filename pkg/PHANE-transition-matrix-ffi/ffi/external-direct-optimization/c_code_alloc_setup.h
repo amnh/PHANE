@@ -5,12 +5,13 @@
 #ifndef C_CODE_ALLOC_SETUP_H
 #define C_CODE_ALLOC_SETUP_H
 
+#include "costMatrix.h"
 #include "alignCharacters.h"
 #include "debug_constants.h"
-#include "costMatrix.h"
 #include "alignmentMatrices.h"
-//#include "ukkCheckp.h"
-//#include "ukkCommon.h"
+
+
+#define cost_t unsigned int
 
 
 /** Find distance between an unambiguous nucleotide and an ambiguous ambElem. Return that value and the median.
@@ -24,10 +25,10 @@
  *
  *  Requires symmetric, if not metric, matrix.
  */
-int distance( unsigned short const *tcm
-            , size_t                alphSize
-            , elem_t                nucleotide
-            , elem_t                ambElem
+int distance( cost_t const *tcm
+            , size_t alphSize
+            , elem_t nucleotide
+            , elem_t ambElem
             );
 
 
@@ -73,10 +74,10 @@ void resetCharValues( dyn_character_t *retChar );
  *  No longer setting max, as algorithm to do so is unclear: see note below.
  *  Not sure which of two loops to set prepend and tail arrays is correct.
  */
-void setUp2dCostMtx( cost_matrices_2d_t   *retMtx
-                   , unsigned short const *tcm
-                   , unsigned short        gap_open
-                   , size_t                alphSize
+void setUp2dCostMtx( cost_matrices_2d_t  *retMtx
+                   , cost_t const        *tcm
+                   , cost_t              gap_open
+                   , size_t              alphSize
                    );
 
 
@@ -84,10 +85,10 @@ void setUp2dCostMtx( cost_matrices_2d_t   *retMtx
  *  I attempted to do with with a return of void *, but was having trouble with allocation, and was forced to move
  *  it outside this fn.
  */
-void setUp3dCostMtx( cost_matrices_3d_t   *retMtx
-                   , unsigned short const *tcm
-                   , unsigned short        gap_open
-                   , size_t                alphSize
+void setUp3dCostMtx( cost_matrices_3d_t *retMtx
+                   , cost_t const       *tcm
+                   , cost_t             gap_open
+                   , size_t             alphSize
                    );
 
 

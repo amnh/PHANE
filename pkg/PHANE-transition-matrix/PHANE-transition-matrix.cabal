@@ -184,6 +184,8 @@ test-suite test-suite-discretization
     tasty-hunit >= 0.10 && < 1.0,
     tasty-quickcheck >= 0.9 && < 1.0,
     tasty-rerun >= 1.1.14 && < 2.0,
+    PHANE-measure-transition,
+    PHANE-measure-units,
     PHANE-transition-matrix,
 
   Other-Modules:

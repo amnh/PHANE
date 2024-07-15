@@ -66,9 +66,9 @@ int cAlign3D( elem_t             *inputChar1_aio
             , elem_t             *outputChar3_aio
             , elem_t             *ungappedOutput_aio
             , cost_matrices_3d_t *costMtx3d
-            , unsigned int        substitution_cost
-            , unsigned int        gap_open_cost
-            , unsigned int        gap_extension_cost
+            , cost_t             substitution_cost
+            , cost_t             gap_open_cost
+            , cost_t             gap_extension_cost
             );
 
 

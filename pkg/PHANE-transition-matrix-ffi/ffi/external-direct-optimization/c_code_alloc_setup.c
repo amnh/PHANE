@@ -22,10 +22,10 @@
  *
  *  Requires symmetric, if not metric, matrix.
  */
-int distance( unsigned short const *tcm
-            , size_t                alphSize
-            , elem_t                nucleotide
-            , elem_t                ambElem
+int distance( cost_t const *tcm
+            , size_t alphSize
+            , elem_t nucleotide
+            , elem_t ambElem
             )
 {
     int min     = INT_MAX;
@@ -91,9 +91,9 @@ void initializeAlignmentMtx( alignment_matrices_t *retMtx
     retMtx->cap_eff         =  0; // cap_eff was -1 so that cap_eff < cap, triggering the realloc
     retMtx->cap_pre         =  0; // again, trigger realloc
 
-    retMtx->algn_costMtx    = malloc( sizeof( unsigned int    ) );
+    retMtx->algn_costMtx    = malloc( sizeof( cost_t ) );
     retMtx->algn_dirMtx     = malloc( sizeof( DIR_MTX_ARROW_t ) );
-    retMtx->algn_precalcMtx = malloc( sizeof( unsigned int    ) );
+    retMtx->algn_precalcMtx = malloc( sizeof( cost_t ) );
     /* don't have to allocate these two, because they're just pointing to algn_costMtx and algn_dirMtx.
     retMtx->cube          = malloc ( sizeof( int* ) );
     retMtx->cube_d        = malloc ( sizeof( int* ) );
@@ -107,10 +107,10 @@ void initializeAlignmentMtx( alignment_matrices_t *retMtx
 }
 
 
-void setUp2dCostMtx( cost_matrices_2d_t   *retCostMtx
-                   , unsigned short const *tcm
-                   , unsigned short        gap_open
-                   , size_t                alphSize
+void setUp2dCostMtx( cost_matrices_2d_t *retCostMtx
+                   , cost_t const       *tcm
+                   , cost_t             gap_open
+                   , size_t             alphSize
                    )
 {
 
@@ -202,10 +202,10 @@ void setUp2dCostMtx( cost_matrices_2d_t   *retCostMtx
 }
 
 
-void setUp3dCostMtx( cost_matrices_3d_t   *retMtx
-                   , unsigned short const *tcm
-                   , unsigned short        gap_open
-                   , size_t                alphSize
+void setUp3dCostMtx( cost_matrices_3d_t *retMtx
+                   , cost_t const       *tcm
+                   , cost_t             gap_open
+                   , size_t             alphSize
                    )
 {
     // first allocate retMatrix

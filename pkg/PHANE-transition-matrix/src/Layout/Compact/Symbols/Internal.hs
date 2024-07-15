@@ -99,7 +99,7 @@ bytesSizeSymbolMatrix (SymbolDistanceMatrix _ vec) =
     let c = sizeOf (undefined ∷ SymbolCount)
         p = sizeOf (undefined ∷ Ptr Word)
         i = sizeOf (undefined ∷ Ptr Int)
-        e = sizeOf (undefined ∷ Word16)
+        e = sizeOf (undefined ∷ DiscretizedResolution)
         n = V.length vec
     in  foldl'
             (+)

@@ -17,6 +17,7 @@ Allocate matricies across the FFI.
 module Layout.Compact.States.Structure
   ( AlignmentStrategy(..)
   , StateTransitionsCompact(..)
+  , DiscretizedResolutionIota
   , TCMρ
   , FFI2D()
   , FFI3D()
@@ -58,7 +59,7 @@ module Layout.Compact.States.Structure
 import Control.DeepSeq
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Foldable1 (last)
+import Data.List.NonEmpty qualified as NE
 import Foreign
 import Foreign.C.Types
 import GHC.Generics (Generic)
@@ -67,9 +68,16 @@ import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 import Prelude hiding (head, last)
 import System.IO.Unsafe (unsafePerformIO)
+import Data.Vector.Storable (Vector, (!))
 
 
-type SequencePointer = Ptr CUInt
+{- |
+The representation of values sent across the FFI.
+-}
+type DiscretizedResolutionIota = CUInt
+
+
+type SequencePointer = Ptr DiscretizedResolutionIota
 
 
 -- |
@@ -195,6 +203,7 @@ data  StateTransitionsCompact
     = StateTransitionsCompact
     { matrix2D   :: {-# UNPACK #-} (Ptr FFI2D)
     , matrix3D   :: {-# UNPACK #-} (Ptr FFI3D)
+    , matrixDist :: {-# UNPACK #-} Vector DiscretizedResolutionIota
     , matrixSize :: {-# UNPACK #-} Word
     , gapPenalty :: {-# UNPACK #-} Word
     , maxDelCost :: {-# UNPACK #-} Word
@@ -280,24 +289,24 @@ instance Bits b => HasStateTransitions StateTransitionsCompact b where
 {- |
 /O(1)/
 -}
-instance {-# OVERLAPPING #-} HasStateTransitions StateTransitionsCompact CUInt where
+instance {-# OVERLAPPING #-} HasStateTransitions StateTransitionsCompact DiscretizedResolutionIota where
 
-    {-# SPECIALISE INLINE stateTransitionPairwiseDispersion :: StateTransitionsCompact -> StateTransitionPairwiseDispersionλ CUInt #-}
+    {-# SPECIALISE INLINE stateTransitionPairwiseDispersion :: StateTransitionsCompact -> StateTransitionPairwiseDispersionλ DiscretizedResolutionIota #-}
     stateTransitionPairwiseDispersion = both2D
 
-    {-# SPECIALISE INLINE stateTransitionPairwiseDistance   :: StateTransitionsCompact -> StateTransitionPairwiseDistanceλ   CUInt #-}
+    {-# SPECIALISE INLINE stateTransitionPairwiseDistance   :: StateTransitionsCompact -> StateTransitionPairwiseDistanceλ   DiscretizedResolutionIota #-}
     stateTransitionPairwiseDistance   = cost2D
 
-    {-# SPECIALISE INLINE stateTransitionPairwiseMedian   :: StateTransitionsCompact -> StateTransitionPairwiseMedianλ   CUInt #-}
+    {-# SPECIALISE INLINE stateTransitionPairwiseMedian   :: StateTransitionsCompact -> StateTransitionPairwiseMedianλ   DiscretizedResolutionIota #-}
     stateTransitionPairwiseMedian   = mean2D
 
-    {-# SPECIALISE INLINE stateTransitionThreewayDispersion :: StateTransitionsCompact -> StateTransitionThreewayDispersionλ CUInt #-}
+    {-# SPECIALISE INLINE stateTransitionThreewayDispersion :: StateTransitionsCompact -> StateTransitionThreewayDispersionλ DiscretizedResolutionIota #-}
     stateTransitionThreewayDispersion = both3D
 
-    {-# SPECIALISE INLINE stateTransitionThreewayDistance   :: StateTransitionsCompact -> StateTransitionThreewayDistanceλ   CUInt #-}
+    {-# SPECIALISE INLINE stateTransitionThreewayDistance   :: StateTransitionsCompact -> StateTransitionThreewayDistanceλ   DiscretizedResolutionIota #-}
     stateTransitionThreewayDistance   = cost3D
 
-    {-# SPECIALISE INLINE stateTransitionThreewayMedian   :: StateTransitionsCompact -> StateTransitionThreewayMedianλ   CUInt #-}
+    {-# SPECIALISE INLINE stateTransitionThreewayMedian   :: StateTransitionsCompact -> StateTransitionThreewayMedianλ   DiscretizedResolutionIota #-}
     stateTransitionThreewayMedian   = mean3D
 
 
@@ -507,17 +516,16 @@ getAlignmentStrategy = toEnum . fromEnum . costModelType2D
 -- Get the transition cost between two symbols by thier indices.
 costSymbol :: TCMρ -> Word -> Word -> Word
 costSymbol tcm i j =
-    let n = matrixSize tcm - 1
-        symbol2State = bit . fromEnum . min n :: Word -> CUInt
-        i' = symbol2State i
-        j' = symbol2State j
-    in  cost2D tcm i' j'
+    let dim = matrixSize tcm
+        idx = fromEnum $ (dim * i) + j
+        sdm = matrixDist tcm
+    in  fromIntegral $ sdm ! idx
 
 
 -- |
 -- /O(1)/
 {-# INLINEABLE both2D #-}
-{-# SPECIALISE INLINE both2D :: TCMρ -> CUInt -> CUInt -> (Word, CUInt) #-}
+{-# SPECIALISE INLINE both2D :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> (Word, DiscretizedResolutionIota) #-}
 both2D :: (Enum b, Num c) => TCMρ -> b -> b -> (c, b)
 both2D tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
@@ -531,19 +539,19 @@ both2D tcmρ e1 e2 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE cost2D #-}
-{-# SPECIALISE INLINE cost2D :: TCMρ -> CUInt -> CUInt -> Word #-}
-cost2D :: (Enum b, Num c) => TCMρ -> b -> b -> c
+{-# SPECIALISE INLINE cost2D :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> Word #-}
+cost2D :: forall b c. (Enum b, Num c) => TCMρ -> b -> b -> c
 cost2D tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
     let dim = fromEnum $ alphSize2D cm2D
     let ptr = getOffsetPtr2D dim fromEnum e1 e2 $ bestCost2D cm2D
-    fromIntegral <$> peek ptr
+    fromIntegral <$> (peek ptr :: IO DiscretizedResolutionIota)
 
 
 -- |
 -- /O(1)/
 {-# INLINE mean2D #-}
-{-# SPECIALISE INLINE mean2D :: TCMρ -> CUInt -> CUInt -> CUInt #-}
+{-# SPECIALISE INLINE mean2D :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota #-}
 mean2D :: Enum b => TCMρ -> b -> b -> b
 mean2D tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
@@ -555,7 +563,7 @@ mean2D tcmρ e1 e2 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE both3D #-}
-{-# SPECIALISE INLINE both3D :: TCMρ -> CUInt -> CUInt -> CUInt -> (Word, CUInt) #-}
+{-# SPECIALISE INLINE both3D :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> (Word, DiscretizedResolutionIota) #-}
 both3D :: (Enum b, Num c) => TCMρ -> b -> b -> b -> (c, b)
 both3D tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
@@ -569,7 +577,7 @@ both3D tcmρ e1 e2 e3 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE cost3D #-}
-{-# SPECIALISE INLINE cost3D :: TCMρ -> CUInt -> CUInt -> CUInt -> Word #-}
+{-# SPECIALISE INLINE cost3D :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> Word #-}
 cost3D :: (Enum b, Num c) => TCMρ -> b -> b -> b -> c
 cost3D tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
@@ -581,7 +589,7 @@ cost3D tcmρ e1 e2 e3 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINE mean3D #-}
-{-# SPECIALISE INLINE mean3D :: TCMρ -> CUInt -> CUInt -> CUInt -> CUInt #-}
+{-# SPECIALISE INLINE mean3D :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota #-}
 mean3D :: Enum b => TCMρ -> b -> b -> b -> b
 mean3D tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
@@ -593,7 +601,7 @@ mean3D tcmρ e1 e2 e3 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE both2D' #-}
-{-# SPECIALISE INLINE both2D' :: TCMρ -> CUInt -> CUInt -> (Word, CUInt) #-}
+{-# SPECIALISE INLINE both2D' :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> (Word, DiscretizedResolutionIota) #-}
 both2D' :: (Bits b, Num c) => TCMρ -> b -> b -> (c, b)
 both2D' tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
@@ -608,7 +616,7 @@ both2D' tcmρ e1 e2 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE cost2D' #-}
-{-# SPECIALISE INLINE cost2D' :: TCMρ -> CUInt -> CUInt -> Word #-}
+{-# SPECIALISE INLINE cost2D' :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> Word #-}
 cost2D' :: (Bits b, Num c) => TCMρ  -> b -> b -> c
 cost2D' tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
@@ -621,7 +629,7 @@ cost2D' tcmρ e1 e2 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINE mean2D' #-}
-{-# SPECIALISE INLINE mean2D' :: TCMρ -> CUInt -> CUInt -> CUInt #-}
+{-# SPECIALISE INLINE mean2D' :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota #-}
 mean2D' :: Bits b => TCMρ -> b -> b -> b
 mean2D' tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
@@ -634,7 +642,7 @@ mean2D' tcmρ e1 e2 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE both3D' #-}
-{-# SPECIALISE INLINE both3D' :: TCMρ -> CUInt -> CUInt -> CUInt -> (Word, CUInt) #-}
+{-# SPECIALISE INLINE both3D' :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> (Word, DiscretizedResolutionIota) #-}
 both3D' :: (Bits b, Num c) => TCMρ -> b -> b -> b -> (c, b)
 both3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
@@ -649,7 +657,7 @@ both3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINEABLE cost3D' #-}
-{-# SPECIALISE INLINE cost3D' :: TCMρ -> CUInt -> CUInt -> CUInt -> Word #-}
+{-# SPECIALISE INLINE cost3D' :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> Word #-}
 cost3D' :: (Bits b, Num c) => TCMρ -> b -> b -> b -> c
 cost3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
@@ -662,7 +670,7 @@ cost3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
 -- |
 -- /O(1)/
 {-# INLINE mean3D' #-}
-{-# SPECIALISE INLINE mean3D' :: TCMρ -> CUInt -> CUInt -> CUInt -> CUInt #-}
+{-# SPECIALISE INLINE mean3D' :: TCMρ -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota -> DiscretizedResolutionIota #-}
 mean3D' :: Bits b => TCMρ -> b -> b -> b -> b
 mean3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
@@ -672,7 +680,7 @@ mean3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
     valueToBits e1 <$> peek ptr
 
 
-getOffsetPtr2D :: Storable b =>Int -> (a -> Int) -> a -> a -> Ptr b -> Ptr b
+getOffsetPtr2D :: Storable b => Int -> (a -> Int) -> a -> a -> Ptr b -> Ptr b
 getOffsetPtr2D dim f e1 e2 =
     let off = (f e1 `shiftL` dim) + f e2
     in  flip advancePtr off
@@ -684,11 +692,11 @@ getOffsetPtr3D dim f e1 e2 e3 =
     in  flip advancePtr off
 
 
-cuint2Enum :: Enum b => CUInt -> b
+cuint2Enum :: Enum b => DiscretizedResolutionIota -> b
 cuint2Enum = toEnum . fromEnum
 
 
-valueToBits :: Bits b => b -> CUInt -> b
+valueToBits :: Bits b => b -> DiscretizedResolutionIota -> b
 valueToBits b v =
     let z = b `xor` b
         f :: Bits a => a -> Int -> a
@@ -700,7 +708,7 @@ valueToBits b v =
 
 indexFromBits :: Bits b => Int ->  b -> Int
 indexFromBits n b =
-    let f :: Num a => a -> (Int, a) -> a
+    let f :: Int -> (Int, Int) -> Int
         f a (i,v)
           | b `testBit` i = a + v
           | otherwise     = a
@@ -722,8 +730,8 @@ Compute the number of bytes within the 2D lookup table portion of a compact FFI 
 bytesSizeFFI2D :: Int -> Int
 bytesSizeFFI2D n =
     let structConst    = fromEnum $ sizeOf (undefined :: FFI2D)
-        bytesBestCost  = n * n *    sizeOf (undefined :: CUInt)
-        bytesMedians   = n * n *    sizeOf (undefined :: CUInt)
+        bytesBestCost  = n * n *    sizeOf (undefined :: DiscretizedResolutionIota)
+        bytesMedians   = n * n *    sizeOf (undefined :: DiscretizedResolutionIota)
         bytesWorstCost = n * n *    sizeOf (undefined ::  CInt)
         bytesPrepend   = n *        sizeOf (undefined ::  CInt)
         bytesTail      = n *        sizeOf (undefined ::  CInt)
@@ -743,8 +751,8 @@ Compute the number of bytes within the 3D lookup table portion of a compact FFI 
 bytesSizeFFI3D :: Int -> Int
 bytesSizeFFI3D n =
     let structConst   = fromEnum  $ sizeOf (undefined :: FFI3D)
-        bytesBestCost = n * n * n * sizeOf (undefined :: CUInt)
-        bytesMedians  = n * n * n * sizeOf (undefined :: CUInt)
+        bytesBestCost = n * n * n * sizeOf (undefined :: DiscretizedResolutionIota)
+        bytesMedians  = n * n * n * sizeOf (undefined :: DiscretizedResolutionIota)
     in  sum
         [ structConst
         , bytesBestCost
@@ -778,7 +786,7 @@ renderSummary tcm =
         n = matrixSize tcm
     in  unlines $ fold
             [      [ "General Metric (Compacted) with"]
-            ,      [ fold [ "  allocated "     , show b, "bytes" ] ]
+            ,      [ fold [ "  allocated "     , show b, " bytes" ] ]
             ,      [ fold [ "  dimension "     , show n          ] ]
             , if g > 0
               then [ fold [ "  affine penalty ", show g, "Δ" ] ]
@@ -800,7 +808,7 @@ renderMatrix tcm =
 
         range :: NonEmpty Word
         range = 0 :| [ 1 .. n - 1 ]
-        
+
         values :: NonEmpty (NonEmpty Word)
         values = do
             i <- range
@@ -808,14 +816,16 @@ renderMatrix tcm =
                 j <- range
                 pure $ costSymbol tcm i j
 
+        uncons :: NonEmpty a -> ([a], a)
+        uncons = (,) <$> NE.init <*> NE.last
+
         rowHead :| rowTail = values
-        rowBody = case rowTail of
-            [] -> []
-            x:xs -> [ last $  x :| xs ]
-        rowLast = last values
+        (rowBody, rowLast) = case rowTail of
+            [] -> ([], rowHead)
+            x:xs -> uncons $ x :| xs
 
         maxVal = length . show . maximum $ maximum <$> values
-        endcap = \b e str -> indent $ fold [ b, " ", fold $ pad <$> str, " ", e ]
+        endcap = \b e str -> indent $ fold [ b, " ", fold . NE.intersperse " " $ pad <$> str, " ", e ]
         indent = ("  " <>)
         fstStr = endcap "┌" "┐"
         rowStr = endcap "│" "│"

@@ -2,6 +2,7 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE Strict #-}
 
+#include "costMatrix.h"
 #include "c_code_alloc_setup.h"
 
 {- |
@@ -14,7 +15,7 @@ included indirectory for reference.
 module Layout.Compact.States.Allocation (
     -- * Type synonym
     DiscretizedResolutionIota,
-    
+
     -- * Construction
     initialize,
 ) where
@@ -30,6 +31,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Measure.Unit.SymbolCount (SymbolCount(..))
 import Measure.Unit.SymbolDistance (SymbolDistance, fromSymbolDistance)
 
+
 debugging :: Bool
 debugging = False
 
@@ -38,12 +40,6 @@ nice :: Show a => String -> a -> [String]
 nice key vals
     | debugging = [ key <> ":\t" <> show vals ]
     | otherwise = []
-
-
-{- |
-The representation of values sent across the FFI.
--}
-type DiscretizedResolutionIota = CUInt
 
 
 {- |
@@ -163,7 +159,7 @@ initialize (SymbolCount dim) penalty inputVector =
                 , nice "minDel" minDel
                 , nice "minIns" minIns
                 ]
-        
+
     in  unsafePerformIO $ conditionalOutput *>
             ( V.unsafeWith safeVector $ \arr → do
                 cm2D ← malloc ∷ IO (Ptr FFI2D)
@@ -172,14 +168,15 @@ initialize (SymbolCount dim) penalty inputVector =
                 _ ← initializeCostMatrix3D_FFI cm3D arr openPenalty dimension
                 pure
                     StateTransitionsCompact
-                        { gapPenalty = fromSymbolDistance penalty
+                        { matrix2D = cm2D
+                        , matrix3D = cm3D
+                        , matrixDist = safeVector
+                        , matrixSize = size
+                        , gapPenalty = fromSymbolDistance penalty
                         , maxDelCost = fromIntegral maxDel
                         , maxInsCost = fromIntegral maxIns
                         , minDelCost = fromIntegral minDel
                         , minInsCost = fromIntegral minIns
-                        , matrixSize = size
-                        , matrix2D = cm2D
-                        , matrix3D = cm3D
                         }
             )
 
@@ -189,7 +186,7 @@ Ensure that the size does not exceed 'maximumDimension'.
 clampSize ∷ Word → (Vector DiscretizedResolutionIota → Vector DiscretizedResolutionIota, Word)
 clampSize n =
     let dim = min maximumDimension n
-        
+
         truncateVector ∷ Vector DiscretizedResolutionIota → Vector DiscretizedResolutionIota
         truncateVector =
             let x = fromEnum dim

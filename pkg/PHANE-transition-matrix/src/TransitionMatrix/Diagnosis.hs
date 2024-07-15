@@ -17,6 +17,7 @@ module TransitionMatrix.Diagnosis (
     -- * Specialized Representation
     TransitionMatrix (),
     TransitionMeasureDiagnosis (..),
+    DiagnosisFailure (),
 
     -- * Special Constructors
     discreteCrossGap,
@@ -45,6 +46,7 @@ import Data.List qualified as List
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Ord
+import Data.Ratio
 import Data.Scientific
 import Data.Vector qualified as V
 import Data.Vector.Storable qualified as VS
@@ -109,12 +111,15 @@ instance Show (TransitionMeasureDiagnosis a) where
                             then case digits of
                                 [] → ["?"]
                                 y : ys →
-                                    [ show y
-                                    , "."
-                                    , dShow . take n $ ys <> replicate n 0
-                                    , "e"
-                                    , show $ succ e
-                                    ]
+                                    let eVal = pred e
+                                        suff = case eVal of
+                                            0 → []
+                                            _ → ["e", show eVal]
+                                    in  [ show y
+                                        , "."
+                                        , dShow . take n $ ys <> replicate n 0
+                                        ]
+                                            <> suff
                             -- No scientific notation
                             else
                                 let ds = replicate (negate e) 0 <> digits <> replicate n 0
@@ -138,18 +143,50 @@ instance Show (TransitionMeasureDiagnosis a) where
                     , display 4 $ discretizationErrrorSTD err
                     , "}"
                     ]
-        in  unwords $
-                fold
-                    [
-                        [ "TransitionMeasureDiagnosis"
-                        , "("
-                        , display 4 $ factoredCoefficient d
-                        , "×"
-                        , show $ transitionMetricity d
+
+            shownMatrix = List.intercalate "\n" . fmap (unwords . fmap show) . getSDM $ transitionMatrix d
+        in  List.intercalate
+                "\n"
+                [ unwords $
+                    fold
+                        [
+                            [ "TransitionMeasureDiagnosis"
+                            , "("
+                            , display 4 $ factoredCoefficient d
+                            , "×"
+                            , show $ transitionMetricity d
+                            ]
+                        , numErr
+                        , [")"]
                         ]
-                    , numErr
-                    , [")"]
+                , unwords
+                    [ show . numerator $ factoredCoefficient d
+                    , "/"
+                    , show . denominator $ factoredCoefficient d
                     ]
+                , shownMatrix
+                ]
+
+
+getSDM ∷ ∀ a. TransitionMatrix a → [[Word]]
+-- getSDM transMatrix | trace ("getSDM " <> show transMatrix) False = undefined
+getSDM transMatrix =
+    let start, final ∷ SymbolIndex
+        (start, final) = symbolBounds transMatrix
+
+        sdm ∷ SymbolDistanceλ
+        sdm = symbolDistances transMatrix
+
+        row ∷ SymbolIndex → Maybe ([Word], SymbolIndex)
+        row i
+            | i <= final = Just (List.unfoldr (col i) start, succ i)
+            | otherwise = Nothing
+
+        col ∷ SymbolIndex → SymbolIndex → Maybe (Word, SymbolIndex)
+        col i j
+            | j <= final = Just (toEnum . fromEnum $ sdm i j, succ j)
+            | otherwise = Nothing
+    in  List.unfoldr row start
 
 
 {- |
@@ -730,10 +767,11 @@ meaureWithMetricity sdms =
 
 
 checkInputValidity
-    ∷ ( Foldable t
-      , Foldable t'
-      , Real a
-      )
+    ∷ ∀ a t t'
+     . ( Foldable t
+       , Foldable t'
+       , Real a
+       )
     ⇒ t (t' a)
     → Maybe (DiagnosisFailure a)
     → Either
@@ -742,10 +780,13 @@ checkInputValidity
 checkInputValidity grid precheckedError =
     let dimension ∷ Word
         dimension = toEnum . length $ grid
+
         vectorLen ∷ Int
         vectorLen = fromEnum $ dimension * dimension
-        linearize ∷ (Foldable t, Foldable t') ⇒ t (t' a1) → V.Vector a1
+
+        linearize ∷ t (t' a) → V.Vector a
         linearize = V.fromListN vectorLen . foldMap toList . toList
+
         shapeCheck = liftA2 (<>) precheckedError $ checkGridValidity grid
         valueCheck = checkValueRange dimension $ linearize grid
     in  mergeInputFailures (shapeCheck, valueCheck)

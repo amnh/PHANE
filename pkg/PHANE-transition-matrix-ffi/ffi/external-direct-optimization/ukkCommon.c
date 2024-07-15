@@ -396,11 +396,11 @@ characters_t *alloc_characters_t( size_t seq_1_number_elems, size_t seq_2_number
 }
 
 
-int alignmentCost(          int  states[]
-                 , unsigned int *al1
-                 , unsigned int *al2
-                 , unsigned int *al3
-                 ,          int  len
+int alignmentCost( int    states[]
+                 , cost_t *al1
+                 , cost_t *al2
+                 , cost_t *al3
+                 , int    len
                  )
 {
     int cost = 0;

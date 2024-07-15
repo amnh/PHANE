@@ -144,7 +144,7 @@ renderSummary tcm =
         n = symbolCount tcm
     in  unlines
             [ "General Metric (Memoized) with"
-            , fold ["  allocated ", show b, "bytes + memoized value space"]
+            , fold ["  allocated ", show b, " bytes + memoized value space"]
             , fold ["  dimension ", show n]
             ]
 

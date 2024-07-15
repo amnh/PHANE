@@ -96,6 +96,7 @@ data PerturbationChoice
 
 
 perturbedValues ∷ PerturbationValue → NonEmpty Natural
+perturbedValues (PerturbationValue _ 0) = 0 :| []
 perturbedValues (PerturbationValue delta x) =
     let minMinus ∷ Natural → Word → Natural
         minMinus a b = fromInteger . max 0 $ toInteger a - toInteger b
@@ -108,7 +109,7 @@ perturbedValues (PerturbationValue delta x) =
 
 perturbedChoice ∷ Natural → PerturbationChoice → PerturbationChoice
 perturbedChoice a (PChoice currGCD (c :| cs)) =
-    let nextGCD = gcd a currGCD
+    let nextGCD = gcd' a currGCD
     in  PChoice nextGCD $ a :| c : cs
 
 
@@ -167,10 +168,10 @@ errorDiscretizingTo original adjusted =
 getPerturbedGCDError
     ∷ (Foldable f, Functor f, IsList (f Natural), Item (f Natural) ~ Natural)
     ⇒ Word → Word → f Natural → (ErrorFromDiscretization, Natural, f Natural)
-getPerturbedGCDError keep delta original =
-    let (finalGCD, factoredVals) = getPerturbedGCD keep delta original
-        perturbed = (finalGCD *) <$> factoredVals
-    in  (original `errorDiscretizingTo` perturbed, finalGCD, factoredVals)
+getPerturbedGCDError keep delta vals =
+    let (finalGCD, factoredVals) = getPerturbedGCD keep delta vals
+        perturbedVals = (finalGCD *) <$> factoredVals
+    in  (vals `errorDiscretizingTo` perturbedVals, finalGCD, factoredVals)
 
 
 filterPerturbationBy
@@ -195,7 +196,7 @@ getPerturbedGCD keep delta ns = case GHC.toList ns of
                 pY = PerturbationValue delta y
 
                 gcdChoice a b =
-                    let v = gcd a b
+                    let v = gcd' a b
                     in  PChoice v $ b :| [a]
 
                 gcdCrossProduct = do
@@ -291,8 +292,7 @@ selectBestPerturbation dim originalValues keep deltaMax vals =
             -- Step 4(b):
             -- When there exists at least one Δ-perturbations without any overflow values,
             -- then select the Δ-perturbations with the least weighted error.
-            Just (Arg (weight, _) (err, factor, newVals)) →
-                Right (weight, err, factor, newVals)
+            Just (Arg (weight, _) (err, factor, newVals)) → Right (weight, err, factor, newVals)
 
 
 truncateDiscretized
@@ -379,7 +379,7 @@ discretizeOversizedValues dim exactCoefficient originalValues oversizedValues =
     let exponents = truncationExponents dim oversizedValues
         𝑚 = maximum exponents
         𝑛 = case toList $ V.filter (> 0) exponents of
-            [] → 1
+            [] → 0
             x : xs → minimum $ x :| xs
 
         εδDiscretize ε =
@@ -464,22 +464,30 @@ attemptExactDiscretization
     → V.Vector a
     → (Rational, Either (V.Vector Natural) (VS.Vector DiscretizedResolution))
 attemptExactDiscretization dim originalValues =
-    let -- GCD which ignores 0 values
-        gcd' ∷ Natural → Natural → Natural
-        gcd' x 0 = x
-        gcd' 0 y = y
-        gcd' x y = gcd x y
-
-        -- LCD which ignores 0 values
-        lcm' ∷ Integer → Integer → Integer
-        lcm' x 0 = x
-        lcm' 0 y = y
-        lcm' x y = lcm x y
-
-        -- Step 1.
+    let -- Step 1.
         -- Convert all values to /positive/ Rational values
+        rationalInputs ∷ V.Vector Rational
+        rationalInputs = abs . toRational <$> originalValues
+
+        α ∷ Rational
         rationalValues ∷ V.Vector Rational
-        rationalValues = abs . toRational <$> originalValues
+        (α, rationalValues) =
+            let leastNonZero ∷ Rational
+                leastNonZero =
+                    let least ∷ Rational → Rational → Rational
+                        least 0 x = x
+                        least x 0 = x
+                        least x y = min x y
+                    in  foldl1 least rationalInputs
+
+                greatestCell ∷ Rational
+                greatestCell = maximum rationalInputs
+
+                (a, normalized)
+                    | leastNonZero < 1 && 1 <= greatestCell =
+                        (leastNonZero, (/ leastNonZero) <$> rationalInputs)
+                    | otherwise = (1, rationalInputs)
+            in  (a, normalized)
 
         -- Step 2.
         -- Let β be the Least Common Multiple (LCM) of all denominators
@@ -513,7 +521,7 @@ attemptExactDiscretization dim originalValues =
         overflowValues = getOverflowValues dim originalValues prospectiveValues
 
         coefficient ∷ Rational
-        coefficient = (toInteger γ % β)
+        coefficient = α * (toInteger γ % β)
 
         exactnessContext
             | V.null overflowValues = Right $ clampDiscretizedValues prospectiveValues
@@ -532,8 +540,11 @@ adaptiveDiscretization
     → Either
         (DiagnosisFailure a)
         (Rational, Maybe ErrorFromDiscretization, VS.Vector DiscretizedResolution)
-adaptiveDiscretization dim originalValues =
-    let negativeValues ∷ V.Vector a
+adaptiveDiscretization dim@(SymbolCount sCount) originalValues =
+    let d ∷ Int
+        d = fromEnum sCount
+
+        negativeValues ∷ V.Vector a
         negativeValues =
             let negative ∷ (a, b) → Bool
                 negative (x, _) = x < 0
@@ -567,6 +578,10 @@ adaptiveDiscretization dim originalValues =
         (exactCoefficient, context) = attemptExactDiscretization dim originalValues
     in  -- Check if the input can be discrettized exactly.
         case context of
+            -- If all values are zero, do not attempt discretization
+            _
+                | all (== 0) originalValues →
+                    Right (1, Nothing, VS.generate (d * d) $ const 0)
             -- If all values were successfully discretized,
             -- then check for negative values
             Right exactValues → case negativeValues !? 0 of
@@ -602,7 +617,7 @@ discretizationFailure build =
 
 
 clampDiscretizedValues ∷ V.Vector Natural → VS.Vector DiscretizedResolution
-clampDiscretizedValues = VS.convert . fmap (toEnum . fromEnum)
+clampDiscretizedValues = VS.convert . fmap fromIntegral
 
 
 getOverflowValues ∷ SymbolCount → V.Vector a → V.Vector Natural → V.Vector a
@@ -613,3 +628,21 @@ getOverflowValues dim originalValues =
         overflow ∷ (a, Natural) → Bool
         overflow (_, x) = x > upperVal
     in  fmap fst . V.filter overflow . V.zip originalValues
+
+
+{- |
+GCD which ignores 0 values
+-}
+gcd' ∷ Natural → Natural → Natural
+gcd' x 0 = x
+gcd' 0 y = y
+gcd' x y = gcd x y
+
+
+{- |
+LCD which ignores 0 values
+-}
+lcm' ∷ Integer → Integer → Integer
+lcm' x 0 = x
+lcm' 0 y = y
+lcm' x y = lcm x y

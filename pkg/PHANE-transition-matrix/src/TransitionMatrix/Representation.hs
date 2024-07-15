@@ -228,6 +228,6 @@ instance Show (TransitionMatrix a) where
     show =
         \case
             IotaMatrix (Just met) mtx → renderWithBytes (fromEnum $ matrixSize mtx) met
-            IotaMatrix _ mtx → renderSummary mtx
+            IotaMatrix _ mtx → show mtx
             VastMatrix mtx → show mtx
             VastSpecialized met → show met
