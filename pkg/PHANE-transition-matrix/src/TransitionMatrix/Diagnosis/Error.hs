@@ -222,7 +222,7 @@ getDiagnosisErrors (DiagnosisFailure xs) = xs
 
 
 arithmeticOperations ∷ Int
-arithmeticOperations = 4
+arithmeticOperations = 8
 
 
 {- |
