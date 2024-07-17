@@ -50,24 +50,26 @@ typedef struct dyn_character_t {
 dyn_character_t *dyn_char_alloc( size_t allocSize );
 
 
-void dyn_char_free(dyn_character_t *toFree);
+void dyn_char_free( dyn_character_t *toFree );
 
 
 /** Adds v to the front of the character array inside a. Increments the length of a and decrements the pointer to the head of
  *  the character.
  */
-void dyn_char_prepend( dyn_character_t *a
-                     , elem_t           v
-                     );
+void dyn_char_prepend
+  ( dyn_character_t *a
+  , elem_t           v
+  );
 
 
 void dyn_char_print( const dyn_character_t *inChar );
 
 
 /* Stores the value v in the position p of character a. */
-void dyn_char_set( dyn_character_t *character
-                 , size_t           position
-                 , elem_t           value
-                 );
+void dyn_char_set
+  ( dyn_character_t *character
+  , size_t           position
+  , elem_t           value
+  );
 
 #endif /* DYN_CHAR_H */

@@ -102,24 +102,62 @@ int stateTransitionCost( int from, int to );
  *  of neighbour is 1.
  *  I.e., if one of the transitions of the `neighbor` fsm is `delete`, set that state to true; otherwise, set to 0.
  */
-void exists_neighbor_in_delete_state( int n, int *a, int *b, int *c );
-int neighbourNum( int i, int j, int k );
-void transitions( int s, Trans st[3] );
+void exists_neighbor_in_delete_state
+  ( int  n
+  , int *a
+  , int *b
+  , int *c
+  );
+
+
+int neighbourNum
+  ( int i
+  , int j
+  , int k
+  );
+
+
+void transitions
+  ( int s
+  , Trans st[3]
+  );
+
+
 char *state2str( int s );
-int countTrans( Trans st[3], Trans t );
+
+
+int countTrans
+  ( Trans st[3]
+  , Trans t
+  );
+
+
 void setup();
 
 
 // Alignment checking routines
-void checkAlign( elem_t *al, int alLen, elem_t *str, int strLen );
+void checkAlign
+  ( elem_t *al
+  , int     alLen
+  , elem_t *str
+  , int     strLen
+  );
 
 
 /** As it says, reverses an array of `int`s */
-void revIntArray( int *arr, int start, int end );
+void revIntArray
+  ( int *arr
+  , int  start
+  , int  end
+  );
 
 
 /** As it says, reverses an array of `elem_t`s */
-void revElem_tArray( elem_t *arr, int start, int end );
+void revElem_tArray
+  ( elem_t *arr
+  , int     start
+  , int     end
+  );
 
 
 /** Frees all internal pointers to a characters_t struct. */
@@ -128,8 +166,11 @@ void free_characters_t( characters_t *toFree );
 
 /** Allocates all internal arrays and initializes array lengths and pointer locations for a characters_t struct with
  *  `number_elems` elements, where each element is of type `elem_t`, which is a synonym for `unsigned int`. */
-characters_t *alloc_characters_t( size_t seq_1_number_elems, size_t seq_2_number_elems, size_t seq_3_number_elems );
-
+characters_t *alloc_characters_t
+  ( size_t seq_1_number_elems
+  , size_t seq_2_number_elems
+  , size_t seq_3_number_elems
+  );
 
 
 /** As it says, reverses an array of `char`s */
@@ -137,11 +178,13 @@ characters_t *alloc_characters_t( size_t seq_1_number_elems, size_t seq_2_number
 // void revCharArray( char *arr, int start, int end );
 
 
-int alignmentCost( int     states[]
-                 , elem_t *al1
-                 , elem_t *al2
-                 , elem_t *al3
-                 , int     len );
+int alignmentCost
+  ( int     states[]
+  , elem_t *al1
+  , elem_t *al2
+  , elem_t *al3
+  , int     len
+  );
 
 
 // typedef struct cost_state_vector_t
@@ -199,7 +242,11 @@ typedef struct allocInfo_t {
 void *allocEntry( AllocInfo_t *a );
 
 
-static inline AllocInfo_t allocInit( int elemSize, int costSize, characters_t *inputs )
+static inline AllocInfo_t allocInit
+  ( int           elemSize
+  , int           costSize
+  , characters_t *inputs
+  )
 {
     AllocInfo_t a;
 
@@ -229,7 +276,12 @@ static inline AllocInfo_t allocInit( int elemSize, int costSize, characters_t *i
 }
 
 
-static inline long allocGetSubIndex( AllocInfo_t *a, int ab, int ac, int s )
+static inline long allocGetSubIndex
+  ( AllocInfo_t *a
+  , int          ab
+  , int          ac
+  , int          s
+  )
 {
     long index = 0;
 
@@ -253,7 +305,7 @@ static inline long allocGetSubIndex( AllocInfo_t *a, int ab, int ac, int s )
 }
 
 
-static inline void *allocPlane(AllocInfo_t *a)
+static inline void *allocPlane( AllocInfo_t *a )
 {
     void *p;
 
@@ -272,7 +324,11 @@ static inline void *allocPlane(AllocInfo_t *a)
 
 
 /** recalloc - does a realloc() but sets any new memory to 0. */
-static inline void *recalloc(void *p, size_t oldSize, size_t newSize)
+static inline void *recalloc
+  ( void  *p
+  , size_t oldSize
+  , size_t newSize
+  )
 {
     void *ptr = realloc(p, newSize);
     assert( ptr != NULL && "Failure in recalloc." );
@@ -285,7 +341,13 @@ static inline void *recalloc(void *p, size_t oldSize, size_t newSize)
 }
 
 
-static inline void *getPtr(AllocInfo_t *a, int ab, int ac, int d, int s)
+static inline void *getPtr
+  ( AllocInfo_t *a
+  , int          ab
+  , int          ac
+  , int          d
+  , int          s
+  )
 {
     int    i, j;
     void **bPtr;
@@ -334,7 +396,11 @@ static inline void *getPtr(AllocInfo_t *a, int ab, int ac, int d, int s)
     return ((char*) base) + (index * a->elemSize);
 }
 
-static inline void allocFinal(AllocInfo_t *a, void *flag, void *top)
+static inline void allocFinal
+  ( AllocInfo_t *a
+  , void        *flag
+  , void        *top
+  )
 {
     int usedFlag = (char *) flag - (char *) top;
     {
@@ -388,12 +454,13 @@ static inline void allocFinal(AllocInfo_t *a, void *flag, void *top)
  *
  *  Note that alphabet size does not include gap.
  */
-int powell_3D_align ( characters_t *inputSeqs     // lengths set correctly; indices set to 0
-                    , characters_t *outputSeqs    // lengths set correctly; indices set to 0
-                    , size_t        alphabetSize  // not including gap
-                    , int           mm            // mismatch cost, must be > 0
-                    , int           go            // gap open cost, must be >= 0
-                    , int           ge            // gap extension cost, must be > 0
-                    );
+int powell_3D_align
+  ( characters_t *inputSeqs     // lengths set correctly; indices set to 0
+  , characters_t *outputSeqs    // lengths set correctly; indices set to 0
+  , size_t        alphabetSize  // not including gap
+  , int           mm            // mismatch cost, must be > 0
+  , int           go            // gap open cost, must be >= 0
+  , int           ge            // gap extension cost, must be > 0
+  );
 
 #endif // __UKK_COMMON_H__
