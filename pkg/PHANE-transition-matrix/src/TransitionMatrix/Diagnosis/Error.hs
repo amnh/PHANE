@@ -221,17 +221,21 @@ getDiagnosisErrors ∷ DiagnosisFailure a → NonEmpty (DiagnosisError a)
 getDiagnosisErrors (DiagnosisFailure xs) = xs
 
 
+arithmeticOperations ∷ Int
+arithmeticOperations = 4
+
+
 {- |
 The /minimum/ and /maximum/ discretized values permitted for a matrix cell.
 This is based on the representation of the discretized encoding.
 
-/Note:/ the limit ensures that a single addition operation
-will not cause arithmetic overflow of the underlying type.
+/Note:/ the limit ensures that 2 raised to the 'arithmeticOperations' power
+addition operations will not cause arithmetic overflow of the underlying type.
 -}
 dicretizedValueBounds ∷ (Integral i) ⇒ SymbolCount → (i, i)
 dicretizedValueBounds symbols =
     let getBitWidth ∷ (FiniteBits b) ⇒ b → Int
-        getBitWidth = pred . finiteBitSize
+        getBitWidth = subtract arithmeticOperations . finiteBitSize
 
         upperBitWidth ∷ Int
         upperBitWidth = getBitWidth (undefined ∷ DiscretizedResolution)
