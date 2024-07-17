@@ -221,8 +221,13 @@ getDiagnosisErrors ∷ DiagnosisFailure a → NonEmpty (DiagnosisError a)
 getDiagnosisErrors (DiagnosisFailure xs) = xs
 
 
+{- |
+This provides 64 - 16 = 48 bits of precision in discretization resolution,
+permitting a total of 65535 additions before /the possibility/ of
+arithmetic overflow occuring within the underlying type.
+-}
 arithmeticOperations ∷ Int
-arithmeticOperations = 8
+arithmeticOperations = 16
 
 
 {- |

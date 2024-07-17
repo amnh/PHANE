@@ -39,7 +39,7 @@ import Measure.Unit.SymbolDistance
 import Measure.Unit.SymbolIndex
 
 
-type DiscretizedResolution = Word32
+type DiscretizedResolution = Word64
 
 
 {- |

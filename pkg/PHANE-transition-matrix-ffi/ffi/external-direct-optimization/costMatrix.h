@@ -22,9 +22,10 @@
 #ifndef COSTMATRIX_H
 #define COSTMATRIX_H
 
+#include <stdint.h>
 
 /* The encoding type for costs/distances */
-#define cost_t unsigned int
+#define cost_t uint64_t
 
 
 #define Cost_matrix_struct(a) ((struct cost_matrices_2d *) Data_custom_val(a))

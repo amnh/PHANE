@@ -74,7 +74,8 @@ import Data.Vector.Storable (Vector, (!))
 {- |
 The representation of values sent across the FFI.
 -}
-type DiscretizedResolutionIota = CUInt
+--type DiscretizedResolutionIota = CUInt
+type DiscretizedResolutionIota = CULong
 
 
 type SequencePointer = Ptr DiscretizedResolutionIota
