@@ -78,6 +78,9 @@ The representation of values sent across the FFI.
 type DiscretizedResolutionIota = CULong
 
 
+type ElementEncoding = CUInt
+
+
 type SequencePointer = Ptr DiscretizedResolutionIota
 
 
@@ -100,11 +103,11 @@ data  AlignmentStrategy = Linear | Affine
 --
 data  FFI2D
     = FFI2D
-    { alphSize2D            :: CInt
+    { alphSize2D            :: CSize
     -- ^ alphabet size including gap, and including ambiguities if
-    , costMatrixDimension2D :: CInt
+    , costMatrixDimension2D :: CSize
     -- ^ ceiling of log_2 (alphSize)
-    , gapChar2D             :: CInt
+    , gapChar2D             :: ElementEncoding
     -- ^ gap value (least significant bit set)
     , costModelType2D       :: CInt
     {- ^ The type of cost model to be used in the alignment, i.e. affine or not.
@@ -120,31 +123,31 @@ data  FFI2D
          not true for protein characters for example, where the number of elements
          of the alphabet is already too big to build all the possible combinations.
     -}
-    , gapOpenCost2D         :: CInt
+    , gapOpenCost2D         :: DiscretizedResolutionIota
     {- ^ The cost of opening a gap. This is only useful in certain cost_model_types
          (type 3: affine, based on my reading of ML code).
     -}
     , isMetric2D            :: CInt
     -- ^ if tcm is metric
-    , allElems2D            :: CInt
+    , allElems2D            :: CSize
     -- ^ total number of elements
     , bestCost2D            :: SequencePointer
     {- ^ The transformation cost matrix, including ambiguities, storing the **best**
          cost for each ambiguity pair
     -}
-    , medians2D             :: SequencePointer
+    , medians2D             :: Ptr ElementEncoding
     {- ^ The matrix of possible medians between elements in the alphabet. The best
          possible medians according to the cost matrix.
     -}
-    , worstCost2D           :: Ptr CInt
+    , worstCost2D           :: SequencePointer
     {- ^ The transformation cost matrix, including ambiguities, storing the **worst**
          cost for each ambiguity pair
     -}
-    , prependCost2D         :: Ptr CInt
+    , prependCost2D         :: SequencePointer
     {- ^ The cost of going from gap -> each base. For ambiguities, use best cost.
          Set up as num_elements x num_elements matrix, but seemingly only first row is used.
     -}
-    , tailCost2D            :: Ptr CInt
+    , tailCost2D            :: SequencePointer
     {- ^ As prepend_cost, but with reverse directionality, so base -> gap.
          As with prepend_cost, seems to be allocated as too large.
     -}
@@ -165,15 +168,15 @@ data  FFI2D
 --
 data  FFI3D
     = FFI3D          -- See FFI2D datatype for field description
-    { alphSize3D            :: CInt
-    , costMatrixDimension3D :: CInt
-    , gapChar3D             :: CInt
+    { alphSize3D            :: CSize
+    , costMatrixDimension3D :: CSize
+    , gapChar3D             :: ElementEncoding
     , costModelType3D       :: CInt
     , include_ambiguities3D :: CInt
-    , gapOpenCost3D         :: CInt
-    , allElems3D            :: CInt
+    , gapOpenCost3D         :: DiscretizedResolutionIota
+    , allElems3D            :: CSize
     , bestCost3D            :: SequencePointer
-    , medians3D             :: SequencePointer
+    , medians3D             :: Ptr ElementEncoding
     }
     deriving stock    (Generic)
     deriving anyclass (NFData)
