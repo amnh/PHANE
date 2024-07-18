@@ -217,7 +217,7 @@ int countTrans(Trans st[3], Trans t)
 
 // TODO: Should be able to replace the first part of this with static array declaration.
 // Also, see my update of this using mod.
-void setup()
+void setup(void)
 {
     int s,
         ns = 0;
@@ -396,12 +396,13 @@ characters_t *alloc_characters_t( size_t seq_1_number_elems, size_t seq_2_number
 }
 
 
-int alignmentCost( int    states[]
-                 , cost_t *al1
-                 , cost_t *al2
-                 , cost_t *al3
-                 , int    len
-                 )
+int alignmentCost
+    ( int     states[]
+    , elem_t *al1
+    , elem_t *al2
+    , elem_t *al3
+    , int     len
+    )
 {
     int cost = 0;
     Trans last_st[3] = { match, match, match };

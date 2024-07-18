@@ -132,7 +132,7 @@ int countTrans
   );
 
 
-void setup();
+void setup(void);
 
 
 // Alignment checking routines
