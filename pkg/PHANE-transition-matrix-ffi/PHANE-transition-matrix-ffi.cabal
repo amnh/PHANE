@@ -52,11 +52,13 @@ Common ffi-buildinfo
   If !os(darwin) && !os(windows)
     CC-Options:
       -fPIC
+    If !flag(Forego-Sanity)
+      CC-Options:
+        -Wabi    
 
   -- These are warning we want unless specifically disabled!
   If !flag(Forego-Sanity)
     CC-Options:
-      -Wabi
       -Wall
       -Wpedantic
       -- Disable these warnings
