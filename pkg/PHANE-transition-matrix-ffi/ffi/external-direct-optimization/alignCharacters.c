@@ -70,8 +70,6 @@
 #include "costMatrix.h"
 #include "debug_constants.h"
 #include "ukkCommon.h"
-//#include "matrices.h"
-//#include "dyn_character.h"
 
 #define ALIGN_TO_ALIGN      1
 #define ALIGN_TO_VERTICAL   2
@@ -503,7 +501,7 @@ algn_fill_ukk_right_cell (       cost_t *curRow
     }
     if (DEBUG_COST_M) {
         /* Print the cost matrix */
-        printf ("%d\t", curRow[pos]);
+        printf ("%" cost_p "\t", curRow[pos]);
         fflush (stdout);
     }
     if (DEBUG_COST_M || DEBUG_DIR_M) {
@@ -548,7 +546,7 @@ algn_fill_ukk_left_cell (       cost_t    *curRow
     }
     if (DEBUG_COST_M) {
         /* Print the cost matrix */
-        printf ("%d\t", curRow[pos]);
+        printf ("%" cost_p "\t", curRow[pos]);
         fflush (stdout);
     }
 }
@@ -625,7 +623,7 @@ algn_fill_first_row ( cost_t          *curRow
     if (DEBUG_DIR_M)
         printf ("A\t");
     if (DEBUG_DIR_M) {
-        printf ("%d\t", curRow[0]);
+        printf ("%" cost_p "\t", curRow[0]);
         fflush (stdout);
     }
     for (size_t i = 1; i < len; i++) {
@@ -634,7 +632,7 @@ algn_fill_first_row ( cost_t          *curRow
         if (DEBUG_DIR_M)
             printf ("I\t");
         if (DEBUG_DIR_M) {
-            printf ("%d\t", curRow[i]);
+            printf ("%" cost_p "\t", curRow[i]);
             fflush (stdout);
         }
     }
@@ -652,7 +650,7 @@ algn_fill_first_cell ( cost_t    *curRow
     if (DEBUG_DIR_M)
         printf ("D\t");
     if (DEBUG_DIR_M) {
-        printf ("%d\t", *curRow);
+        printf ("%" cost_p "\t", *curRow);
         fflush (stdout);
     }
 }
@@ -908,11 +906,11 @@ algn_fill_extending_left ( const dyn_character_t    *char1
         printf ("A_A_A gap cost\n");
         fflush (stdout);
         for (i = 0; i < char2_len; i++) {
-            printf ("%d\t", gap_row[i]);
+            printf ("%" cost_p "\t", gap_row[i]);
             fflush (stdout);
         }
         printf ("\n");
-        printf ("The G_A_A - gap cost is %d\n", const_val);
+        printf ("The G_A_A - gap cost is %" cost_p "\n", const_val);
         fflush (stdout);
     }
 
@@ -1120,7 +1118,7 @@ algn_fill_plane ( const dyn_character_t    *longerCharacter
         // Print cost matrix column headers
         printf("  x |    * ");
         for (i = 1; i < longerCharacterLength; i++) {
-            printf("%4d ", longerCharacter->char_begin[i]);
+            printf("%4" elem_p " ", longerCharacter->char_begin[i]);
         }
         printf("\n");
         printf(" ---+-");
@@ -1138,7 +1136,7 @@ algn_fill_plane ( const dyn_character_t    *longerCharacter
             else        printf ("  # | "); // Character not in scope!
 
             for (j = 0; j < longerCharacterLength; j++) {
-                printf ("%4d ", debugCostMatrixBuffer[lesserCharacterLength * j + i]);
+                printf ("%4" elem_p " ", debugCostMatrixBuffer[lesserCharacterLength * j + i]);
             }
             printf ("\n");
         }
@@ -1529,7 +1527,7 @@ algn_fill_row_affine (       cost_t    *curRow
         }
         if (DEBUG_COST_M) {
             /* Print the cost matrix */
-            printf ("(%d, %d, %d)\t", curRow[i], htcurRow[i], dncurRow[i]);
+            printf ("(%" cost_p ", %" cost_p ", %" cost_p ")\t", curRow[i], htcurRow[i], dncurRow[i]);
             fflush (stdout);
         }
     }
@@ -1614,7 +1612,7 @@ algn_fill_ukk_right_cell_affine (       cost_t    *curRow
     }
     if (DEBUG_COST_M) {
         /* Print the cost matrix */
-        printf ("(%d, %d)\t", curRow[pos], htcurRow[pos]);
+        printf ("(%" cost_p ", %" cost_p ")\t", curRow[pos], htcurRow[pos]);
     }
     if (DEBUG_DIR_M || DEBUG_COST_M)
         printf ("\n");
@@ -1700,7 +1698,7 @@ algn_fill_ukk_left_cell_affine (       cost_t    *curRow
     }
     if (DEBUG_COST_M) {
         /* Print the cost matrix */
-        printf ("(%u, ,%u)\t", curRow[pos], dncurRow[pos]);
+        printf ("(%" cost_p ", ,%" cost_p ")\t", curRow[pos], dncurRow[pos]);
     }
 }
 
@@ -1774,7 +1772,7 @@ algn_fill_full_row_affine (       cost_t    *curRow
     dncurRow[0] = const_val + pdncurRow[0];
 
     if (DEBUG_COST_M)
-        printf ("%d\t", curRow[0]);
+        printf ("%" cost_p "\t", curRow[0]);
     if (DEBUG_DIR_M)
         printf ("D\t");
     algn_fill_row_affine ( curRow
@@ -1826,7 +1824,7 @@ algn_fill_first_row_affine ( cost_t       *curRow
     if (DEBUG_DIR_M)
         printf ("A\t");
     if (DEBUG_COST_M)
-        printf ("%d\t", curRow[0]);
+        printf ("%" cost_p "\t", curRow[0]);
 
     for (size_t i = 1; i < len; i++) {
         dncurRow[i] = VERY_LARGE_NUMBER;
@@ -1834,7 +1832,7 @@ algn_fill_first_row_affine ( cost_t       *curRow
         dirMtx[i]   = INSERT | (INSERT_H);
 
         if (DEBUG_DIR_M)  printf ("I\t");
-        if (DEBUG_COST_M) printf ("%d\t", curRow[i]);
+        if (DEBUG_COST_M) printf ("%" cost_p "\t", curRow[i]);
     }
 }
 
@@ -1855,7 +1853,7 @@ algn_fill_first_cell_affine ( cost_t    *curRow
     if (DEBUG_DIR_M)
         printf ("D\t");
     if (DEBUG_COST_M)
-        printf ("%d\t", *curRow);
+        printf ("%" cost_p "\t", *curRow);
 }
 
 /* In the following three functions, we maintain the following invariants in
@@ -2215,7 +2213,7 @@ algn_fill_extending_left_affine( const dyn_character_t    *char1
         printf ("A_A_A gap cost\n");
         fflush (stdout);
         for (i = 0; i < char2_len; i++) {
-            printf ("%d\t", gap_row[i]);
+            printf ("%" cost_p "\t", gap_row[i]);
             fflush (stdout);
         }
         fflush (stdout);
@@ -2366,7 +2364,7 @@ algn_fill_plane_affine ( const dyn_character_t    *char1
     dncurRow[0]   = VERY_LARGE_NUMBER;
 
     if (DEBUG_COST_M) {
-        printf ("%d\t", curRow[0]);
+        printf ("%" cost_p "\t", curRow[0]);
     }
     if (DEBUG_DIR_M) {
         printf ("A\t");
@@ -2378,7 +2376,7 @@ algn_fill_plane_affine ( const dyn_character_t    *char1
         curRow[i]   = curRow[i - 1] + first_gap_row[i];
         dirMtx[i]   = INSERT | INSERT_H;
         if (DEBUG_COST_M) {
-            printf ("%d\t", curRow[i]);
+            printf ("%" cost_p "\t", curRow[i]);
             fflush (stdout);
         }
         if (DEBUG_DIR_M) {
@@ -2508,7 +2506,7 @@ FILL_EXTEND_HORIZONTAL_NOBT (       cost_t  sj_horizontal_extension
                 longerChar_gap_open_cost + sj_gap_extension;
     if (DEBUG_AFFINE) {
         printf("\nFILL_EXTEND_HORIZONTAL_NOBT\n");
-        printf ("Ext cost: %d, Open cost: %d, Gap extension: %d, gap opening: %d, sj_horizontal_extension: %d\n",
+        printf ("Ext cost: %d, Open cost: %d, Gap extension: %" cost_p ", gap opening: %" cost_p ", sj_horizontal_extension: %" cost_p "\n",
                 ext_cost, open_cost, sj_gap_extension, longerChar_gap_open_cost, sj_horizontal_extension);
     }
     if (ext_cost < open_cost)
@@ -2516,7 +2514,7 @@ FILL_EXTEND_HORIZONTAL_NOBT (       cost_t  sj_horizontal_extension
     else
         extend_horizontal[j] = open_cost;
     if (DEBUG_AFFINE)
-        printf ("The final cost is %d\n", extend_horizontal[j]);
+        printf ("The final cost is %" cost_p "\n", extend_horizontal[j]);
 }
 
 DIR_MTX_ARROW_t
@@ -2541,7 +2539,7 @@ FILL_EXTEND_HORIZONTAL (       cost_t     sj_horizontal_extension
 
     if (DEBUG_AFFINE) {
         printf("\nFILL_EXTEND_HORIZONTAL\n");
-        printf ("Ext cost: %d, Open cost: %d, Gap extension: %d, gap opening: %d, sj_horizontal_extension: %d\n",
+        printf ("Ext cost: %d, Open cost: %d, Gap extension: %" cost_p ", gap opening: %" cost_p ", sj_horizontal_extension: %" cost_p "\n",
                 ext_cost, open_cost, sj_gap_extension, longerChar_gap_open_cost, sj_horizontal_extension);
     }
     if (ext_cost < open_cost) {
@@ -2553,7 +2551,7 @@ FILL_EXTEND_HORIZONTAL (       cost_t     sj_horizontal_extension
         extend_horizontal[j] = open_cost;
     }
 
-    if (DEBUG_AFFINE) printf ("The final cost is %d\n", extend_horizontal[j]);
+    if (DEBUG_AFFINE) printf ("The final cost is %" cost_p "\n", extend_horizontal[j]);
 
     return (direction_matrix);
 }
@@ -3021,7 +3019,7 @@ print_array ( char *title
 {
     printf ("%s", title);
     for (size_t i = 0; i <= max; i++) {
-        printf ("%d ", arr[i]);
+        printf ("%" cost_p " ", arr[i]);
     }
     printf ("\n");
     fflush (stdout);
@@ -3036,7 +3034,7 @@ print_dirMtx ( const char            *title
 {
     printf ("%s", title);
     for (size_t i = 0; i <= max; i++) {
-        printf ("%d ", arr[i]);
+        printf ("%u ", arr[i]);
     }
     printf ("\n");
     fflush (stdout);
@@ -3078,7 +3076,7 @@ algn_initialize_matrices_affine_nobt (      cost_t        gap_open_cost,
 
     if (DEBUG_AFFINE) {
         printf("initialize_matrices_affine_nobt\n");
-        printf ("\n\nThe gap opening parameter is %d\n", gap_open_cost);
+        printf ("\n\nThe gap opening parameter is %" cost_p "\n", gap_open_cost);
         printf ("\nPre-initialized values:\n");
         print_array ("EH: ", extend_horizontal,     longerChar_len);
         print_array ("EV: ", extend_vertical,       longerChar_len);
@@ -3159,7 +3157,7 @@ algn_initialize_matrices_affine(       cost_t        gap_open_cost
     gap_row                  = algnMtx_get_precal_row(algn_precalcMtx, 0, longerChar_len);
 
     if (DEBUG_AFFINE) {
-        printf ("\n\nThe gap opening parameter is %d\n", gap_open_cost);
+        printf ("\n\nThe gap opening parameter is %" cost_p "\n", gap_open_cost);
         printf ("\nPre-initialized values:\n");
         print_array ("EH: ", extend_horizontal,     longerChar_len);
         print_array ("EV: ", extend_vertical,       longerChar_len);
@@ -4246,7 +4244,7 @@ algn_print_bcktrck_2d (const dyn_character_t *char1, const dyn_character_t *char
     printf ("\n");
     for (i = 0; i < char1->len; i++) {
         for (j = 0; j < char2->len; j++) {
-            printf ("%d", (int) direction_matrix[j]);
+            printf ("%u", direction_matrix[j]);
             fflush (stdout);
         }
         direction_matrix += j;
@@ -4297,7 +4295,7 @@ algn_print_dynmtrx_2d ( const dyn_character_t      *char1
 
   printf("  x |    * ");
   for (i = 1; i < longerCharLen; i++) {
-    printf("%4d ", longerChar->char_begin[i]);
+    printf("%4" elem_p " ", longerChar->char_begin[i]);
   }
   printf("\n");
   printf(" ---+-");
@@ -4309,7 +4307,7 @@ algn_print_dynmtrx_2d ( const dyn_character_t      *char1
 
   for (i = 0; i < lesserCharLen; i++) {
     if (i == 0) printf ("  * | ");
-    else        printf (" %2d | ", lesserChar->char_begin[i]);
+    else        printf (" %2" elem_p " | ", lesserChar->char_begin[i]);
 
     // We do this because only the last two "rows" are ever used and constantly
     // overwritten as the algorithm moves from the first "row" to the last row.
@@ -4332,9 +4330,9 @@ algn_print_dynmtrx_2d ( const dyn_character_t      *char1
     }
     for (j = 0; j < 2; j++) {
       // if (j == 0 && i == 0) {
-      //     printf("%7d ", 0);
+      //     printf("%7" cost_p " ", 0);
       // } else {
-      printf ("%7d ", algn_costMatrix[lesserCharLen * j + i]);
+      printf ("%7" cost_p " ", algn_costMatrix[lesserCharLen * j + i]);
       // }
     }
     printf ("\n");
@@ -4350,7 +4348,7 @@ algn_print_dynmtrx_2d ( const dyn_character_t      *char1
   // print column heads
   printf("  x |    * ");
   for (i = 1; i < longerCharLen; i++) {
-    printf("%4d ", longerChar->char_begin[i]);
+    printf("%4" elem_p " ", longerChar->char_begin[i]);
   }
   printf("\n");
   printf(" ---+-");
@@ -4362,7 +4360,7 @@ algn_print_dynmtrx_2d ( const dyn_character_t      *char1
 
   for (i = 0; i < lesserCharLen; i++) {
     if (i == 0) printf ("  * | ");
-    else        printf (" %2d | ", lesserChar->char_begin[i]);
+    else        printf (" %2" elem_p " | ", lesserChar->char_begin[i]);
 
     for (j = 0; j < longerCharLen; j++) {
       DIR_MTX_ARROW_t dirToken = algn_dirMtx[lesserCharLen * i + j];
@@ -4781,7 +4779,7 @@ algn_get_cost_medians_3d ( characters_t       *input
 
     if (DEBUG_3D) {
         printf("Get cost median:\n");
-        printf("Seq length: %d\n", input->idxSeq1);
+        printf("Seq length: %zu\n", input->idxSeq1);
     }
 
     for (int i = input->idxSeq1 - 1; i >= 0; i--) {

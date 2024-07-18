@@ -32,7 +32,6 @@
 #define __UKKCOMMON_H__
 
 #include <assert.h>
-// #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,20 +48,20 @@ typedef enum {match, del, ins} Trans;  // The 3 possible state-machine states
 
 #ifndef __UKKCOMMON_C__
 
-extern int misCost_g;
-extern int startInsert_g;
-extern int continueInsert_g;
-extern int startDelete_g;
-extern int continueDelete_g;
+extern size_t neighbours[MAX_STATES];
+extern size_t stateNum[MAX_STATES];
+extern cost_t contCost[MAX_STATES];
+extern cost_t secondCost[MAX_STATES];
+extern cost_t transCost[MAX_STATES][MAX_STATES];
 
-extern int neighbours[MAX_STATES];
-extern int contCost[MAX_STATES];
-extern int secondCost[MAX_STATES];
-extern int transCost[MAX_STATES][MAX_STATES];
-extern int stateNum[MAX_STATES];
+extern cost_t misCost_g;
+extern cost_t startInsert_g;
+extern cost_t continueInsert_g;
+extern cost_t startDelete_g;
+extern cost_t continueDelete_g;
 
-extern int numStates_g;
-extern int maxSingleStep_g;
+extern size_t numStates_g;
+extern cost_t maxSingleStep_g;
 
 extern elem_t gap_char_g;
 
@@ -82,12 +81,12 @@ typedef struct characters_t {
     elem_t *seq1;     // string representation inputs
     elem_t *seq2;     // string representation inputs
     elem_t *seq3;     // string representation inputs
-    int     lenSeq1;  // lengths of A, B and Cstr. Have to be signed because compared to `furthestReached` in `ukkCheckPoint.c`
-    int     lenSeq2;  // lengths of A, B and Cstr. Have to be signed because compared to `furthestReached` in `ukkCheckPoint.c`
-    int     lenSeq3;  // lengths of A, B and Cstr. Have to be signed because compared to `furthestReached` in `ukkCheckPoint.c`
-    int     idxSeq1;  // current location of pointer into Astr
-    int     idxSeq2;  // current location of pointer into Bstr
-    int     idxSeq3;  // current location of pointer into Cstr
+    size_t  lenSeq1;  // lengths of A, B and Cstr. Have to be signed because compared to `furthestReached` in `ukkCheckPoint.c`
+    size_t  lenSeq2;  // lengths of A, B and Cstr. Have to be signed because compared to `furthestReached` in `ukkCheckPoint.c`
+    size_t  lenSeq3;  // lengths of A, B and Cstr. Have to be signed because compared to `furthestReached` in `ukkCheckPoint.c`
+    size_t  idxSeq1;  // current location of pointer into Astr
+    size_t  idxSeq2;  // current location of pointer into Bstr
+    size_t  idxSeq3;  // current location of pointer into Cstr
 } characters_t;
 
 
@@ -102,7 +101,8 @@ int stateTransitionCost( int from, int to );
  *  of neighbour is 1.
  *  I.e., if one of the transitions of the `neighbor` fsm is `delete`, set that state to true; otherwise, set to 0.
  */
-void exists_neighbor_in_delete_state
+void
+exists_neighbor_in_delete_state
   ( int  n
   , int *a
   , int *b
@@ -110,15 +110,17 @@ void exists_neighbor_in_delete_state
   );
 
 
-int neighbourNum
-  ( int i
-  , int j
-  , int k
+size_t
+neighbourNum
+  ( size_t i
+  , size_t j
+  , size_t k
   );
 
 
-void transitions
-  ( int s
+void
+transitions
+  ( size_t s
   , Trans st[3]
   );
 
@@ -126,13 +128,14 @@ void transitions
 char *state2str( int s );
 
 
-int countTrans
+size_t
+countTrans
   ( Trans st[3]
   , Trans t
   );
 
 
-void setup();
+void setup(void);
 
 
 // Alignment checking routines
@@ -178,7 +181,8 @@ characters_t *alloc_characters_t
 // void revCharArray( char *arr, int start, int end );
 
 
-int alignmentCost
+cost_t
+alignmentCost
   ( int     states[]
   , elem_t *al1
   , elem_t *al2
@@ -217,17 +221,17 @@ int alignmentCost
 #define CellsPerBlock   10
 
 typedef struct allocInfo_t {
-    int    elemSize;
-    int    abSize;
-    int    acSize;
-    int    abOffset;
-    int    acOffset;
-    long   abBlocks;
-    int    acBlocks;
-    int    costSize;
-    long   baseAlloc;
+    size_t elemSize;
+    size_t abSize;
+    size_t acSize;
+    size_t abOffset;
+    size_t acOffset;
+    size_t abBlocks;
+    size_t acBlocks;
+    size_t costSize;
+    size_t baseAlloc;
     void **basePtr;
-    long   memAllocated;
+    size_t memAllocated;
 } AllocInfo_t;
 
 //U_cell_type **Umatrix;        /* 2 dimensional */
@@ -242,9 +246,10 @@ typedef struct allocInfo_t {
 void *allocEntry( AllocInfo_t *a );
 
 
-static inline AllocInfo_t allocInit
-  ( int           elemSize
-  , int           costSize
+static inline AllocInfo_t
+allocInit
+  ( size_t        elemSize
+  , size_t        costSize
   , characters_t *inputs
   )
 {
@@ -276,7 +281,8 @@ static inline AllocInfo_t allocInit
 }
 
 
-static inline long allocGetSubIndex
+static inline long
+allocGetSubIndex
   ( AllocInfo_t *a
   , int          ab
   , int          ac
@@ -305,7 +311,8 @@ static inline long allocGetSubIndex
 }
 
 
-static inline void *allocPlane( AllocInfo_t *a )
+static inline void
+*allocPlane( AllocInfo_t *a )
 {
     void *p;
 
@@ -324,7 +331,8 @@ static inline void *allocPlane( AllocInfo_t *a )
 
 
 /** recalloc - does a realloc() but sets any new memory to 0. */
-static inline void *recalloc
+static inline void
+*recalloc
   ( void  *p
   , size_t oldSize
   , size_t newSize
@@ -396,7 +404,8 @@ static inline void *getPtr
     return ((char*) base) + (index * a->elemSize);
 }
 
-static inline void allocFinal
+static inline void
+allocFinal
   ( AllocInfo_t *a
   , void        *flag
   , void        *top
@@ -429,7 +438,7 @@ static inline void allocFinal
                         tcellsUsed++;
                     }
                 }
-                if (OUTPUT_FINAL_ALLOC)  printf("Block %zu. Cells = %d Used = %ld\n", j, CellsPerBlock * CellsPerBlock * numStates_g, tcellsUsed);
+                if (OUTPUT_FINAL_ALLOC)  printf("Block %zu. Cells = %zu Used = %ld\n", j, CellsPerBlock * CellsPerBlock * numStates_g, tcellsUsed);
             }
             if (OUTPUT_FINAL_ALLOC)  printf("Plane %zu. Blocks = %ld Used = %ld\n", i, a->abBlocks * a->acBlocks, tblocksUsed);
         }
@@ -458,9 +467,9 @@ int powell_3D_align
   ( characters_t *inputSeqs     // lengths set correctly; indices set to 0
   , characters_t *outputSeqs    // lengths set correctly; indices set to 0
   , size_t        alphabetSize  // not including gap
-  , int           mm            // mismatch cost, must be > 0
-  , int           go            // gap open cost, must be >= 0
-  , int           ge            // gap extension cost, must be > 0
+  , cost_t        mm            // mismatch cost, must be > 0
+  , cost_t        go            // gap open cost, must be >= 0
+  , cost_t        ge            // gap extension cost, must be > 0
   );
 
 #endif // __UKK_COMMON_H__

@@ -40,12 +40,28 @@ Flag Forego-Sanity
 -- FFI code.
 Common ffi-buildinfo
 
+  -- Unconditional C Compiler options
+  CC-Options:
+    --std=c11
+
   If !os(darwin)
     CC-Options:
       -rdynamic
 
-  CC-Options:
-    --std=c11
+  -- This for LINUX compile
+  If !os(darwin) && !os(windows)
+    CC-Options:
+      -fPIC
+
+  -- These are warning we want unless specifically disabled!
+  If !flag(Forego-Sanity)
+    CC-Options:
+      -Wabi
+      -Wall
+      -Wpedantic
+      -- Disable these warnings
+      -Wno-invalid-utf8
+      -Wno-variadic-macros
 
   C-Sources:
     ffi/external-direct-optimization/alignmentMatrices.c
@@ -67,9 +83,10 @@ Common ffi-buildinfo
   -- This is required for sdist and install commands to work correctly.
   Install-Includes:
     alignmentMatrices.h
-    c_code_alloc_setup.h
+    c_code_alloc_setup.h    
     costMatrix.h
     debug_constants.h
+    dyn_character.h
 
 
 Common ghc-flags
@@ -134,7 +151,7 @@ Common language-specs
     LambdaCase
     NoGeneralizedNewtypeDeriving
     UnicodeSyntax
-    
+
   Default-Language:
     GHC2021
 

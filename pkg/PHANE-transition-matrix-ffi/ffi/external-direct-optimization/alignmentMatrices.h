@@ -18,10 +18,10 @@
 /* USA                                                                        */
 
 #ifndef NWMATRICES_H
-
 #define NWMATRICES_H
 
 #include "costMatrix.h"
+#include "dyn_character.h"
 
 /** The following consts are to define possible moves in an NW matrix.
  *  As we're only saving one possible matrix, we don't need ambiguities,

@@ -1,19 +1,14 @@
-#include <limits.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-
 #ifndef C_CODE_ALLOC_SETUP_H
 #define C_CODE_ALLOC_SETUP_H
 
-#include "costMatrix.h"
-#include "alignCharacters.h"
-#include "debug_constants.h"
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "alignmentMatrices.h"
-
-
-#define cost_t uint64_t
-
+#include "costMatrix.h"
+#include "debug_constants.h"
+#include "dyn_character.h"
 
 /** Find distance between an unambiguous nucleotide and an ambiguous ambElem. Return that value and the median.
  *  @param ambElem is ambiguous input.

@@ -22,18 +22,41 @@
 #ifndef COSTMATRIX_H
 #define COSTMATRIX_H
 
-#include <stdint.h>
+#include "debug_constants.h"
+#include "dyn_character.h"
 
 /* The encoding type for costs/distances */
-#define cost_t uint64_t
+#ifndef TYPE_COST
+#define TYPE_COST
+
+/**
+ *  CHOICE: Should the cost encoding be "wide?"
+ *    0. 32-bits (No)
+ *    1. 64-bits (Yes)
+ *
+ *  NOTE:
+ *    -  Always use 'cost_t' as the type for cost values
+ *    -  Always use 'cost_p' within the formatting string for 'printf' calls.
+ */
+#define WIDE_COST 1
+
+#define __STDC_FORMAT_MACROS 1
+#include <inttypes.h>
+
+#if WIDE_COST == 1
+// #define cost_t uint64_t
+typedef uint64_t cost_t;
+#define cost_p PRIu64
+#else
+// #define cost_t uint32_t
+typedef uint32_t cost_t;
+#define cost_p PRIu32
+#endif
+#endif /* TYPE_COST */
 
 
 #define Cost_matrix_struct(a) ((struct cost_matrices_2d *) Data_custom_val(a))
 #define Cost_matrix_struct_3d(a) ((struct cost_matrices_3d *) Data_custom_val(a))
-
-#include "debug_constants.h"
-#include "dyn_character.h"
-
 
 /**
  * Check cost_matrices_3d for further information. This is the corresponding data
@@ -145,7 +168,7 @@ void cm_print_2d ( cost_matrices_2d_t *c );
  *  Need a height and a width because prepend, worst and tail_cost are only height 1.
  */
 void cm_print_matrix_2d
-  ( elem_t *costMatrix
+  ( cost_t *costMatrix
   , size_t  height
   , size_t  alphSize
   );
@@ -323,7 +346,17 @@ cm_set_median_2d
   ( cost_matrices_2d_t *costMtx
   , elem_t              a
   , elem_t              b
-  , elem_t              v
+  , cost_t              v
+  );
+
+
+void
+cm_set_value_2d
+  ( elem_t  a
+  , elem_t  b
+  , cost_t  v
+  , cost_t *p
+  , int alphSize
   );
 
 
@@ -334,8 +367,9 @@ void cm_print_3d ( cost_matrices_3d_t *c );
  *  don't take entire cost matrix because you want to print only medians or costs.
  *  Only need matrix dimension because both median and cost matrices are cubic.
  */
-void cm_print_matrix_3d
-  ( elem_t *costMatrix
+void
+cm_print_matrix_3d
+  ( cost_t *costMatrix
   , size_t  costMatrixDimension
   );
 

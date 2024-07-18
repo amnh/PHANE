@@ -60,14 +60,14 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "alignmentMatrices.h"
 #include "costMatrix.h"
 #include "debug_constants.h"
-#include "alignmentMatrices.h"
 #include "dyn_character.h"
 #include "ukkCommon.h"
 
 // TODO: consider changing this number
-#define VERY_LARGE_NUMBER 100000 // large number, but as this gets added to itself repeatedly, small enough that it won't overflow.
+#define VERY_LARGE_NUMBER 10000000 // large number, but as this gets added to itself repeatedly, small enough that it won't overflow.
 
 
 /** Prepend the character b to the character a. */

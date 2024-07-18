@@ -22,9 +22,22 @@
 
 #include <stddef.h>
 
-// #ifdef USE_LARGE_ALPHABETS
-//#define elem_t char
-#define elem_t unsigned int
+/**
+ *  The encoding type for "sequence elements."
+ *
+ *  NOTE:
+ *    -  Always use 'elem_t' as the type for seuqence elements
+ *    -  Always use 'elem_p' within the formatting string for 'printf' calls.
+ */
+#ifndef TYPE_OF_ELEM
+#define TYPE_OF_ELEM
+
+#define __STDC_FORMAT_MACROS 1
+#include <inttypes.h>
+#define elem_p PRIu32
+typedef uint32_t elem_t;
+
+#endif /* TYPE_OF_ELEM */
 
 
 /* Dynamic character structure to be used inside ocaml custom types. */
