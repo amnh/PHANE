@@ -534,9 +534,15 @@ both2D :: (Enum b, Num c) => TCMρ -> b -> b -> (c, b)
 both2D tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
     let dim = fromEnum $ alphSize2D cm2D
-    let get = peek . getOffsetPtr2D dim fromEnum e1 e2
-    cost <- get $ bestCost2D cm2D
-    med  <- get $  medians2D cm2D
+    
+        getC :: Ptr DiscretizedResolutionIota -> IO DiscretizedResolutionIota
+        getC = peek . getOffsetPtr2D dim fromEnum e1 e2
+        
+        getM :: Ptr ElementEncoding -> IO ElementEncoding
+        getM = peek . getOffsetPtr2D dim fromEnum e1 e2
+
+    cost <- getC $ bestCost2D cm2D
+    med  <- getM $  medians2D cm2D
     pure (fromIntegral cost, cuint2Enum med)
 
 
@@ -572,9 +578,15 @@ both3D :: (Enum b, Num c) => TCMρ -> b -> b -> b -> (c, b)
 both3D tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
     let dim = fromEnum $ alphSize3D cm3D
-    let get = peek . getOffsetPtr3D dim fromEnum e1 e2 e3
-    cost <- get $ bestCost3D cm3D
-    med  <- get $  medians3D cm3D
+   
+        getC :: Ptr DiscretizedResolutionIota -> IO DiscretizedResolutionIota
+        getC = peek . getOffsetPtr3D dim fromEnum e1 e2 e3
+        
+        getM :: Ptr ElementEncoding -> IO ElementEncoding
+        getM = peek . getOffsetPtr3D dim fromEnum e1 e2 e3
+
+    cost <- getC $ bestCost3D cm3D
+    med  <- getM $  medians3D cm3D
     pure (fromIntegral cost, cuint2Enum med)
 
 
@@ -610,10 +622,16 @@ both2D' :: (Bits b, Num c) => TCMρ -> b -> b -> (c, b)
 both2D' tcmρ e1 e2 = unsafePerformIO $ do
     cm2D <- peek $ matrix2D tcmρ
     let dim = fromEnum $ alphSize2D cm2D
-    let idx = indexFromBits dim
-    let get = peek . getOffsetPtr2D dim idx e1 e2
-    cost <- get $ bestCost2D cm2D
-    med  <- get $  medians2D cm2D
+        idx = indexFromBits dim
+    
+        getC :: Ptr DiscretizedResolutionIota -> IO DiscretizedResolutionIota
+        getC = peek . getOffsetPtr2D dim idx e1 e2
+        
+        getM :: Ptr ElementEncoding -> IO ElementEncoding
+        getM = peek . getOffsetPtr2D dim idx e1 e2
+
+    cost <- getC $ bestCost2D cm2D
+    med  <- getM $  medians2D cm2D
     pure (fromIntegral cost, valueToBits e1 med)
 
 
@@ -651,10 +669,16 @@ both3D' :: (Bits b, Num c) => TCMρ -> b -> b -> b -> (c, b)
 both3D' tcmρ e1 e2 e3 = unsafePerformIO $ do
     cm3D <- peek $ matrix3D tcmρ
     let dim = fromEnum $ alphSize3D cm3D
-    let idx = indexFromBits dim
-    let get = peek . getOffsetPtr3D dim idx e1 e2 e3
-    cost <- get $ bestCost3D cm3D
-    med  <- get $  medians3D cm3D
+        idx = indexFromBits dim
+   
+        getC :: Ptr DiscretizedResolutionIota -> IO DiscretizedResolutionIota
+        getC = peek . getOffsetPtr3D dim idx e1 e2 e3
+        
+        getM :: Ptr ElementEncoding -> IO ElementEncoding
+        getM = peek . getOffsetPtr3D dim idx e1 e2 e3
+
+    cost <- getC $ bestCost3D cm3D
+    med  <- getM $  medians3D cm3D
     pure (fromIntegral cost, valueToBits e1 med)
 
 
@@ -696,11 +720,11 @@ getOffsetPtr3D dim f e1 e2 e3 =
     in  flip advancePtr off
 
 
-cuint2Enum :: Enum b => DiscretizedResolutionIota -> b
+cuint2Enum :: Enum b => ElementEncoding -> b
 cuint2Enum = toEnum . fromEnum
 
 
-valueToBits :: Bits b => b -> DiscretizedResolutionIota -> b
+valueToBits :: Bits b => b -> ElementEncoding -> b
 valueToBits b v =
     let z = b `xor` b
         f :: Bits a => a -> Int -> a
