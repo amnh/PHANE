@@ -205,16 +205,13 @@ Library
     src
 
   Build-Depends:
---    PHANE-alphabet,
     PHANE-dynamic-character,
     PHANE-dynamic-character-element,
     PHANE-measure-transition,
     PHANE-transition-matrix-ffi,
     PHANE-measure-units,
     base >= 4.11 && < 5.0,
---    bv-little,
     containers >= 0.6.2 && < 1.0,
---    deepseq >= 1.4 && < 2.0,
     matrices >= 0.5 && < 1.0,
     monad-loops >= 0.4 && < 1.0,
     primitive >= 0.7.1 && < 1.0,
@@ -234,3 +231,36 @@ Library
     DirectOptimization.Pairwise.Slim
     DirectOptimization.Pairwise.Slim.FFI
     DirectOptimization.Pairwise.Wide
+
+
+Executable 2d-do-comparison
+
+  Import:
+    build-defaults,
+
+  Main-Is:
+    2d-do-comparison.hs
+
+  HS-Source-Dirs:
+    app
+
+  Build-Depends:
+    base >= 4.11 && < 5.0,
+    bimap >= 0.3 && < 2.0,
+    containers >= 0.6.2 && < 1.0,
+    mono-traversable >= 1.0 && < 2.0,
+    QuickCheck >= 2.14 && < 3.0,
+    tasty >= 1.2 && < 2.0,
+    tasty-quickcheck >= 0.9 && < 1.0,
+    vector >= 0.12.0.3 && < 1.0,
+    PHANE-alphabet,
+    PHANE-dynamic-character,
+    PHANE-dynamic-character-alignment,
+    PHANE-dynamic-character-element,
+    PHANE-measure-transition,
+    PHANE-measure-units,
+    PHANE-transition-matrix,
+    PHANE-transition-matrix-ffi,
+
+  Other-Modules:
+    NucleotideSequence

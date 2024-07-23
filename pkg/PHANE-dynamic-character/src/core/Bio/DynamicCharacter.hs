@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE RankNTypes #-}
--- {-# LANGUAGE Strict #-}
+{-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 {- |
@@ -55,7 +55,11 @@ module Bio.DynamicCharacter (
     setFrom,
     transposeCharacter,
 
+    -- * Context data-type
+    AlignmentContext (..),
+
     -- * Queries
+    getContext,
     isAlign,
     isDelete,
     isInsert,
@@ -66,9 +70,6 @@ module Bio.DynamicCharacter (
 
     -- * Strictness
     forceDynamicCharacter,
-
-    -- * Rendering
-    renderDynamicCharacter,
 ) where
 
 import Bio.DynamicCharacter.Element
@@ -79,7 +80,6 @@ import Data.Alphabet.Codec
 import Data.Bits
 import Data.Foldable
 import Data.Kind (Type)
-import Data.Ord
 import Data.STRef
 import Data.Set (Set)
 import Data.Vector qualified as RV
@@ -155,6 +155,38 @@ type TempWideDynamicCharacter m = TempOpenDynamicCharacter m UV.Vector WideState
 Mutable encoding of 'HugeDynamicCharacter'.
 -}
 type TempHugeDynamicCharacter m = TempOpenDynamicCharacter m RV.Vector HugeState
+
+
+{- |
+The "alignemnt context" of an 'OpenDynamicCharacter' element extracted from an index of the sequence.
+-}
+data AlignmentContext e
+    = Gapped
+    | Delete e e
+    | Insert e e
+    | Merged e e e
+    deriving stock (Eq, Ord)
+
+
+type role AlignmentContext representational
+
+
+{- |
+Get the 'AlignmentContext' for the given index of the 'OpenDynamicCharacter'.
+-}
+getContext
+    ∷ ( FiniteBits e
+      , Vector v e
+      )
+    ⇒ OpenDynamicCharacter v e
+    → Int
+    -- ^ Index to get
+    → AlignmentContext e
+getContext c@(lc, mc, rc) i
+    | c `isAlign` i = Merged (lc ! i) (mc ! i) (rc ! i)
+    | c `isDelete` i = Delete (mc ! i) (rc ! i)
+    | c `isInsert` i = Insert (lc ! i) (mc ! i)
+    | otherwise = Gapped
 
 
 isAlign, isDelete, isInsert, isGapped ∷ (FiniteBits e, Vector v e) ⇒ OpenDynamicCharacter v e → Int → Bool
@@ -654,48 +686,6 @@ unsafeCharacterBuiltByBufferedST b f = runST $ do
                     unsafeRead slc i' >>= unsafeWrite dlc i
                     unsafeRead smc i' >>= unsafeWrite dmc i
                     unsafeRead src i' >>= unsafeWrite drc i
-
-
-renderDynamicCharacter
-    ∷ ( FiniteBits e
-      , Show e
-      , Vector v e
-      )
-    ⇒ OpenDynamicCharacter v e
-    → String
-renderDynamicCharacter (lc, mc, rc) =
-    unlines
-        [ "Character Length: " <> show (GV.length mc)
-        , printVector lcStr
-        , printVector mcStr
-        , printVector rcStr
-        ]
-    where
-        show' ∷ (Bits a, Show a) ⇒ a → String
-        show' x
-            | popCount x > 0 = show x
-            | otherwise = [voidC]
-
-        voidC = '█'
-        lcStr = show' <$> GV.toList lc
-        mcStr = show' <$> GV.toList mc
-        rcStr = show' <$> GV.toList rc
-        eSize = length . maximumBy (comparing length) $ lcStr <> mcStr <> rcStr <> [[voidC]]
-        pad s =
-            let c
-                    | s == [voidC] = voidC
-                    | otherwise = ' '
-            in  replicate (eSize - length s) c <> s
-
-        intercalate' [] = []
-        intercalate' [x] = x
-        intercalate' (x : xs) =
-            let sep = case x of
-                    e : _ | e == voidC → [voidC]
-                    _ → " "
-            in  x <> sep <> intercalate' xs
-
-        printVector vec = "[ " <> intercalate' (pad <$> vec) <> " ]"
 
 
 buildGap ∷ (Bits e) ⇒ e → e

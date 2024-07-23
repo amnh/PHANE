@@ -21,6 +21,9 @@ module Bio.DynamicCharacter.Element (
 
     -- * Type-class abstraction
     StateOfAmbiguity (..),
+
+    -- * Rendering
+    renderSlimStateChar,
 ) where
 
 import Bio.DynamicCharacter.Element.Class

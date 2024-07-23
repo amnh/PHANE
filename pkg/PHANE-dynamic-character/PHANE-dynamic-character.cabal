@@ -147,8 +147,9 @@ Library core
 
   Exposed-Modules:
     Bio.DynamicCharacter
-    Bio.DynamicCharacter.Measure
     Bio.DynamicCharacter.HandleGaps
+    Bio.DynamicCharacter.Measure
+    Bio.DynamicCharacter.Rendering
 
   Hs-Source-Dirs:
     src/core

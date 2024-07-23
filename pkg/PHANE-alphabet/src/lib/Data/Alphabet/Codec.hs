@@ -27,7 +27,7 @@ import GHC.Exts (IsList (fromList), Item)
 
 
 {- |
-\$\mathcal{O}\left(\, \log_{2}\lvert\Sigma\rvert * n \,\right)$
+__Time:__ \( \mathcal{O}\left(\, \log_{2}\lvert\Sigma\rvert * n \,\right) \)
 
 Encode a collection of symbols as a unique subset of the supplied 'Data.Alphabet.Alphabet'.
 The result is bit-packed encoding of the collection of symbols which uniquely
@@ -92,7 +92,7 @@ encodeState alphabet f symbols = getSubsetIndex alphabet symbolsSet emptyElement
 
 
 {- |
-\$\mathcal{O}\left(\, \log_{2}\left(\Sigma\right) * n \,\right)$
+__Time:__ \( \mathcal{O}\left(\, \log_{2}\left(\Sigma\right) * n \,\right) \)
 
 Decode a bit-packed endcoding to a collection of symbols which is a unique
 subset of the supplied 'Data.Alphabet.Alphabet'.
