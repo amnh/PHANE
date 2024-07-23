@@ -227,7 +227,7 @@ permitting a total of 65535 additions before /the possibility/ of
 arithmetic overflow occuring within the underlying type.
 -}
 arithmeticOperations ∷ Int
-arithmeticOperations = 16
+arithmeticOperations = 20
 
 
 {- |
