@@ -126,6 +126,7 @@ Library
     Bio.DynamicCharacter,
     Bio.DynamicCharacter.Measure,
     Bio.DynamicCharacter.HandleGaps,
+    Bio.DynamicCharacter.Rendering,
 
 
 -- Exposes internal modules
