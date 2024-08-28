@@ -20,7 +20,7 @@ Publications
 [DOI-Img-00]: https://zenodo.org/badge/DOI/10.1111/cla.12370.svg
 [DOI-Img-01]: https://zenodo.org/badge/DOI/10.1186/s12859-020-03595-2.svg
 [DOI-Img-02]: https://zenodo.org/badge/DOI/10.1111/cla.12560.svg
-[DOI-Img-03]: https://zenodo.org/badge/DOI/10.1111/cla.12572
+[DOI-Img-03]: https://zenodo.org/badge/DOI/10.1111/cla.12572.svg
 
 
 
