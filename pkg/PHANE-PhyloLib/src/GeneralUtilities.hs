@@ -439,6 +439,30 @@ takeRandom rSeed number inList
 
 
 -- | takeNth takes n elments (each nth) of a list of length m
+-- if picks fewer than number due to integer issues supplements with
+-- some of rejects
+takeNth ∷ Show a => Int → [a] → [a]
+takeNth number inList =
+    if number == 0 || null inList then []
+    else 
+        let len = length inList
+        in
+        if len <= number then inList
+        else 
+            let (nthFactor', _) = divMod len number
+                nthFactor = if nthFactor' == 1 then 2 else  nthFactor'
+                indexList = [0 .. len -1]
+                binaryList = fmap snd $ fmap (`divMod` nthFactor) indexList
+                pairList = zip inList binaryList
+                outList = fmap fst $ filter ((== 1) .snd) pairList
+                rejectList = fmap fst $ filter ((== 0) .snd) pairList
+            in
+            -- trace ("TN: " <> (show (number, len, nthFactor,indexList, binaryList, length outList)))
+            -- this in case integer math results in lower than want
+            take number (outList <> rejectList)
+
+{-
+-- | takeNth takes n elments (each nth) of a list of length m
 takeNth ∷ Int → [a] → [a]
 takeNth 0 = const []
 takeNth n = \case
@@ -454,7 +478,7 @@ takeNth n = \case
                         (outList, _) = unzip . filter ((== 1) . snd) $ zip inList remList
                     in  take n outList
                 _ → inList
-
+-}
 
 {-# NOINLINE getRandomElement #-}
 
